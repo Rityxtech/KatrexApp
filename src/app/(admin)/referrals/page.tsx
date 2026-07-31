@@ -1,6 +1,6 @@
 export default function ReferralsPage() {
   return (
-    <div className="px-4 max-w-4xl mx-auto w-full space-y-max-gap pt-5">
+    <div className="px-4 w-full space-y-max-gap pt-5">
       {/* Section 5: Referral Stats */}
       <section className="grid grid-cols-2 gap-gutter">
         <div className="bg-surface-bright border border-border-subtle p-stack-base rounded relative overflow-hidden">

@@ -3,7 +3,7 @@ import SystemHealthRow from "@/components/SystemHealthRow";
 
 export default function CryptoPage() {
   return (
-    <div className="p-container-padding max-w-[1600px] mx-auto">
+    <div className="p-container-padding w-full">
       {/* Page Header & Market Status */}
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center mb-max-gap gap-stack-base">
         <div>
