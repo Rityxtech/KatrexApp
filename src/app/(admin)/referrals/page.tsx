@@ -1,13 +1,35 @@
+"use client";
+
+import { useReferrals, useTransactions, useUsers } from "@/hooks/useAdminData";
+
+function formatNaira(n: number) {
+  if (n >= 1_000_000) return `\u20a6${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `\u20a6${(n / 1_000).toFixed(2)}K`;
+  return `\u20a6${n.toFixed(0)}`;
+}
+
 export default function ReferralsPage() {
+  const { data: referrals, loading } = useReferrals(100);
+  const { data: txns } = useTransactions(500);
+  const { data: users } = useUsers(500);
+
+  const totalBonuses = referrals.reduce((s: number, r: any) => s + (r.bonusAmount || r.amount || 0), 0);
+  const pendingPayouts = referrals.filter((r: any) => r.status === "pending");
+  const conversionRate = users.length > 0 ? ((referrals.length / users.length) * 100).toFixed(1) : "0";
+
+  const referralTree = referrals.slice(0, 5);
+
+  const flaggedReferrals = referrals.filter((r: any) => r.status === "flagged" || r.fraudFlag);
+
   return (
     <div className="px-4 w-full space-y-max-gap pt-5">
-      {/* Section 5: Referral Stats */}
+      {/* Referral Stats */}
       <section className="grid grid-cols-2 gap-gutter">
         <div className="bg-surface-bright border border-border-subtle p-stack-base rounded relative overflow-hidden">
           <span className="font-label-caps text-on-surface-variant block mb-unit">TOTAL BONUSES PAID</span>
           <div className="flex items-baseline gap-2">
-            <span className="font-headline-lg text-primary">&#8358;4.2M</span>
-            <span className="text-status-success font-data-mono text-[10px]">+12.5%</span>
+            <span className="font-headline-lg text-primary">{formatNaira(totalBonuses)}</span>
+            <span className="text-status-success font-data-mono text-[10px]">{referrals.length} referrals</span>
           </div>
           <div className="h-6 w-full mt-stack-base">
             <svg className="h-full w-full stroke-primary fill-none stroke-[1.5]" viewBox="0 0 100 25">
@@ -18,8 +40,8 @@ export default function ReferralsPage() {
         <div className="bg-surface-bright border border-border-subtle p-stack-base rounded relative overflow-hidden">
           <span className="font-label-caps text-on-surface-variant block mb-unit">CONVERSION RATE</span>
           <div className="flex items-baseline gap-2">
-            <span className="font-headline-lg text-secondary">18.4%</span>
-            <span className="text-status-warning font-data-mono text-[10px]">-2.1%</span>
+            <span className="font-headline-lg text-secondary">{conversionRate}%</span>
+            <span className="font-data-mono text-[10px] text-on-surface-variant">{referrals.length}/{users.length}</span>
           </div>
           <div className="h-6 w-full mt-stack-base">
             <svg className="h-full w-full stroke-secondary fill-none stroke-[1.5]" viewBox="0 0 100 25">
@@ -29,7 +51,7 @@ export default function ReferralsPage() {
         </div>
       </section>
 
-      {/* Section 1: Program Settings */}
+      {/* Program Settings */}
       <section className="space-y-stack-base">
         <div className="flex items-center gap-2 px-unit">
           <span className="material-symbols-outlined text-primary text-[18px]">settings_input_component</span>
@@ -46,12 +68,12 @@ export default function ReferralsPage() {
           </div>
           <div className="space-y-unit">
             <label className="font-label-caps text-on-surface-variant">MIN PAYOUT</label>
-            <input className="w-full bg-surface-container-lowest border-border-subtle text-on-surface font-data-mono text-body-md py-1 px-2 rounded focus:border-primary outline-none text-center" type="text" defaultValue="&#8358;5,000" />
+            <input className="w-full bg-surface-container-lowest border-border-subtle text-on-surface font-data-mono text-body-md py-1 px-2 rounded focus:border-primary outline-none text-center" type="text" defaultValue={"\u20a65,000"} />
           </div>
         </div>
       </section>
 
-      {/* Section 2: Referral Tree Snippet */}
+      {/* Referral Tree */}
       <section className="space-y-stack-base">
         <div className="flex items-center gap-2 px-unit">
           <span className="material-symbols-outlined text-primary text-[18px]">account_tree</span>
@@ -59,102 +81,108 @@ export default function ReferralsPage() {
         </div>
         <div className="bg-surface-bright border border-border-subtle p-container-padding rounded overflow-x-auto no-scrollbar">
           <div className="flex items-center min-w-max gap-4 py-2">
-            <div className="flex flex-col items-center gap-1 group cursor-pointer">
-              <div className="w-12 h-12 rounded bg-primary-container border-2 border-primary flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary">person</span>
-              </div>
-              <span className="font-body-sm font-bold text-primary">@admin_ade</span>
-              <span className="font-label-caps text-[8px] text-on-surface-variant">ORIGIN</span>
-            </div>
-            <span className="material-symbols-outlined text-border-subtle">arrow_forward</span>
-            <div className="flex flex-col items-center gap-1">
-              <div className="w-10 h-10 rounded bg-surface-container-high border border-border-subtle flex items-center justify-center">
-                <span className="material-symbols-outlined text-on-surface-variant">person</span>
-              </div>
-              <span className="font-body-sm text-on-surface">@user_01</span>
-            </div>
-            <span className="material-symbols-outlined text-border-subtle">arrow_forward</span>
-            <div className="flex flex-col items-center gap-1">
-              <div className="w-10 h-10 rounded bg-surface-container-high border border-border-subtle flex items-center justify-center">
-                <span className="material-symbols-outlined text-on-surface-variant">person</span>
-              </div>
-              <span className="font-body-sm text-on-surface">@user_02</span>
-            </div>
-            <span className="material-symbols-outlined text-border-subtle">arrow_forward</span>
-            <div className="flex flex-col items-center gap-1 opacity-50">
-              <div className="w-8 h-8 rounded-full border border-dashed border-border-subtle flex items-center justify-center">
-                <span className="material-symbols-outlined text-[14px]">add</span>
-              </div>
-              <span className="font-label-caps text-[8px]">PENDING</span>
-            </div>
+            {loading ? (
+              <div className="text-on-surface-variant text-body-sm">Loading referral tree...</div>
+            ) : referralTree.length === 0 ? (
+              <div className="text-on-surface-variant text-body-sm">No referral data</div>
+            ) : (
+              referralTree.map((r: any, i: number) => (
+                <div key={r.id} className="flex items-center gap-4">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`w-${i === 0 ? 12 : 10} h-${i === 0 ? 12 : 10} rounded ${i === 0 ? "bg-primary-container border-2 border-primary" : "bg-surface-container-high border border-border-subtle"} flex items-center justify-center`}>
+                      <span className="material-symbols-outlined text-on-surface-variant">person</span>
+                    </div>
+                    <span className="font-body-sm text-on-surface">{r.referrerUid?.slice(0, 12) || r.uid?.slice(0, 12) || "User"}</span>
+                    {i === 0 && <span className="font-label-caps text-[8px] text-on-surface-variant">ORIGIN</span>}
+                  </div>
+                  {i < referralTree.length - 1 && <span className="material-symbols-outlined text-border-subtle">arrow_forward</span>}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
 
-      {/* Section 3: Commission Payout Queue */}
+      {/* Payout Queue */}
       <section className="space-y-stack-base">
         <div className="flex items-center justify-between px-unit">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[18px]">list_alt</span>
             <h2 className="font-headline-md text-on-surface">Payout Queue</h2>
           </div>
-          <span className="font-label-caps bg-primary-container text-primary px-2 py-0.5 rounded-full">12 PENDING</span>
+          <span className="font-label-caps bg-primary-container text-primary px-2 py-0.5 rounded-full">{pendingPayouts.length} PENDING</span>
         </div>
         <div className="bg-surface-bright border border-border-subtle rounded overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-surface-container-low">
-              <tr className="border-b border-border-subtle">
-                <th className="p-2 font-label-caps text-on-surface-variant">USER</th>
-                <th className="p-2 font-label-caps text-on-surface-variant text-right">AMOUNT</th>
-                <th className="p-2 font-label-caps text-on-surface-variant">TYPE</th>
-                <th className="p-2 font-label-caps text-on-surface-variant text-center">ACTION</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle font-body-sm">
-              {[
-                { user: "@crypto_king", amount: "\u20a612,500", type: "P2P", typeColor: "text-secondary" },
-                { user: "@lola_vibe", amount: "\u20a65,200", type: "Giftcard", typeColor: "text-tertiary" },
-                { user: "@tech_bro", amount: "\u20a645,000", type: "P2P", typeColor: "text-secondary" },
-              ].map((r) => (
-                <tr key={r.user} className="hover:bg-primary-container transition-colors">
-                  <td className="p-2 font-bold text-on-surface">{r.user}</td>
-                  <td className="p-2 text-right font-data-mono">{r.amount}</td>
-                  <td className="p-2"><span className={`text-[10px] uppercase font-bold ${r.typeColor}`}>{r.type}</span></td>
-                  <td className="p-2">
-                    <div className="flex justify-center gap-2">
-                      <span className="material-symbols-outlined text-status-success cursor-pointer hover:scale-110 transition-transform">check_circle</span>
-                      <span className="material-symbols-outlined text-status-danger cursor-pointer hover:scale-110 transition-transform">cancel</span>
-                    </div>
-                  </td>
+          {pendingPayouts.length === 0 ? (
+            <div className="p-4 text-center text-on-surface-variant text-body-sm">No pending payouts</div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-surface-container-low">
+                <tr className="border-b border-border-subtle">
+                  <th className="p-2 font-label-caps text-on-surface-variant">USER</th>
+                  <th className="p-2 font-label-caps text-on-surface-variant text-right">AMOUNT</th>
+                  <th className="p-2 font-label-caps text-on-surface-variant">TYPE</th>
+                  <th className="p-2 font-label-caps text-on-surface-variant text-center">ACTION</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border-subtle font-body-sm">
+                {pendingPayouts.map((r: any) => (
+                  <tr key={r.id} className="hover:bg-primary-container transition-colors">
+                    <td className="p-2 font-bold text-on-surface">{r.referrerUid?.slice(0, 16) || r.uid?.slice(0, 16) || "\u2014"}</td>
+                    <td className="p-2 text-right font-data-mono">{formatNaira(r.bonusAmount || r.amount || 0)}</td>
+                    <td className="p-2"><span className="text-[10px] uppercase font-bold text-secondary">{r.type || "referral"}</span></td>
+                    <td className="p-2">
+                      <div className="flex justify-center gap-2">
+                        <span className="material-symbols-outlined text-status-success cursor-pointer hover:scale-110 transition-transform">check_circle</span>
+                        <span className="material-symbols-outlined text-status-danger cursor-pointer hover:scale-110 transition-transform">cancel</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
 
-      {/* Section 4: Fraud Detection */}
+      {/* Fraud Detection */}
       <section className="space-y-stack-base">
         <div className="flex items-center gap-2 px-unit">
           <span className="material-symbols-outlined text-status-danger text-[18px]">security</span>
           <h2 className="font-headline-md text-on-surface">Fraud Detection</h2>
         </div>
-        <div className="bg-error-container/20 border border-status-danger p-container-padding rounded flex gap-3">
-          <div className="flex-shrink-0">
-            <span className="material-symbols-outlined text-status-danger text-[32px]">warning</span>
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-unit">
-              <span className="font-headline-md text-on-error-container">HIGH RISK ALERT</span>
-              <span className="font-data-mono text-[10px] bg-status-danger/30 text-error px-1 rounded">MATCH: 98%</span>
+        {flaggedReferrals.length === 0 ? (
+          <div className="bg-status-success/10 border border-status-success/30 p-container-padding rounded flex gap-3">
+            <div className="flex-shrink-0">
+              <span className="material-symbols-outlined text-status-success text-[32px]">check_circle</span>
             </div>
-            <p className="font-body-sm text-on-error-container mb-stack-base">Circular referral chain detected: @user_X4 -&gt; @user_Y9 -&gt; @user_X4. Account activity suspended.</p>
-            <div className="flex gap-2">
-              <button className="bg-status-danger text-white font-label-caps px-3 py-1.5 rounded-lg hover:brightness-110 active:scale-95 transition-all">FLAG USER</button>
-              <button className="bg-transparent border border-border-subtle text-on-surface font-label-caps px-3 py-1.5 rounded-lg">DISMISS</button>
+            <div className="flex-1">
+              <span className="font-headline-md text-status-success">ALL CLEAR</span>
+              <p className="font-body-sm text-on-surface mt-1">No fraudulent referral patterns detected.</p>
             </div>
           </div>
-        </div>
+        ) : (
+          flaggedReferrals.map((r: any) => (
+            <div key={r.id} className="bg-error-container/20 border border-status-danger p-container-padding rounded flex gap-3">
+              <div className="flex-shrink-0">
+                <span className="material-symbols-outlined text-status-danger text-[32px]">warning</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-unit">
+                  <span className="font-headline-md text-on-error-container">HIGH RISK ALERT</span>
+                  <span className="font-data-mono text-[10px] bg-status-danger/30 text-error px-1 rounded">FLAGGED</span>
+                </div>
+                <p className="font-body-sm text-on-error-container mb-stack-base">
+                  Suspicious referral pattern detected: {r.referrerUid?.slice(0, 12) || r.uid?.slice(0, 12)}. Account under review.
+                </p>
+                <div className="flex gap-2">
+                  <button className="bg-status-danger text-white font-label-caps px-3 py-1.5 rounded-lg hover:brightness-110 active:scale-95 transition-all">FLAG USER</button>
+                  <button className="bg-transparent border border-border-subtle text-on-surface font-label-caps px-3 py-1.5 rounded-lg">DISMISS</button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </section>
     </div>
   );

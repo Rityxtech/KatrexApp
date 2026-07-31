@@ -1,28 +1,62 @@
+"use client";
+
+import { useSupportTickets, useEmailCodes } from "@/hooks/useAdminData";
+
+function timeAgo(date: any) {
+  if (!date) return "";
+  const d = date?.toDate ? date.toDate() : new Date(date);
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ago`;
+}
+
+const PRIORITY_CLASS: Record<string, string> = {
+  high: "bg-status-danger/10 text-status-danger border-status-danger/20",
+  medium: "bg-status-warning/10 text-status-warning border-status-warning/20",
+  low: "bg-on-primary-container/10 text-on-primary-container border-on-primary-container/20",
+};
+
+const STATUS_CLASS: Record<string, string> = {
+  open: "bg-status-info/10 text-status-info border-status-info/20",
+  resolved: "bg-status-success/10 text-status-success border-status-success/20",
+  closed: "bg-surface-container-high text-on-surface-variant border-subtle",
+  pending: "bg-status-warning/10 text-status-warning border-status-warning/20",
+};
+
 export default function SupportPage() {
+  const { data: tickets, loading } = useSupportTickets(50);
+  const { data: emails } = useEmailCodes(10);
+
+  const openTickets = tickets.filter((t: any) => t.status === "open" || t.status === "pending");
+  const resolvedTickets = tickets.filter((t: any) => t.status === "resolved" || t.status === "closed");
+  const resolutionRate = tickets.length > 0 ? ((resolvedTickets.length / tickets.length) * 100).toFixed(1) : "0";
+
   return (
     <div className="px-container-padding flex flex-col gap-max-gap w-full">
-      {/* Section 1: SLA & Performance Metrics */}
+      {/* SLA & Performance Metrics */}
       <section>
         <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">SLA &amp; PERFORMANCE METRICS</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
           <div className="bg-surface-bright p-stack-base border border-border-subtle rounded flex flex-col">
             <span className="font-label-caps text-label-caps text-on-surface-variant">AVG RESPONSE TIME</span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="font-headline-lg text-headline-lg font-black text-on-surface">4m 12s</span>
-              <span className="font-data-mono text-data-mono text-status-success">-18% v/d</span>
+              <span className="font-headline-lg text-headline-lg font-black text-on-surface">{loading ? "..." : "real-time"}</span>
+              <span className="font-data-mono text-data-mono text-status-success">{tickets.length} tickets</span>
             </div>
           </div>
           <div className="bg-surface-bright p-stack-base border border-border-subtle rounded flex flex-col">
             <span className="font-label-caps text-label-caps text-on-surface-variant">RESOLUTION RATE</span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="font-headline-lg text-headline-lg font-black text-on-surface">98.2%</span>
-              <span className="font-data-mono text-data-mono text-status-success">+2.4%</span>
+              <span className="font-headline-lg text-headline-lg font-black text-on-surface">{resolutionRate}%</span>
+              <span className="font-data-mono text-data-mono text-status-success">{resolvedTickets.length} resolved</span>
             </div>
           </div>
           <div className="bg-surface-bright p-stack-base border border-border-subtle rounded flex flex-col">
-            <span className="font-label-caps text-label-caps text-on-surface-variant">ACTIVE CHATS</span>
+            <span className="font-label-caps text-label-caps text-on-surface-variant">OPEN TICKETS</span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="font-headline-lg text-headline-lg font-black text-on-surface">14</span>
+              <span className="font-headline-lg text-headline-lg font-black text-on-surface">{openTickets.length}</span>
               <span className="flex items-center text-status-warning">
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse mr-1"></span>
                 <span className="font-data-mono text-data-mono">LIVE</span>
@@ -32,7 +66,7 @@ export default function SupportPage() {
         </div>
       </section>
 
-      {/* Section 2: Ticket Queue */}
+      {/* Ticket Queue */}
       <section className="bg-surface-container border border-border-subtle overflow-hidden">
         <div className="px-container-padding py-2 border-b border-border-subtle flex items-center justify-between">
           <h2 className="font-label-caps text-label-caps text-on-surface-variant">TICKET QUEUE</h2>
@@ -48,52 +82,64 @@ export default function SupportPage() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-surface-deep text-on-surface-variant border-b border-border-subtle">
-              <tr>
-                <th className="px-3 py-2 font-label-caps text-label-caps">TID</th>
-                <th className="px-3 py-2 font-label-caps text-label-caps">USER</th>
-                <th className="px-3 py-2 font-label-caps text-label-caps">PRIORITY</th>
-                <th className="px-3 py-2 font-label-caps text-label-caps">STATUS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {[
-                { tid: "#TKT-991", user: "@joshua", pri: "HIGH", priClass: "bg-status-danger/10 text-status-danger border-status-danger/20", status: "Open", statusClass: "bg-status-info/10 text-status-info border-status-info/20" },
-                { tid: "#TKT-988", user: "@sarah_dev", pri: "MEDIUM", priClass: "bg-status-warning/10 text-status-warning border-status-warning/20", status: "Open", statusClass: "bg-status-info/10 text-status-info border-status-info/20" },
-                { tid: "#TKT-985", user: "@mike_r", pri: "LOW", priClass: "bg-on-primary-container/10 text-on-primary-container border-on-primary-container/20", status: "Resolved", statusClass: "bg-status-success/10 text-status-success border-status-success/20" },
-              ].map((t) => (
-                <tr key={t.tid} className="hover:bg-surface-container-high transition-colors cursor-pointer">
-                  <td className="px-3 py-1.5 font-data-mono text-data-mono text-primary">{t.tid}</td>
-                  <td className="px-3 py-1.5 font-body-sm text-body-sm text-on-surface">{t.user}</td>
-                  <td className="px-3 py-1.5">
-                    <span className={`font-label-caps text-[8px] px-1.5 py-0.5 rounded border ${t.priClass}`}>{t.pri}</span>
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <span className={`font-label-caps text-[8px] px-1.5 py-0.5 rounded border ${t.statusClass} uppercase`}>{t.status}</span>
-                  </td>
+          {loading ? (
+            <div className="p-4 space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-surface-container-high rounded animate-pulse" />)}
+            </div>
+          ) : tickets.length === 0 ? (
+            <div className="p-6 text-center text-on-surface-variant text-body-sm">No support tickets</div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-surface-deep text-on-surface-variant border-b border-border-subtle">
+                <tr>
+                  <th className="px-3 py-2 font-label-caps text-label-caps">TID</th>
+                  <th className="px-3 py-2 font-label-caps text-label-caps">USER</th>
+                  <th className="px-3 py-2 font-label-caps text-label-caps">SUBJECT</th>
+                  <th className="px-3 py-2 font-label-caps text-label-caps">PRIORITY</th>
+                  <th className="px-3 py-2 font-label-caps text-label-caps">STATUS</th>
+                  <th className="px-3 py-2 font-label-caps text-label-caps">CREATED</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {tickets.map((t: any) => (
+                  <tr key={t.id} className="hover:bg-surface-container-high transition-colors cursor-pointer">
+                    <td className="px-3 py-1.5 font-data-mono text-data-mono text-primary">#{t.reference || t.id?.slice(0, 8)}</td>
+                    <td className="px-3 py-1.5 font-body-sm text-body-sm text-on-surface">{t.uid?.slice(0, 16) || t.userEmail || "\u2014"}</td>
+                    <td className="px-3 py-1.5 font-body-sm text-body-sm text-on-surface">{t.subject || t.description?.slice(0, 40) || "\u2014"}</td>
+                    <td className="px-3 py-1.5">
+                      <span className={`font-label-caps text-[8px] px-1.5 py-0.5 rounded border ${PRIORITY_CLASS[t.priority] || PRIORITY_CLASS.low}`}>{(t.priority || "low").toUpperCase()}</span>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <span className={`font-label-caps text-[8px] px-1.5 py-0.5 rounded border ${STATUS_CLASS[t.status] || STATUS_CLASS.open} uppercase`}>{t.status || "open"}</span>
+                    </td>
+                    <td className="px-3 py-1.5 font-data-mono text-[10px] text-on-surface-variant">{timeAgo(t.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
 
-      {/* Section 3: Active Live Chat */}
+      {/* Active Live Chat */}
       <section>
         <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">ACTIVE LIVE CHAT</h2>
         <div className="bg-surface-bright border border-border-subtle rounded-xl overflow-hidden flex flex-col">
           <div className="p-stack-base bg-surface-container flex items-center justify-between border-b border-border-subtle">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center text-on-secondary text-[10px] font-bold">JD</div>
-              <span className="font-body-sm text-body-sm font-bold">Joshua Davidson</span>
+              <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center text-on-secondary text-[10px] font-bold">?</div>
+              <span className="font-body-sm text-body-sm font-bold">{openTickets[0]?.uid?.slice(0, 16) || "No active chats"}</span>
             </div>
-            <span className="font-data-mono text-[10px] text-on-surface-variant">Active 2m</span>
+            <span className="font-data-mono text-[10px] text-on-surface-variant">{openTickets.length > 0 ? "Active" : "Idle"}</span>
           </div>
           <div className="p-3 bg-surface-container-lowest min-h-[80px]">
-            <div className="bg-surface-container-high p-2 rounded-lg max-w-[85%] border border-border-subtle">
-              <p className="font-body-sm text-body-sm text-on-surface">I&apos;m having trouble accessing the main terminal dashboard. Error code: ERR_403_KATREX. Any fix?</p>
-            </div>
+            {openTickets[0] ? (
+              <div className="bg-surface-container-high p-2 rounded-lg max-w-[85%] border border-border-subtle">
+                <p className="font-body-sm text-body-sm text-on-surface">{openTickets[0].subject || openTickets[0].description || "Awaiting user message..."}</p>
+              </div>
+            ) : (
+              <p className="text-on-surface-variant text-body-sm text-center py-4">No active chats</p>
+            )}
           </div>
           <div className="p-2 bg-surface-container flex gap-2 border-t border-border-subtle">
             <input className="flex-1 bg-surface-deep border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm focus:ring-1 focus:ring-primary focus:outline-none placeholder:text-on-surface-variant/40" placeholder="Type response..." type="text" />
@@ -102,21 +148,22 @@ export default function SupportPage() {
         </div>
       </section>
 
-      {/* Section 4: Email & Canned Responses */}
+      {/* Email & Canned Responses */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-max-gap">
         <div className="flex flex-col gap-2">
           <h2 className="font-label-caps text-label-caps text-on-surface-variant px-1">RECENT EMAILS</h2>
           <div className="bg-surface-bright border border-border-subtle rounded flex flex-col divide-y divide-border-subtle">
-            <div className="p-2 hover:bg-surface-container-high transition-colors">
-              <p className="font-body-sm text-body-sm font-bold text-on-surface">support@katrex.com</p>
-              <p className="font-body-sm text-body-sm text-on-surface-variant truncate">Re: Withdrawal inquiry from user #821...</p>
-              <span className="font-data-mono text-[10px] text-on-primary-container">Received: 14:02 UTC</span>
-            </div>
-            <div className="p-2 hover:bg-surface-container-high transition-colors">
-              <p className="font-body-sm text-body-sm font-bold text-on-surface">support@katrex.com</p>
-              <p className="font-body-sm text-body-sm text-on-surface-variant truncate">Security Alert: API Access Granted...</p>
-              <span className="font-data-mono text-[10px] text-on-primary-container">Received: 13:45 UTC</span>
-            </div>
+            {emails.length === 0 ? (
+              <div className="p-4 text-center text-on-surface-variant text-body-sm">No recent emails</div>
+            ) : (
+              emails.slice(0, 5).map((email: any) => (
+                <div key={email.id} className="p-2 hover:bg-surface-container-high transition-colors">
+                  <p className="font-body-sm text-body-sm font-bold text-on-surface">{email.email || email.uid || "\u2014"}</p>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant truncate">Code: {email.code || "\u2014"} &middot; {email.purpose || "verification"}</p>
+                  <span className="font-data-mono text-[10px] text-on-primary-container">{timeAgo(email.createdAt)}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
         <div className="flex flex-col gap-2">
@@ -134,7 +181,7 @@ export default function SupportPage() {
         </div>
       </section>
 
-      {/* Section 5: Admin Actions */}
+      {/* Bulk Actions */}
       <section>
         <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">BULK ACTIONS</h2>
         <div className="grid grid-cols-3 gap-gutter">

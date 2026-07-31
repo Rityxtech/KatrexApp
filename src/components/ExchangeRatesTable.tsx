@@ -1,11 +1,43 @@
+"use client";
+
+import { useMarketData } from "@/hooks/useAdminData";
+
+const COIN_META: Record<string, { color: string; icon: string }> = {
+  btc: { color: "#F7931A", icon: "currency_bitcoin" },
+  eth: { color: "#627EEA", icon: "drive_image" },
+  usdt: { color: "#26A17B", icon: "monetization_on" },
+  sol: { color: "#14F195", icon: "flare" },
+  bnb: { color: "#F3BA2F", icon: "whatshot" },
+  xrp: { color: "#23292F", icon: "waves" },
+  doge: { color: "#C2A633", icon: "pets" },
+  ada: { color: "#0033AD", icon: "stacked_line_chart" },
+  matic: { color: "#8247E5", icon: "polygon" },
+  trx: { color: "#EF0027", icon: "token" },
+  ton: { color: "#0098EA", icon: "diamond" },
+};
+
+function formatNaira(n: number) {
+  if (n >= 1_000_000) return `\u20a6${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `\u20a6${(n / 1_000).toFixed(2)}K`;
+  return `\u20a6${n.toFixed(2)}`;
+}
+
 export default function ExchangeRatesTable() {
+  const { data: market, loading } = useMarketData();
+
+  const coins = market.filter((m: any) => m.id !== "_ngn_rate" && m.symbol);
+  const totalVolume = coins.reduce((s: number, c: any) => s + (c.volume24h || 0) * (c.priceUsd || 0), 0);
+  const ngnRate = market.find((m: any) => m.id === "_ngn_rate")?.rate || 1450;
+
   return (
     <div className="col-span-12 lg:col-span-8">
       <div className="bg-surface-container border border-subtle rounded h-full flex flex-col">
         <div className="bg-surface-container-high px-3 py-2 border-b border-subtle flex justify-between items-center">
           <div className="flex items-center gap-stack-base">
             <span className="font-label-caps text-label-caps text-secondary">NGN Exchange Rates</span>
-            <span className="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[10px] font-bold">AUTO-UPDATE ON</span>
+            <span className="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> AUTO-UPDATE ON
+            </span>
           </div>
           <div className="flex gap-2">
             <div className="relative">
@@ -14,108 +46,66 @@ export default function ExchangeRatesTable() {
             </div>
           </div>
         </div>
+
         <div className="overflow-x-auto flex-1">
-          <table className="w-full border-collapse">
-            <thead className="bg-surface-container-low sticky top-0 z-10">
-              <tr>
-                <th className="text-left px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Asset</th>
-                <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Buy Rate (NGN)</th>
-                <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Sell Rate (NGN)</th>
-                <th className="text-center px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Manual Override</th>
-                <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Profit Margin</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-subtle">
-              {/* BTC/NGN */}
-              <tr className="hover:bg-primary-container/20 transition-colors group">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-[#F7931A]/20 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[#F7931A] text-[14px]">currency_bitcoin</span>
-                    </div>
-                    <span className="font-data-mono text-data-mono">BTC/NGN</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">&#8358; 98,245,120.00</span></td>
-                <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">&#8358; 97,110,450.00</span></td>
-                <td className="px-4 py-3 text-center">
-                  <button className="bg-surface-container-highest p-1.5 rounded border border-subtle hover:border-secondary hover:text-secondary transition-all">
-                    <span className="material-symbols-outlined text-[18px]">edit_note</span>
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-right"><span className="text-status-success font-data-mono text-[11px]">+1.15%</span></td>
-              </tr>
-              {/* ETH/NGN */}
-              <tr className="hover:bg-primary-container/20 transition-colors group">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-[#627EEA]/20 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[#627EEA] text-[14px]">drive_image</span>
-                    </div>
-                    <span className="font-data-mono text-data-mono">ETH/NGN</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">&#8358; 4,245,800.00</span></td>
-                <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">&#8358; 4,198,300.00</span></td>
-                <td className="px-4 py-3 text-center">
-                  <button className="bg-surface-container-highest p-1.5 rounded border border-subtle hover:border-secondary hover:text-secondary transition-all">
-                    <span className="material-symbols-outlined text-[18px]">edit_note</span>
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-right"><span className="text-status-success font-data-mono text-[11px]">+1.12%</span></td>
-              </tr>
-              {/* USDT/NGN */}
-              <tr className="hover:bg-primary-container/20 transition-colors group">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-[#26A17B]/20 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[#26A17B] text-[14px]">monetization_on</span>
-                    </div>
-                    <span className="font-data-mono text-data-mono">USDT/NGN</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">&#8358; 1,520.45</span></td>
-                <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">&#8358; 1,505.20</span></td>
-                <td className="px-4 py-3 text-center">
-                  <button className="bg-surface-container-highest p-1.5 rounded border border-subtle hover:border-secondary hover:text-secondary transition-all">
-                    <span className="material-symbols-outlined text-[18px]">edit_note</span>
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-right"><span className="text-status-success font-data-mono text-[11px]">+1.01%</span></td>
-              </tr>
-              {/* DOGE/NGN - Manual override */}
-              <tr className="bg-surface-container-low border-l-2 border-status-warning">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-status-warning/20 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-status-warning text-[14px]">warning</span>
-                    </div>
-                    <span className="font-data-mono text-data-mono">DOGE/NGN</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <span className="font-data-mono text-data-mono text-on-surface">&#8358; 215.10</span>
-                    <span className="material-symbols-outlined text-status-warning text-[14px]">lock</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">&#8358; 210.05</span></td>
-                <td className="px-4 py-3 text-center">
-                  <button className="bg-status-warning text-on-tertiary-fixed p-1.5 rounded border border-transparent active:scale-95 transition-all">
-                    <span className="material-symbols-outlined text-[18px]">emergency_home</span>
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-right"><span className="text-status-warning font-data-mono text-[11px]">MANUAL</span></td>
-              </tr>
-            </tbody>
-          </table>
+          {loading ? (
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-12 bg-surface-container-high rounded animate-pulse" />
+              ))}
+            </div>
+          ) : coins.length === 0 ? (
+            <div className="p-8 text-center text-on-surface-variant text-body-sm">No market data available</div>
+          ) : (
+            <table className="w-full border-collapse">
+              <thead className="bg-surface-container-low sticky top-0 z-10">
+                <tr>
+                  <th className="text-left px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Asset</th>
+                  <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Price (NGN)</th>
+                  <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Price (USD)</th>
+                  <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">24h Change</th>
+                  <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Volume 24h</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-subtle">
+                {coins.map((coin: any) => {
+                  const meta = COIN_META[coin.symbol?.toLowerCase()] || COIN_META[coin.id] || { color: "#888", icon: "token" };
+                  const change = coin.change24h || 0;
+                  const changeClass = change >= 0 ? "text-status-success" : "text-status-danger";
+                  return (
+                    <tr key={coin.id} className="hover:bg-primary-container/20 transition-colors group">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${meta.color}20` }}>
+                            <span className="material-symbols-outlined text-[14px]" style={{ color: meta.color }}>{meta.icon}</span>
+                          </div>
+                          <div>
+                            <span className="font-data-mono text-data-mono">{coin.symbol}/NGN</span>
+                            <span className="text-[10px] text-on-surface-variant block">{coin.name}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">{formatNaira(coin.priceNaira || 0)}</span></td>
+                      <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface-variant">${(coin.priceUsd || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`font-data-mono text-[11px] ${changeClass}`}>
+                          {change >= 0 ? "+" : ""}{change.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface-variant">${((coin.volume24h || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
-        {/* Mini Analytics / Sparkline Area */}
+
         <div className="p-3 border-t border-subtle grid grid-cols-1 md:grid-cols-3 gap-stack-base">
           <div className="bg-surface-container-low p-2 rounded flex items-center justify-between">
             <div>
-              <div className="font-label-caps text-label-caps text-on-surface-variant">Daily Vol.</div>
-              <div className="font-headline-md text-headline-md text-primary">&#8358;2.4B</div>
+              <div className="font-label-caps text-label-caps text-on-surface-variant">Total Volume</div>
+              <div className="font-headline-md text-headline-md text-primary">{formatNaira(totalVolume * ngnRate)}</div>
             </div>
             <div className="w-16 h-8 bg-status-success/10 rounded overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 100 40">
@@ -125,8 +115,8 @@ export default function ExchangeRatesTable() {
           </div>
           <div className="bg-surface-container-low p-2 rounded flex items-center justify-between">
             <div>
-              <div className="font-label-caps text-label-caps text-on-surface-variant">Active Swaps</div>
-              <div className="font-headline-md text-headline-md text-primary">482</div>
+              <div className="font-label-caps text-label-caps text-on-surface-variant">Active Coins</div>
+              <div className="font-headline-md text-headline-md text-primary">{coins.length}</div>
             </div>
             <div className="w-16 h-8 bg-secondary/10 rounded overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 100 40">
@@ -136,8 +126,8 @@ export default function ExchangeRatesTable() {
           </div>
           <div className="bg-surface-container-low p-2 rounded flex items-center justify-between">
             <div>
-              <div className="font-label-caps text-label-caps text-on-surface-variant">System Spread</div>
-              <div className="font-headline-md text-headline-md text-status-success">1.08%</div>
+              <div className="font-label-caps text-label-caps text-on-surface-variant">NGN Rate</div>
+              <div className="font-headline-md text-headline-md text-status-success">{"\u20a6"}{ngnRate.toFixed(0)}</div>
             </div>
             <div className="w-16 h-8 bg-status-info/10 rounded overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 100 40">

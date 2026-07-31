@@ -1,7 +1,36 @@
+"use client";
+
+import { useMarketData, usePricingConfig, useGiftcardRates, useAirtimePlans } from "@/hooks/useAdminData";
+
+function formatNaira(n: number) {
+  if (n >= 1_000_000) return `\u20a6${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `\u20a6${(n / 1_000).toFixed(2)}K`;
+  return `\u20a6${n.toFixed(2)}`;
+}
+
+const COIN_ICONS: Record<string, { icon: string; bg: string }> = {
+  btc: { icon: "B", bg: "bg-status-warning/20 text-status-warning" },
+  eth: { icon: "E", bg: "bg-status-info/20 text-status-info" },
+  usdt: { icon: "T", bg: "bg-status-success/20 text-status-success" },
+  sol: { icon: "S", bg: "bg-primary/20 text-primary" },
+  bnb: { icon: "N", bg: "bg-tertiary/20 text-tertiary" },
+  doge: { icon: "D", bg: "bg-on-primary-container/10 text-on-primary-container" },
+};
+
 export default function PricingPage() {
+  const { data: market, loading: ml } = useMarketData();
+  const { data: pricing } = usePricingConfig();
+  const { data: giftcards, loading: gl } = useGiftcardRates();
+  const { data: airtimePlans, loading: al } = useAirtimePlans();
+
+  const coins = market.filter((m: any) => m.id !== "_ngn_rate" && m.symbol);
+  const ngnRate = market.find((m: any) => m.id === "_ngn_rate")?.rate || 1450;
+
+  const feeConfig = pricing.find((p: any) => p.id === "fees") || {};
+  const limitsConfig = pricing.find((p: any) => p.id === "limits") || {};
+
   return (
     <div className="w-full">
-      {/* Top App Bar */}
       <div className="flex justify-between items-center px-gutter h-8 w-full z-40 bg-surface-container border-b border-subtle sticky top-0">
         <div className="flex items-center gap-stack-base">
           <span className="font-headline-md text-headline-md font-black tracking-tighter text-primary">PRICING &amp; RATES</span>
@@ -11,13 +40,14 @@ export default function PricingPage() {
         <div className="flex items-center gap-max-gap">
           <div className="flex items-center gap-unit text-status-success">
             <span className="material-symbols-outlined text-[14px]">sensors</span>
-            <span className="font-label-caps text-label-caps">LIVE FEED ACTIVE</span>
+            <span className="font-label-caps text-label-caps flex items-center gap-1">
+              LIVE FEED ACTIVE <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
+            </span>
           </div>
           <button className="bg-primary text-on-primary font-bold px-3 py-0.5 rounded text-xs hover:bg-white transition-colors">PUSH GLOBAL UPDATES</button>
         </div>
       </div>
 
-      {/* Viewport Container */}
       <div className="p-max-gap space-y-max-gap pb-20">
         <div className="grid grid-cols-12 gap-max-gap">
           {/* Crypto Exchange Rates */}
@@ -28,7 +58,7 @@ export default function PricingPage() {
                 <h2 className="font-headline-md text-headline-md">CRYPTO EXCHANGE RATES</h2>
               </div>
               <div className="flex items-center gap-gutter bg-surface-deep px-3 py-1 rounded border border-subtle">
-                <span className="font-label-caps text-label-caps text-on-surface-variant">AUTO-ADJUST VIA BINANCE ORACLE</span>
+                <span className="font-label-caps text-label-caps text-on-surface-variant">AUTO-ADJUST VIA ORACLE</span>
                 <div className="w-8 h-4 bg-primary rounded-full relative cursor-pointer">
                   <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-on-primary rounded-full"></div>
                 </div>
@@ -42,34 +72,44 @@ export default function PricingPage() {
                     <th className="p-gutter font-label-caps text-label-caps text-on-surface-variant">LIVE PRICE (USD)</th>
                     <th className="p-gutter font-label-caps text-label-caps text-on-surface-variant">BUY RATE (NGN)</th>
                     <th className="p-gutter font-label-caps text-label-caps text-on-surface-variant">SELL RATE (NGN)</th>
-                    <th className="p-gutter font-label-caps text-label-caps text-on-surface-variant">SPREAD</th>
+                    <th className="p-gutter font-label-caps text-label-caps text-on-surface-variant">24H CHANGE</th>
                     <th className="p-gutter font-label-caps text-label-caps text-on-surface-variant">STATUS</th>
                   </tr>
                 </thead>
                 <tbody className="font-data-mono text-data-mono">
-                  {[
-                    { icon: "B", iconBg: "bg-status-warning/20 text-status-warning", coin: "BTC", price: "$64,281.02", buy: "1,540.00", sell: "1,520.50", spread: "+1.2%" },
-                    { icon: "E", iconBg: "bg-status-info/20 text-status-info", coin: "ETH", price: "$3,450.15", buy: "1,535.00", sell: "1,515.00", spread: "+1.3%" },
-                    { icon: "T", iconBg: "bg-status-success/20 text-status-success", coin: "USDT", price: "$1.00", buy: "1,555.00", sell: "1,545.00", spread: "+0.6%" },
-                  ].map((c) => (
-                    <tr key={c.coin} className="border-b border-outline-variant/30 hover:bg-primary/5 transition-colors">
-                      <td className="p-gutter flex items-center gap-gutter">
-                        <div className={`w-6 h-6 ${c.iconBg} flex items-center justify-center rounded`}>{c.icon}</div>
-                        <span className="font-bold">{c.coin}</span>
-                      </td>
-                      <td className="p-gutter">{c.price}</td>
-                      <td className="p-gutter">
-                        <input className="bg-surface-deep border border-outline-variant text-primary px-2 py-1 w-24 text-right focus:border-primary outline-none rounded" type="text" defaultValue={c.buy} />
-                      </td>
-                      <td className="p-gutter">
-                        <input className="bg-surface-deep border border-outline-variant text-primary px-2 py-1 w-24 text-right focus:border-primary outline-none rounded" type="text" defaultValue={c.sell} />
-                      </td>
-                      <td className="p-gutter text-status-success">{c.spread}</td>
-                      <td className="p-gutter">
-                        <span className="px-1.5 py-0.5 bg-status-success/10 text-status-success text-[10px] rounded uppercase font-bold">Trading</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {ml ? (
+                    Array.from({ length: 3 }).map((_, i) => <tr key={i}><td colSpan={6} className="p-gutter"><div className="h-8 bg-surface-container-high rounded animate-pulse" /></td></tr>)
+                  ) : coins.length === 0 ? (
+                    <tr><td colSpan={6} className="p-gutter text-center text-on-surface-variant text-body-sm">No market data</td></tr>
+                  ) : (
+                    coins.map((coin: any) => {
+                      const meta = COIN_ICONS[coin.symbol?.toLowerCase()] || { icon: coin.symbol?.[0] || "?", bg: "bg-surface-container-high text-on-surface" };
+                      const buyRate = (coin.priceNaira || 0) * 1.01;
+                      const sellRate = (coin.priceNaira || 0) * 0.99;
+                      const change = coin.change24h || 0;
+                      return (
+                        <tr key={coin.id} className="border-b border-outline-variant/30 hover:bg-primary/5 transition-colors">
+                          <td className="p-gutter flex items-center gap-gutter">
+                            <div className={`w-6 h-6 ${meta.bg} flex items-center justify-center rounded`}>{meta.icon}</div>
+                            <span className="font-bold uppercase">{coin.symbol}</span>
+                          </td>
+                          <td className="p-gutter">${(coin.priceUsd || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                          <td className="p-gutter">
+                            <input className="bg-surface-deep border border-outline-variant text-primary px-2 py-1 w-24 text-right focus:border-primary outline-none rounded" type="text" defaultValue={buyRate.toFixed(2)} />
+                          </td>
+                          <td className="p-gutter">
+                            <input className="bg-surface-deep border border-outline-variant text-primary px-2 py-1 w-24 text-right focus:border-primary outline-none rounded" type="text" defaultValue={sellRate.toFixed(2)} />
+                          </td>
+                          <td className={`p-gutter ${change >= 0 ? "text-status-success" : "text-status-danger"}`}>
+                            {change >= 0 ? "+" : ""}{change.toFixed(2)}%
+                          </td>
+                          <td className="p-gutter">
+                            <span className="px-1.5 py-0.5 bg-status-success/10 text-status-success text-[10px] rounded uppercase font-bold">Trading</span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -83,17 +123,17 @@ export default function PricingPage() {
             </div>
             <div className="space-y-gutter">
               {[
-                { label: "Withdrawal Fee", sub: "Fiat Output", val: "NGN 50" },
-                { label: "Deposit Fee", sub: "All Channels", val: "0%" },
-                { label: "Swap Fee", sub: "Cross-Asset", val: "0.5%" },
-                { label: "Platform Commission", sub: "P2P Escrow", val: "1%" },
+                { label: "Withdrawal Fee", sub: "Fiat Output", val: feeConfig.withdrawalFee || "NGN 50" },
+                { label: "Deposit Fee", sub: "All Channels", val: feeConfig.depositFee || "0%" },
+                { label: "Swap Fee", sub: "Cross-Asset", val: feeConfig.swapFee || "0.5%" },
+                { label: "Platform Commission", sub: "P2P Escrow", val: feeConfig.p2pCommission || "1%" },
               ].map((f) => (
                 <div key={f.label} className="flex justify-between items-center p-gutter bg-surface-deep border border-subtle rounded-lg">
                   <div>
                     <p className="text-xs font-bold">{f.label}</p>
                     <p className="text-[10px] text-on-surface-variant uppercase">{f.sub}</p>
                   </div>
-                  <input className="bg-surface-container-high border border-outline-variant text-secondary font-data-mono px-2 py-1 w-20 text-right rounded" type="text" defaultValue={f.val} />
+                  <input className="bg-surface-container-high border border-outline-variant text-secondary font-data-mono px-2 py-1 w-20 text-right rounded" type="text" defaultValue={String(f.val)} />
                 </div>
               ))}
             </div>
@@ -111,30 +151,32 @@ export default function PricingPage() {
               </button>
             </div>
             <div className="space-y-unit max-h-[300px] overflow-y-auto pr-1">
-              {[
-                { name: "Amazon USA", type: "Physical (Cash Receipt)", rate: "\u20a61,120/$", val: "1120", iconBg: "bg-white/10" },
-                { name: "Amex Gold", type: "Eco-Code / Digital", rate: "\u20a61,050/$", val: "1050", iconBg: "bg-blue-500/10" },
-                { name: "Steam Euro", type: "All Types", rate: "\u20a61,240/\u20ac", val: "1240", iconBg: "bg-red-500/10" },
-              ].map((g) => (
-                <div key={g.name} className="grid grid-cols-12 gap-gutter p-gutter bg-surface-deep/50 border border-subtle items-center hover:bg-surface-bright/30 transition-colors">
-                  <div className="col-span-6 flex items-center gap-gutter">
-                    <div className={`w-8 h-8 ${g.iconBg} rounded flex items-center justify-center`}>
-                      <span className="material-symbols-outlined text-tertiary text-sm">redeem</span>
+              {gl ? (
+                Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 bg-surface-deep/50 rounded animate-pulse" />)
+              ) : giftcards.length === 0 ? (
+                <div className="p-4 text-center text-on-surface-variant text-body-sm">No giftcard rates configured</div>
+              ) : (
+                giftcards.map((g: any) => (
+                  <div key={g.id} className="grid grid-cols-12 gap-gutter p-gutter bg-surface-deep/50 border border-subtle items-center hover:bg-surface-bright/30 transition-colors">
+                    <div className="col-span-6 flex items-center gap-gutter">
+                      <div className="w-8 h-8 bg-white/10 rounded flex items-center justify-center">
+                        <span className="material-symbols-outlined text-tertiary text-sm">redeem</span>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold">{g.name || g.brand || "Giftcard"}</p>
+                        <p className="text-[10px] text-on-surface-variant">{g.type || g.category || "All Types"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold">{g.name}</p>
-                      <p className="text-[10px] text-on-surface-variant">{g.type}</p>
+                    <div className="col-span-3 text-right">
+                      <span className="font-label-caps text-label-caps text-on-surface-variant block">BUY RATE</span>
+                      <span className="font-data-mono text-tertiary">{"\u20a6"}{g.rate || g.buyRate || 0}/$</span>
+                    </div>
+                    <div className="col-span-3">
+                      <input className="w-full bg-surface-container-high border border-outline-variant text-xs font-data-mono p-1 rounded text-right" type="text" defaultValue={String(g.rate || g.buyRate || 0)} />
                     </div>
                   </div>
-                  <div className="col-span-3 text-right">
-                    <span className="font-label-caps text-label-caps text-on-surface-variant block">BUY RATE</span>
-                    <span className="font-data-mono text-tertiary">{g.rate}</span>
-                  </div>
-                  <div className="col-span-3">
-                    <input className="w-full bg-surface-container-high border border-outline-variant text-xs font-data-mono p-1 rounded text-right" type="text" defaultValue={g.val} />
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 
@@ -154,27 +196,29 @@ export default function PricingPage() {
             <div className="grid grid-cols-2 gap-gutter mb-gutter">
               <div className="bg-surface-deep border border-subtle p-gutter">
                 <p className="font-label-caps text-label-caps text-on-surface-variant mb-1">GLOBAL AIRTIME DISCOUNT (%)</p>
-                <input className="w-full bg-surface-container border border-outline-variant text-status-success font-data-mono p-1.5 rounded" type="text" defaultValue="3.00" />
+                <input className="w-full bg-surface-container border border-outline-variant text-status-success font-data-mono p-1.5 rounded" type="text" defaultValue={String(feeConfig.airtimeDiscount || "3.00")} />
               </div>
               <div className="bg-surface-deep border border-subtle p-gutter">
                 <p className="font-label-caps text-label-caps text-on-surface-variant mb-1">DATA MARKUP (FIXED NGN)</p>
-                <input className="w-full bg-surface-container border border-outline-variant text-status-danger font-data-mono p-1.5 rounded" type="text" defaultValue="50.00" />
+                <input className="w-full bg-surface-container border border-outline-variant text-status-danger font-data-mono p-1.5 rounded" type="text" defaultValue={String(feeConfig.dataMarkup || "50.00")} />
               </div>
             </div>
             <div className="space-y-unit max-h-[160px] overflow-y-auto pr-1">
-              {[
-                { plan: "1GB Daily Bundle", old: "\u20a6300", val: "320" },
-                { plan: "2.5GB 2-Day Bundle", old: "\u20a6500", val: "550" },
-                { plan: "10GB Monthly", old: "\u20a63,000", val: "3,150" },
-              ].map((d) => (
-                <div key={d.plan} className="flex justify-between items-center p-gutter border-b border-outline-variant/30 text-xs">
-                  <span className="font-medium">{d.plan}</span>
-                  <div className="flex items-center gap-gutter">
-                    <span className="text-on-surface-variant line-through font-data-mono">{d.old}</span>
-                    <input className="w-16 bg-surface-deep border border-outline-variant text-[10px] p-1 text-right rounded" type="text" defaultValue={d.val} />
+              {al ? (
+                Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-8 bg-surface-deep/50 rounded animate-pulse" />)
+              ) : airtimePlans.length === 0 ? (
+                <div className="p-4 text-center text-on-surface-variant text-body-sm">No airtime plans configured</div>
+              ) : (
+                airtimePlans.slice(0, 10).map((p: any) => (
+                  <div key={p.id} className="flex justify-between items-center p-gutter border-b border-outline-variant/30 text-xs">
+                    <span className="font-medium">{p.name || p.planName || "Plan"}</span>
+                    <div className="flex items-center gap-gutter">
+                      <span className="text-on-surface-variant font-data-mono">{"\u20a6"}{p.oldPrice || p.costPrice || 0}</span>
+                      <input className="w-16 bg-surface-deep border border-outline-variant text-[10px] p-1 text-right rounded" type="text" defaultValue={String(p.price || p.sellPrice || 0)} />
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 
@@ -186,16 +230,25 @@ export default function PricingPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-max-gap">
               {[
-                { title: "P2P EXCHANGE", titleColor: "text-primary", border: "border-primary/20", items: [{ label: "Min Per Order", val: "\u20a65,000" }, { label: "Max Per Order", val: "\u20a65,000,000" }] },
-                { title: "CRYPTO WITHDRAWALS", titleColor: "text-secondary", border: "border-secondary/20", items: [{ label: "Min Value", val: "$10.00" }, { label: "Daily Total Max", val: "$50,000" }] },
-                { title: "BILL PAYMENTS", titleColor: "text-tertiary", border: "border-tertiary/20", items: [{ label: "Min Payment", val: "\u20a6100" }, { label: "Single Cap", val: "\u20a6100,000" }] },
+                { title: "P2P EXCHANGE", titleColor: "text-primary", border: "border-primary/20", items: [
+                  { label: "Min Per Order", val: limitsConfig.p2pMin || "\u20a65,000" },
+                  { label: "Max Per Order", val: limitsConfig.p2pMax || "\u20a65,000,000" },
+                ]},
+                { title: "CRYPTO WITHDRAWALS", titleColor: "text-secondary", border: "border-secondary/20", items: [
+                  { label: "Min Value", val: limitsConfig.cryptoMin || "$10.00" },
+                  { label: "Daily Total Max", val: limitsConfig.cryptoMax || "$50,000" },
+                ]},
+                { title: "BILL PAYMENTS", titleColor: "text-tertiary", border: "border-tertiary/20", items: [
+                  { label: "Min Payment", val: limitsConfig.billMin || "\u20a6100" },
+                  { label: "Single Cap", val: limitsConfig.billMax || "\u20a6100,000" },
+                ]},
               ].map((g) => (
                 <div key={g.title} className="space-y-gutter">
                   <h3 className={`font-label-caps text-label-caps ${g.titleColor} border-b ${g.border} pb-1`}>{g.title}</h3>
                   {g.items.map((item) => (
                     <div key={item.label} className="flex justify-between items-center text-xs">
                       <span className="text-on-surface-variant">{item.label}</span>
-                      <input className="bg-surface-deep border border-outline-variant w-24 text-right p-1 rounded font-data-mono" type="text" defaultValue={item.val} />
+                      <input className="bg-surface-deep border border-outline-variant w-24 text-right p-1 rounded font-data-mono" type="text" defaultValue={String(item.val)} />
                     </div>
                   ))}
                 </div>
