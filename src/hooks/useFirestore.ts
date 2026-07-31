@@ -9,10 +9,25 @@ import {
   limit,
   where,
   doc,
+  updateDoc,
+  setDoc,
+  deleteDoc,
   QueryConstraint,
   DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+
+export async function updateDocument(path: string, docId: string, data: Record<string, any>) {
+  await updateDoc(doc(db, path, docId), data);
+}
+
+export async function setDocument(path: string, docId: string, data: Record<string, any>) {
+  await setDoc(doc(db, path, docId), data, { merge: true });
+}
+
+export async function deleteDocument(path: string, docId: string) {
+  await deleteDoc(doc(db, path, docId));
+}
 
 export function useCollection<T = DocumentData>(
   path: string,
@@ -95,4 +110,4 @@ export function useDocument<T = DocumentData>(
   return { data, loading, error };
 }
 
-export { collection, query, onSnapshot, orderBy, limit, where, doc };
+export { collection, query, onSnapshot, orderBy, limit, where, doc, updateDoc, setDoc, deleteDoc };
