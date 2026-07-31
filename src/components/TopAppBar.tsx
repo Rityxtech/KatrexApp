@@ -1,4 +1,19 @@
+"use client";
+
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+
 export default function TopAppBar() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
+  const initials = user?.email?.[0]?.toUpperCase() || "A";
+
   return (
     <header className="fixed top-0 w-full z-50 bg-surface-deep text-primary border-b border-subtle flex justify-between items-center px-gutter h-12">
       <div className="flex items-center gap-stack-base">
@@ -16,13 +31,22 @@ export default function TopAppBar() {
             System Online
           </span>
         </div>
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
-          <div className="w-full h-full bg-surface-container-high flex items-center justify-center">
-            <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
-              person
+        {user && (
+          <span className="font-data-mono text-[10px] text-on-surface-variant hidden md:inline">
+            {user.email}
+          </span>
+        )}
+        <button
+          onClick={handleLogout}
+          className="w-8 h-8 rounded-full overflow-hidden border border-primary/20 hover:border-status-danger/50 transition-colors group"
+          title="Sign out"
+        >
+          <div className="w-full h-full bg-surface-container-high flex items-center justify-center group-hover:bg-status-danger/10 transition-colors">
+            <span className="font-bold text-[12px] text-on-surface-variant group-hover:text-status-danger transition-colors">
+              {initials}
             </span>
           </div>
-        </div>
+        </button>
       </div>
     </header>
   );
