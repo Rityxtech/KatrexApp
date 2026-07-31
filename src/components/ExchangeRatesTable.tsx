@@ -2,18 +2,18 @@
 
 import { useMarketData } from "@/hooks/useAdminData";
 
-const COIN_META: Record<string, { color: string; icon: string }> = {
-  btc: { color: "#F7931A", icon: "currency_bitcoin" },
-  eth: { color: "#627EEA", icon: "drive_image" },
-  usdt: { color: "#26A17B", icon: "monetization_on" },
-  sol: { color: "#14F195", icon: "flare" },
-  bnb: { color: "#F3BA2F", icon: "whatshot" },
-  xrp: { color: "#23292F", icon: "waves" },
-  doge: { color: "#C2A633", icon: "pets" },
-  ada: { color: "#0033AD", icon: "stacked_line_chart" },
-  matic: { color: "#8247E5", icon: "polygon" },
-  trx: { color: "#EF0027", icon: "token" },
-  ton: { color: "#0098EA", icon: "diamond" },
+const COIN_META: Record<string, { color: string; logo: string }> = {
+  btc: { color: "#F7931A", logo: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png" },
+  eth: { color: "#627EEA", logo: "https://assets.coingecko.com/coins/images/279/large/ethereum.png" },
+  usdt: { color: "#26A17B", logo: "https://assets.coingecko.com/coins/images/325/large/Tether.png" },
+  sol: { color: "#14F195", logo: "https://assets.coingecko.com/coins/images/4128/large/solana.png" },
+  bnb: { color: "#F3BA2F", logo: "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png" },
+  doge: { color: "#C2A633", logo: "https://assets.coingecko.com/coins/images/5/large/dogecoin.png" },
+  xrp: { color: "#23292F", logo: "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-128.png" },
+  ada: { color: "#0033AD", logo: "https://assets.coingecko.com/coins/images/975/large/cardano.png" },
+  matic: { color: "#8247E5", logo: "https://assets.coingecko.com/coins/images/4713/large/polygon.png" },
+  trx: { color: "#EF0027", logo: "https://assets.coingecko.com/coins/images/1094/large/tron-logo.png" },
+  ton: { color: "#0098EA", logo: "https://assets.coingecko.com/coins/images/17980/large/ton_symbol.png" },
 };
 
 function formatNaira(n: number) {
@@ -69,15 +69,19 @@ export default function ExchangeRatesTable() {
               </thead>
               <tbody className="divide-y divide-subtle">
                 {coins.map((coin: any) => {
-                  const meta = COIN_META[coin.symbol?.toLowerCase()] || COIN_META[coin.id] || { color: "#888", icon: "token" };
+                  const meta = COIN_META[coin.symbol?.toLowerCase()] || COIN_META[coin.id] || { color: "#888", logo: "" };
                   const change = coin.change24h || 0;
                   const changeClass = change >= 0 ? "text-status-success" : "text-status-danger";
                   return (
                     <tr key={coin.id} className="hover:bg-primary-container/20 transition-colors group">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${meta.color}20` }}>
-                            <span className="material-symbols-outlined text-[14px]" style={{ color: meta.color }}>{meta.icon}</span>
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: `${meta.color}20` }}>
+                            {meta.logo ? (
+                              <img src={meta.logo} alt={coin.name} className="w-4 h-4 object-contain" />
+                            ) : (
+                              <span className="font-data-mono text-[8px] font-bold" style={{ color: meta.color }}>{coin.symbol?.slice(0, 3)}</span>
+                            )}
                           </div>
                           <div>
                             <span className="font-data-mono text-data-mono">{coin.symbol}/NGN</span>

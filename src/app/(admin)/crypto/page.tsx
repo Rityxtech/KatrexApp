@@ -6,18 +6,18 @@ import { updateDocument, setDocument } from "@/hooks/useFirestore";
 import ExchangeRatesTable from "@/components/ExchangeRatesTable";
 import SystemHealthRow from "@/components/SystemHealthRow";
 
-const COIN_META: Record<string, { color: string; icon: string; name: string }> = {
-  btc: { color: "#F7931A", icon: "currency_bitcoin", name: "Bitcoin" },
-  eth: { color: "#627EEA", icon: "drive_image", name: "Ethereum" },
-  usdt: { color: "#26A17B", icon: "monetization_on", name: "Tether" },
-  sol: { color: "#14F195", icon: "flare", name: "Solana" },
-  bnb: { color: "#F3BA2F", icon: "whatshot", name: "BNB" },
-  doge: { color: "#C2A633", icon: "pets", name: "Dogecoin" },
-  xrp: { color: "#23292F", icon: "waves", name: "Ripple" },
-  ada: { color: "#0033AD", icon: "stacked_line_chart", name: "Cardano" },
-  matic: { color: "#8247E5", icon: "polygon", name: "Polygon" },
-  trx: { color: "#EF0027", icon: "token", name: "TRON" },
-  ton: { color: "#0098EA", icon: "diamond", name: "Toncoin" },
+const COIN_META: Record<string, { color: string; logo: string; name: string }> = {
+  btc: { color: "#F7931A", logo: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png", name: "Bitcoin" },
+  eth: { color: "#627EEA", logo: "https://assets.coingecko.com/coins/images/279/large/ethereum.png", name: "Ethereum" },
+  usdt: { color: "#26A17B", logo: "https://assets.coingecko.com/coins/images/325/large/Tether.png", name: "Tether" },
+  sol: { color: "#14F195", logo: "https://assets.coingecko.com/coins/images/4128/large/solana.png", name: "Solana" },
+  bnb: { color: "#F3BA2F", logo: "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png", name: "BNB" },
+  doge: { color: "#C2A633", logo: "https://assets.coingecko.com/coins/images/5/large/dogecoin.png", name: "Dogecoin" },
+  xrp: { color: "#23292F", logo: "https://assets.coingecko.com/coins/images/44/large/xrp-symbol-128.png", name: "Ripple" },
+  ada: { color: "#0033AD", logo: "https://assets.coingecko.com/coins/images/975/large/cardano.png", name: "Cardano" },
+  matic: { color: "#8247E5", logo: "https://assets.coingecko.com/coins/images/4713/large/polygon.png", name: "Polygon" },
+  trx: { color: "#EF0027", logo: "https://assets.coingecko.com/coins/images/1094/large/tron-logo.png", name: "TRON" },
+  ton: { color: "#0098EA", logo: "https://assets.coingecko.com/coins/images/17980/large/ton_symbol.png", name: "Toncoin" },
 };
 
 function formatNaira(n: number) {
@@ -160,7 +160,7 @@ export default function CryptoPage() {
                 </div>
               ) : (
                 coins.map((coin: any) => {
-                  const meta = COIN_META[coin.symbol?.toLowerCase()] || COIN_META[coin.id] || { color: "#888", icon: "token", name: coin.name || coin.symbol };
+                  const meta = COIN_META[coin.symbol?.toLowerCase()] || COIN_META[coin.id] || { color: "#888", logo: "", name: coin.name || coin.symbol };
                   const isVisible = coin.visible !== false;
                   const isToggling = toggling === coin.id;
                   return (
@@ -170,8 +170,12 @@ export default function CryptoPage() {
                     >
                       <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-on-surface-variant drag-handle text-[20px]">drag_indicator</span>
-                        <div className="w-8 h-8 rounded flex items-center justify-center" style={{ backgroundColor: `${meta.color}20` }}>
-                          <span className="material-symbols-outlined" style={{ color: meta.color }}>{meta.icon}</span>
+                        <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden" style={{ backgroundColor: `${meta.color}20` }}>
+                          {meta.logo ? (
+                            <img src={meta.logo} alt={meta.name} className="w-6 h-6 object-contain" />
+                          ) : (
+                            <span className="font-data-mono text-[10px] font-bold" style={{ color: meta.color }}>{coin.symbol?.slice(0, 3)}</span>
+                          )}
                         </div>
                         <div>
                           <div className="font-body-md text-body-md text-on-surface">{meta.name}</div>
