@@ -1,41 +1,42 @@
 {
   "project_info": {
-    "project_number": "568182281803",
-    "project_id": "smclient-4fa03",
-    "storage_bucket": "smclient-4fa03.firebasestorage.app"
+    "project_number": "925831475855",
+    "firebase_url": "https://katrexapp-83cde-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "katrexapp-83cde",
+    "storage_bucket": "katrexapp-83cde.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:568182281803:android:d608a4fa5c22e8f3d11fce",
+        "mobilesdk_app_id": "1:925831475855:android:148dca70973afa9ca0f6fa",
         "android_client_info": {
-          "package_name": "com.rityxtech.smclient"
+          "package_name": "com.rityxtech.katrexapp"
         }
       },
       "oauth_client": [
         {
-          "client_id": "568182281803-dlm14i8j2ojb1omcbv0d9pbg7p90av56.apps.googleusercontent.com",
+          "client_id": "925831475855-mqjacb3fhptpk04f2132pi86te9t8c1n.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.rityxtech.smclient",
+            "package_name": "com.rityxtech.katrexapp",
             "certificate_hash": "c852b90730b5cd280a29df52932e62f377798fad"
           }
         },
         {
-          "client_id": "568182281803-v2oj61j9i0tt401njamfu79j5n8a9djn.apps.googleusercontent.com",
+          "client_id": "925831475855-3o6jgjcg0itar18j8tj1udp7a45bidj3.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCE6NchPyC82ycHJL2VGcO0zg14mOsAcVY"
+          "current_key": "AIzaSyD7P0Y-aoTsVZTdC2qGQnDL7hkiu25jx40"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "568182281803-v2oj61j9i0tt401njamfu79j5n8a9djn.apps.googleusercontent.com",
+              "client_id": "925831475855-3o6jgjcg0itar18j8tj1udp7a45bidj3.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

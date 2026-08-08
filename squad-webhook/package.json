@@ -1,0 +1,16 @@
+{
+  "name": "smclientkx-webhook",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.1.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

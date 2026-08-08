@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**": {
+      "runtime": "@vercel/node@5.1.0"
+    }
+  }
+}

@@ -5,10 +5,7 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-}
-
-if (file("google-services.json").exists()) {
-    apply(plugin = "com.google.gms.google-services")
+    id("com.google.gms.google-services")
 }
 
 val localProperties = Properties().apply {
@@ -22,7 +19,7 @@ val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toI
 val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0.0"
 
 android {
-    namespace = "com.rityxtech.smclient"
+    namespace = "com.rityxtech.katrexapp"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 
@@ -36,7 +33,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.rityxtech.smclient"
+        applicationId = "com.rityxtech.katrexapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
