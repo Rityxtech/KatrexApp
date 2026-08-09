@@ -54,6 +54,7 @@ export default function P2PPage() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [resolvingDisputeId, setResolvingDisputeId] = useState<string | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
   const [disputeResolution, setDisputeResolution] = useState<"release_to_seller" | "refund_buyer" | "split">("release_to_seller");
   const [disputeComment, setDisputeComment] = useState("");
   const [splitRatio, setSplitRatio] = useState("0.5");
@@ -111,7 +112,7 @@ export default function P2PPage() {
   };
 
   const handleResolveDispute = async (disputeId: string) => {
-    setResolvingDisputeId(disputeId);
+    setIsResolving(true);
     try {
       const payload: any = { action: "resolveDispute", disputeId, resolution: disputeResolution };
       if (disputeComment.trim()) payload.adminComment = disputeComment.trim();
@@ -119,7 +120,7 @@ export default function P2PPage() {
         const ratio = parseFloat(splitRatio);
         if (isNaN(ratio) || ratio < 0 || ratio > 1) {
           alert("Split ratio must be between 0 and 1 (e.g. 0.5 for 50/50).");
-          setResolvingDisputeId(null);
+          setIsResolving(false);
           return;
         }
         payload.splitRatio = ratio;
@@ -128,11 +129,12 @@ export default function P2PPage() {
       setDisputeComment("");
       setDisputeResolution("release_to_seller");
       setSplitRatio("0.5");
+      setResolvingDisputeId(null);
     } catch (e) {
       console.error("Failed to resolve dispute:", e);
       alert("Failed to resolve dispute. Check console for details.");
     } finally {
-      setResolvingDisputeId(null);
+      setIsResolving(false);
     }
   };
 
@@ -403,7 +405,7 @@ export default function P2PPage() {
                           <td className="px-4 py-2">
                             <span className={`flex items-center gap-1.5 ${STATUS_COLORS[t.status] || "text-on-surface-variant"}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${t.status === "disputed" ? "bg-status-danger animate-pulse" : `bg-current`}`}></span>
-                              <span className="capitalize">{(t.status || "").replace(/_/g, " ")}</span>
+                              <span className="capitalize">{(t.status === "released" || t.status === "refunded") ? "Completed" : (t.status || "").replace(/_/g, " ")}</span>
                             </span>
                           </td>
                           <td className="px-4 py-2">
@@ -619,10 +621,10 @@ export default function P2PPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleResolveDispute(resolvingDisputeId)}
-                      disabled={resolvingDisputeId === d.id && false}
-                      className="flex-1 bg-status-danger text-white py-2 rounded font-label-caps font-bold hover:brightness-110"
+                      disabled={isResolving}
+                      className="flex-1 bg-status-danger text-white py-2 rounded font-label-caps font-bold hover:brightness-110 disabled:opacity-50"
                     >
-                      {resolvingDisputeId === d.id ? "RESOLVING..." : "CONFIRM RESOLUTION"}
+                      {isResolving ? "RESOLVING..." : "CONFIRM RESOLUTION"}
                     </button>
                     <button
                       onClick={() => setResolvingDisputeId(null)}
