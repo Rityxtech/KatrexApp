@@ -395,26 +395,33 @@ export default function P2PPage() {
                     </thead>
                     <tbody className="divide-y divide-subtle">
                       {trades.slice(0, 20).map((t: any) => {
-                        const dispute = disputes.find((d: any) => d.tradeId === t.id && d.status === "open");
+                        const openDispute = disputes.find((d: any) => d.tradeId === t.id && d.status === "open");
+                        const closedDispute = disputes.find((d: any) => d.tradeId === t.id && (d.status === "resolved" || d.status === "closed"));
+                        // A trade is completed if: status is released/refunded/cancelled,
+                        // OR it's still "disputed" but the dispute was already resolved/closed
+                        // (happens when the Cloud Function crashed before updating the trade).
+                        const isCompleted = t.status === "released" || t.status === "refunded" || t.status === "cancelled" ||
+                          (t.status === "disputed" && closedDispute);
+                        const displayStatus = isCompleted ? "Completed" : (t.status || "").replace(/_/g, " ");
                         return (
-                        <tr key={t.id} className={`hover:bg-primary-container/20 transition-colors ${t.status === "disputed" ? "bg-status-danger/5" : ""}`}>
+                        <tr key={t.id} className={`hover:bg-primary-container/20 transition-colors ${t.status === "disputed" && openDispute ? "bg-status-danger/5" : ""}`}>
                           <td className="px-4 py-2 font-data-mono text-secondary">#{t.id?.slice(0, 8)}</td>
                           <td className="px-4 py-2"><span className="text-on-surface font-medium">{t.buyerUid?.slice(0, 12) || "\u2014"}</span></td>
                           <td className="px-4 py-2"><span className="text-on-surface font-medium">{t.sellerUid?.slice(0, 12) || "\u2014"}</span></td>
                           <td className="px-4 py-2 font-data-mono">{formatNaira(t.totalNaira || t.priceNaira || 0)}</td>
                           <td className="px-4 py-2">
-                            <span className={`flex items-center gap-1.5 ${STATUS_COLORS[t.status] || "text-on-surface-variant"}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${t.status === "disputed" ? "bg-status-danger animate-pulse" : `bg-current`}`}></span>
-                              <span className="capitalize">{(t.status === "released" || t.status === "refunded") ? "Completed" : (t.status || "").replace(/_/g, " ")}</span>
+                            <span className={`flex items-center gap-1.5 ${isCompleted ? STATUS_COLORS.completed : (STATUS_COLORS[t.status] || "text-on-surface-variant")}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${t.status === "disputed" && openDispute ? "bg-status-danger animate-pulse" : `bg-current`}`}></span>
+                              <span className="capitalize">{displayStatus}</span>
                             </span>
                           </td>
                           <td className="px-4 py-2">
                             <span className={`px-2 py-0.5 rounded text-[10px] ${ESCROW_COLORS[t.escrowStatus] || ESCROW_COLORS.pending} uppercase`}>{t.escrowStatus || "pending"}</span>
                           </td>
                           <td className="px-4 py-2 text-right">
-                            {t.status === "disputed" && dispute ? (
+                            {t.status === "disputed" && openDispute ? (
                               <button
-                                onClick={() => setResolvingDisputeId(dispute.id)}
+                                onClick={() => setResolvingDisputeId(openDispute.id)}
                                 className="bg-status-danger text-white px-2 py-0.5 rounded text-[10px] font-bold"
                               >RESOLVE</button>
                             ) : (
