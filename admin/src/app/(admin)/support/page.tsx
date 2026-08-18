@@ -1,6 +1,10 @@
 "use client";
 
+import { useState, useMemo, useCallback } from "react";
 import { useSupportTickets, useEmailCodes } from "@/hooks/useAdminData";
+import { updateDocument } from "@/hooks/useFirestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { getApps } from "firebase/app";
 
 function timeAgo(date: any) {
   if (!date) return "";
@@ -25,16 +29,141 @@ const STATUS_CLASS: Record<string, string> = {
   pending: "bg-status-warning/10 text-status-warning border-status-warning/20",
 };
 
+const CANNED_TEMPLATES: Record<string, string> = {
+  "Technical troubleshooting": "We're looking into the issue you reported. Please try clearing your cache and restarting the app. If the problem persists, contact us with your device model and OS version.",
+  "Login reset protocol": "We've initiated a password reset for your account. Please check your email for a reset link. The link expires in 24 hours.",
+  "Escalation notice": "Your ticket has been escalated to our senior support team. You can expect a response within 2-4 business hours.",
+  "Withdrawal FAQ": "Withdrawals are processed within 1-24 hours depending on the amount and network conditions. Please ensure your KYC is verified for faster processing.",
+};
+
 export default function SupportPage() {
   const { data: tickets, loading } = useSupportTickets(50);
   const { data: emails } = useEmailCodes(10);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [cannedTemplate, setCannedTemplate] = useState("Technical troubleshooting");
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((t: any) => {
+      if (statusFilter !== "all" && t.status !== statusFilter) return false;
+      if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
+      return true;
+    });
+  }, [tickets, statusFilter, priorityFilter]);
 
   const openTickets = tickets.filter((t: any) => t.status === "open" || t.status === "pending");
   const resolvedTickets = tickets.filter((t: any) => t.status === "resolved" || t.status === "closed");
   const resolutionRate = tickets.length > 0 ? ((resolvedTickets.length / tickets.length) * 100).toFixed(1) : "0";
 
+  const avgResponseTime = useMemo(() => {
+    const responded = tickets.filter((t: any) => t.respondedAt || t.adminReply);
+    if (responded.length === 0) return "N/A";
+    const totalMins = responded.reduce((sum: number, t: any) => {
+      const created = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
+      const replied = t.respondedAt?.toDate ? t.respondedAt.toDate() : new Date(t.respondedAt);
+      return sum + Math.floor((replied.getTime() - created.getTime()) / 60000);
+    }, 0);
+    const avg = Math.floor(totalMins / responded.length);
+    if (avg < 60) return `${avg}m`;
+    return `${Math.floor(avg / 60)}h ${avg % 60}m`;
+  }, [tickets]);
+
+  async function handleReply() {
+    if (!selectedTicket || !replyText.trim()) return;
+    setSending(true);
+    try {
+      await updateDocument("support_tickets", selectedTicket.id, {
+        adminReply: replyText.trim(),
+        status: "pending",
+        respondedAt: new Date(),
+        updatedAt: new Date(),
+      });
+      setReplyText("");
+      showToast("Reply sent successfully");
+    } catch (err: any) {
+      showToast(`Failed to send reply: ${err.message}`);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleBulkAction(action: "close" | "merge" | "reassign") {
+    if (selectedIds.size === 0) {
+      showToast("No tickets selected");
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const ids = Array.from(selectedIds);
+      if (action === "close") {
+        for (const id of ids) {
+          await updateDocument("support_tickets", id, { status: "closed", updatedAt: new Date() });
+        }
+        showToast(`${ids.length} ticket(s) closed`);
+      } else if (action === "merge") {
+        // Merge: keep the first ticket, close the rest with a note
+        const [keepId, ...mergeIds] = ids;
+        for (const id of mergeIds) {
+          await updateDocument("support_tickets", id, {
+            status: "closed",
+            mergedInto: keepId,
+            updatedAt: new Date(),
+          });
+        }
+        showToast(`${mergeIds.length} ticket(s) merged into #${keepId.slice(0, 8)}`);
+      } else if (action === "reassign") {
+        for (const id of ids) {
+          await updateDocument("support_tickets", id, {
+            status: "open",
+            reassignedAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+        showToast(`${ids.length} ticket(s) reassigned to queue`);
+      }
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      showToast(`Bulk action failed: ${err.message}`);
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleCopyTemplate() {
+    const text = CANNED_TEMPLATES[cannedTemplate] || "";
+    navigator.clipboard.writeText(text);
+    showToast("Template copied to clipboard");
+  }
+
   return (
     <div className="px-container-padding flex flex-col gap-max-gap w-full">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+          {toast}
+        </div>
+      )}
+
       {/* SLA & Performance Metrics */}
       <section>
         <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">SLA &amp; PERFORMANCE METRICS</h2>
@@ -42,7 +171,7 @@ export default function SupportPage() {
           <div className="bg-surface-bright p-stack-base border border-border-subtle rounded flex flex-col">
             <span className="font-label-caps text-label-caps text-on-surface-variant">AVG RESPONSE TIME</span>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="font-headline-lg text-headline-lg font-black text-on-surface">{loading ? "..." : "real-time"}</span>
+              <span className="font-headline-lg text-headline-lg font-black text-on-surface">{avgResponseTime}</span>
               <span className="font-data-mono text-data-mono text-status-success">{tickets.length} tickets</span>
             </div>
           </div>
@@ -71,27 +200,68 @@ export default function SupportPage() {
         <div className="px-container-padding py-2 border-b border-border-subtle flex items-center justify-between">
           <h2 className="font-label-caps text-label-caps text-on-surface-variant">TICKET QUEUE</h2>
           <div className="flex gap-2">
-            <button className="bg-surface-container-high px-2 py-1 border border-border-subtle rounded flex items-center gap-1">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`bg-surface-container-high px-2 py-1 border rounded flex items-center gap-1 transition-colors ${showFilters ? "border-primary text-primary" : "border-border-subtle"}`}
+            >
               <span className="material-symbols-outlined text-[14px]">filter_list</span>
               <span className="font-label-caps text-label-caps">FILTERS</span>
             </button>
-            <button className="bg-primary text-on-primary px-2 py-1 rounded flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">add</span>
-              <span className="font-label-caps text-label-caps">NEW</span>
-            </button>
           </div>
         </div>
+        {showFilters && (
+          <div className="px-container-padding py-2 bg-surface-container-low border-b border-border-subtle flex gap-4">
+            <div className="flex items-center gap-2">
+              <label className="font-label-caps text-[9px] text-on-surface-variant">STATUS</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-surface-deep border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
+              >
+                <option value="all">All</option>
+                <option value="open">Open</option>
+                <option value="pending">Pending</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="font-label-caps text-[9px] text-on-surface-variant">PRIORITY</label>
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="bg-surface-deep border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
+              >
+                <option value="all">All</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           {loading ? (
             <div className="p-4 space-y-2">
               {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-surface-container-high rounded animate-pulse" />)}
             </div>
-          ) : tickets.length === 0 ? (
-            <div className="p-6 text-center text-on-surface-variant text-body-sm">No support tickets</div>
+          ) : filteredTickets.length === 0 ? (
+            <div className="p-6 text-center text-on-surface-variant text-body-sm">No support tickets match filters</div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead className="bg-surface-deep text-on-surface-variant border-b border-border-subtle">
                 <tr>
+                  <th className="px-3 py-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={filteredTickets.length > 0 && selectedIds.size === filteredTickets.length}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedIds(new Set(filteredTickets.map((t: any) => t.id)));
+                        else setSelectedIds(new Set());
+                      }}
+                      className="rounded border-border-subtle"
+                    />
+                  </th>
                   <th className="px-3 py-2 font-label-caps text-label-caps">TID</th>
                   <th className="px-3 py-2 font-label-caps text-label-caps">USER</th>
                   <th className="px-3 py-2 font-label-caps text-label-caps">SUBJECT</th>
@@ -101,8 +271,20 @@ export default function SupportPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {tickets.map((t: any) => (
-                  <tr key={t.id} className="hover:bg-surface-container-high transition-colors cursor-pointer">
+                {filteredTickets.map((t: any) => (
+                  <tr
+                    key={t.id}
+                    className={`hover:bg-surface-container-high transition-colors cursor-pointer ${selectedTicket?.id === t.id ? "bg-primary/5" : ""}`}
+                    onClick={() => setSelectedTicket(t)}
+                  >
+                    <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(t.id)}
+                        onChange={() => toggleSelect(t.id)}
+                        className="rounded border-border-subtle"
+                      />
+                    </td>
                     <td className="px-3 py-1.5 font-data-mono text-data-mono text-primary">#{t.reference || t.id?.slice(0, 8)}</td>
                     <td className="px-3 py-1.5 font-body-sm text-body-sm text-on-surface">{t.uid?.slice(0, 16) || t.userEmail || "\u2014"}</td>
                     <td className="px-3 py-1.5 font-body-sm text-body-sm text-on-surface">{t.subject || t.description?.slice(0, 40) || "\u2014"}</td>
@@ -127,23 +309,53 @@ export default function SupportPage() {
         <div className="bg-surface-bright border border-border-subtle rounded-xl overflow-hidden flex flex-col">
           <div className="p-stack-base bg-surface-container flex items-center justify-between border-b border-border-subtle">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center text-on-secondary text-[10px] font-bold">?</div>
-              <span className="font-body-sm text-body-sm font-bold">{openTickets[0]?.uid?.slice(0, 16) || "No active chats"}</span>
+              <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center text-on-secondary text-[10px] font-bold">
+                {selectedTicket ? "!" : "?"}
+              </div>
+              <span className="font-body-sm text-body-sm font-bold">
+                {selectedTicket
+                  ? (selectedTicket.uid?.slice(0, 16) || selectedTicket.userEmail || "Selected ticket")
+                  : openTickets[0]?.uid?.slice(0, 16) || "No active chats"}
+              </span>
             </div>
-            <span className="font-data-mono text-[10px] text-on-surface-variant">{openTickets.length > 0 ? "Active" : "Idle"}</span>
+            <span className="font-data-mono text-[10px] text-on-surface-variant">
+              {selectedTicket ? `#${selectedTicket.reference || selectedTicket.id?.slice(0, 8)}` : openTickets.length > 0 ? "Active" : "Idle"}
+            </span>
           </div>
           <div className="p-3 bg-surface-container-lowest min-h-[80px]">
-            {openTickets[0] ? (
-              <div className="bg-surface-container-high p-2 rounded-lg max-w-[85%] border border-border-subtle">
-                <p className="font-body-sm text-body-sm text-on-surface">{openTickets[0].subject || openTickets[0].description || "Awaiting user message..."}</p>
+            {(selectedTicket || openTickets[0]) ? (
+              <div className="space-y-2">
+                <div className="bg-surface-container-high p-2 rounded-lg max-w-[85%] border border-border-subtle">
+                  <p className="font-body-sm text-body-sm text-on-surface">
+                    {(selectedTicket || openTickets[0]).subject || (selectedTicket || openTickets[0]).description || "Awaiting user message..."}
+                  </p>
+                </div>
+                {(selectedTicket || openTickets[0]).adminReply && (
+                  <div className="bg-primary/10 p-2 rounded-lg max-w-[85%] ml-auto border border-primary/20">
+                    <p className="font-body-sm text-body-sm text-on-surface">{(selectedTicket || openTickets[0]).adminReply}</p>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-on-surface-variant text-body-sm text-center py-4">No active chats</p>
             )}
           </div>
           <div className="p-2 bg-surface-container flex gap-2 border-t border-border-subtle">
-            <input className="flex-1 bg-surface-deep border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm focus:ring-1 focus:ring-primary focus:outline-none placeholder:text-on-surface-variant/40" placeholder="Type response..." type="text" />
-            <button className="bg-primary text-on-primary px-3 py-1 rounded font-label-caps text-label-caps">REPLY</button>
+            <input
+              className="flex-1 bg-surface-deep border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm focus:ring-1 focus:ring-primary focus:outline-none placeholder:text-on-surface-variant/40"
+              placeholder="Type response..."
+              type="text"
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleReply(); } }}
+            />
+            <button
+              disabled={!replyText.trim() || sending || !selectedTicket}
+              onClick={handleReply}
+              className="bg-primary text-on-primary px-3 py-1 rounded font-label-caps text-label-caps disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {sending ? "SENDING..." : "REPLY"}
+            </button>
           </div>
         </div>
       </section>
@@ -170,30 +382,55 @@ export default function SupportPage() {
           <h2 className="font-label-caps text-label-caps text-on-surface-variant px-1">CANNED RESPONSES</h2>
           <div className="bg-surface-bright border border-border-subtle rounded p-stack-base">
             <label className="font-label-caps text-[9px] text-on-surface-variant mb-1 block">SELECT TEMPLATE</label>
-            <select className="w-full bg-surface-deep border border-border-subtle rounded px-2 py-1.5 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer">
-              <option>Technical troubleshooting</option>
-              <option>Login reset protocol</option>
-              <option>Escalation notice</option>
-              <option>Withdrawal FAQ</option>
+            <select
+              value={cannedTemplate}
+              onChange={(e) => setCannedTemplate(e.target.value)}
+              className="w-full bg-surface-deep border border-border-subtle rounded px-2 py-1.5 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
+            >
+              {Object.keys(CANNED_TEMPLATES).map((t) => (
+                <option key={t}>{t}</option>
+              ))}
             </select>
-            <button className="w-full mt-2 border border-primary text-primary px-3 py-1.5 rounded font-label-caps text-label-caps hover:bg-primary/5 transition-colors">COPY TO CLIPBOARD</button>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mt-2 p-2 bg-surface-deep rounded min-h-[60px]">
+              {CANNED_TEMPLATES[cannedTemplate]}
+            </p>
+            <button
+              onClick={handleCopyTemplate}
+              className="w-full mt-2 border border-primary text-primary px-3 py-1.5 rounded font-label-caps text-label-caps hover:bg-primary/5 transition-colors active:scale-95"
+            >
+              COPY TO CLIPBOARD
+            </button>
           </div>
         </div>
       </section>
 
       {/* Bulk Actions */}
       <section>
-        <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">BULK ACTIONS</h2>
+        <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">
+          BULK ACTIONS {selectedIds.size > 0 && <span className="text-primary">({selectedIds.size} selected)</span>}
+        </h2>
         <div className="grid grid-cols-3 gap-gutter">
-          <button className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95">
+          <button
+            disabled={selectedIds.size === 0 || bulkLoading}
+            onClick={() => handleBulkAction("merge")}
+            className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <span className="material-symbols-outlined text-primary">merge</span>
             <span className="font-label-caps text-label-caps">MERGE</span>
           </button>
-          <button className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95">
+          <button
+            disabled={selectedIds.size === 0 || bulkLoading}
+            onClick={() => handleBulkAction("close")}
+            className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <span className="material-symbols-outlined text-status-danger">cancel</span>
             <span className="font-label-caps text-label-caps">CLOSE</span>
           </button>
-          <button className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95">
+          <button
+            disabled={selectedIds.size === 0 || bulkLoading}
+            onClick={() => handleBulkAction("reassign")}
+            className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <span className="material-symbols-outlined text-secondary">move_up</span>
             <span className="font-label-caps text-label-caps">REASSIGN</span>
           </button>

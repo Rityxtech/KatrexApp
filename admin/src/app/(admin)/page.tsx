@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminStats } from "@/hooks/useAdminData";
+import { useAdminStats, useKycQueue, useP2PDisputes, useSupportTickets, useCryptoDeposits } from "@/hooks/useAdminData";
 
 function formatNaira(n: number) {
   if (n >= 1_000_000_000_000) return `\u20a6${(n / 1_000_000_000_000).toFixed(2)}T`;
@@ -31,6 +31,10 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function DashboardPage() {
   const { stats, txns, wallets, market, loading } = useAdminStats();
+  const { data: kycQueue } = useKycQueue();
+  const { data: p2pDisputes } = useP2PDisputes();
+  const { data: supportTickets } = useSupportTickets();
+  const { data: cryptoDeposits } = useCryptoDeposits();
 
   const recentTxns = txns.slice(0, 8);
   const pendingWithdrawals = txns.filter(
@@ -86,6 +90,174 @@ export default function DashboardPage() {
     .reduce((s: number, t: any) => s + (t.amountNaira || 0), 0);
 
   const maxServiceVol = Math.max(airtimeVol, giftcardVol, p2pVol, 1);
+
+  // Service performance data
+  const cryptoVol = txns
+    .filter((t: any) => t.type === "crypto" && t.status === "completed")
+    .reduce((s: number, t: any) => s + (t.amountNaira || 0), 0);
+  const cryptoCount = txns.filter((t: any) => t.type === "crypto" && t.status === "completed").length;
+  const airtimeCount = txns.filter((t: any) => (t.type === "airtime" || t.type === "data") && t.status === "completed").length;
+  const giftcardCount = txns.filter((t: any) => t.type === "giftcard" && t.status === "completed").length;
+  const p2pCount = txns.filter((t: any) => t.type === "p2p" && t.status === "completed").length;
+
+  const services = [
+    { name: "Crypto", icon: "currency_bitcoin", color: "text-primary", barColor: "bg-primary", vol: cryptoVol, count: cryptoCount, profit: cryptoProfit },
+    { name: "Airtime/Data", icon: "settings_cell", color: "text-secondary", barColor: "bg-secondary", vol: airtimeVol, count: airtimeCount, profit: airtimeProfit },
+    { name: "Giftcards", icon: "redeem", color: "text-tertiary", barColor: "bg-tertiary", vol: giftcardVol, count: giftcardCount, profit: giftcardProfit },
+    { name: "P2P Escrow", icon: "swap_horizontal_circle", color: "text-status-info", barColor: "bg-status-info", vol: p2pVol, count: p2pCount, profit: p2pProfit },
+  ];
+  const totalServiceVol = services.reduce((s, sv) => s + sv.vol, 0) || 1;
+
+  // Donut chart segments (cumulative percentages for conic-gradient)
+  let cumPercent = 0;
+  const donutSegments = services.map((sv) => {
+    const percent = (sv.vol / totalServiceVol) * 100;
+    const start = cumPercent;
+    cumPercent += percent;
+    return { ...sv, percent, start };
+  });
+
+  // 7-day activity chart data
+  const now = new Date();
+  const days: { label: string; date: string; count: number; volume: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const dayTxns = txns.filter((t: any) => {
+      const created = t.createdAt?.toDate?.() || t.createdAt;
+      if (!created) return false;
+      const tStr = new Date(created).toISOString().slice(0, 10);
+      return tStr === dateStr;
+    });
+    days.push({
+      label: d.toLocaleDateString("en", { weekday: "short" }),
+      date: dateStr,
+      count: dayTxns.length,
+      volume: dayTxns.filter((t: any) => t.status === "completed").reduce((s: number, t: any) => s + (t.amountNaira || 0), 0),
+    });
+  }
+  const maxDayCount = Math.max(...days.map((d) => d.count), 1);
+  const totalWeekTxns = days.reduce((s, d) => s + d.count, 0);
+  const avgDaily = totalWeekTxns / 7;
+  const peakDay = days.reduce((best, d) => (d.count > best.count ? d : best), days[0]);
+  const successRate = totalWeekTxns > 0
+    ? ((days.reduce((s, d) => {
+        const dayCompleted = txns.filter((t: any) => {
+          const created = t.createdAt?.toDate?.() || t.createdAt;
+          if (!created) return false;
+          const tStr = new Date(created).toISOString().slice(0, 10);
+          return tStr === d.date && t.status === "completed";
+        }).length;
+        return s + dayCompleted;
+      }, 0) / totalWeekTxns) * 100).toFixed(1)
+    : "0";
+
+  // Action Center data
+  const openDisputes = (p2pDisputes || []).filter((d: any) => d.status === "open");
+  const pendingKyc = (kycQueue || []).length;
+  const pendingDeposits = (cryptoDeposits || []).filter((d: any) => d.status === "pending" || d.status === "confirming");
+  const pendingDepositTotal = pendingDeposits.reduce((s: number, d: any) => s + (d.amountNaira || 0), 0);
+  const failedLast24h = txns.filter((t: any) => {
+    if (t.status !== "failed") return false;
+    const created = t.createdAt?.toDate?.() || t.createdAt;
+    if (!created) return false;
+    const age = Date.now() - new Date(created).getTime();
+    return age < 24 * 60 * 60 * 1000;
+  });
+  const openTickets = (supportTickets || []).filter((t: any) => t.status === "open" || t.status === "pending");
+  const pendingWithdrawalAmount = txns
+    .filter((t: any) => t.type === "withdrawal" && t.status === "pending")
+    .reduce((s: number, t: any) => s + (t.amountNaira || 0), 0);
+
+  const alerts = [
+    {
+      id: "withdrawals",
+      show: pendingWithdrawals > 0,
+      icon: "account_balance_wallet",
+      title: `${pendingWithdrawals} Pending Withdrawal${pendingWithdrawals > 1 ? "s" : ""}`,
+      subtitle: `${formatNaira(pendingWithdrawalAmount)} at risk`,
+      badge: "URGENT",
+      badgeColor: "bg-status-danger/20 text-status-danger",
+      borderColor: "border-status-danger",
+      iconColor: "text-status-danger",
+      href: "/transactions",
+    },
+    {
+      id: "disputes",
+      show: openDisputes.length > 0,
+      icon: "gavel",
+      title: `${openDisputes.length} Open P2P Dispute${openDisputes.length > 1 ? "s" : ""}`,
+      subtitle: "Needs resolution",
+      badge: "ACT",
+      badgeColor: "bg-status-danger/20 text-status-danger",
+      borderColor: "border-status-danger",
+      iconColor: "text-status-danger",
+      href: "/p2p",
+    },
+    {
+      id: "kyc",
+      show: pendingKyc > 0,
+      icon: "verified_user",
+      title: `${pendingKyc} KYC Verification${pendingKyc > 1 ? "s" : ""}`,
+      subtitle: "Awaiting review",
+      badge: "QUEUE",
+      badgeColor: "bg-status-warning/20 text-status-warning",
+      borderColor: "border-status-warning",
+      iconColor: "text-status-warning",
+      href: "/kyc",
+    },
+    {
+      id: "deposits",
+      show: pendingDeposits.length > 0,
+      icon: "currency_bitcoin",
+      title: `${pendingDeposits.length} Pending Deposit${pendingDeposits.length > 1 ? "s" : ""}`,
+      subtitle: `${formatNaira(pendingDepositTotal)} awaiting confirm`,
+      badge: "WAIT",
+      badgeColor: "bg-status-info/20 text-status-info",
+      borderColor: "border-status-info",
+      iconColor: "text-status-info",
+      href: "/crypto",
+    },
+    {
+      id: "failed",
+      show: failedLast24h.length > 0,
+      icon: "error",
+      title: `${failedLast24h.length} Failed Transaction${failedLast24h.length > 1 ? "s" : ""}`,
+      subtitle: "Last 24 hours",
+      badge: "CHECK",
+      badgeColor: "bg-status-warning/20 text-status-warning",
+      borderColor: "border-status-warning",
+      iconColor: "text-status-warning",
+      href: "/transactions",
+    },
+    {
+      id: "flagged",
+      show: flaggedTxns > 0,
+      icon: "flag",
+      title: `${flaggedTxns} Flagged Transaction${flaggedTxns > 1 ? "s" : ""}`,
+      subtitle: "Requires review",
+      badge: "REVIEW",
+      badgeColor: "bg-status-warning/20 text-status-warning",
+      borderColor: "border-status-warning",
+      iconColor: "text-status-warning",
+      href: "/transactions",
+    },
+    {
+      id: "tickets",
+      show: openTickets.length > 0,
+      icon: "support_agent",
+      title: `${openTickets.length} Open Support Ticket${openTickets.length > 1 ? "s" : ""}`,
+      subtitle: "User help needed",
+      badge: "OPEN",
+      badgeColor: "bg-secondary/20 text-secondary",
+      borderColor: "border-secondary",
+      iconColor: "text-secondary",
+      href: "/support",
+    },
+  ];
+
+  const activeAlerts = alerts.filter((a) => a.show);
 
   const fiatReserve = wallets.reduce(
     (s: number, w: any) => s + (w.nairaBalance || 0),
@@ -190,59 +362,116 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Volume by Service */}
+        {/* Service Performance */}
         <div className="col-span-2 bg-surface-bright border border-subtle p-3 rounded">
-          <div className="flex justify-between items-center mb-4">
-            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">Volume by Service</p>
-            <button className="material-symbols-outlined text-body-sm text-on-surface-variant">more_vert</button>
+          <div className="flex justify-between items-center mb-3">
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">Service Performance</p>
+            <span className="font-data-mono text-[10px] text-on-surface-variant">{stats.completedTxns} total txns</span>
           </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between group">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-secondary">settings_cell</span>
-                <span className="font-body-sm">Airtime/Data</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="font-data-mono text-body-sm">{formatNaira(airtimeVol)}</span>
-                <div className="w-24 h-1 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-secondary" style={{ width: `${(airtimeVol / maxServiceVol) * 100}%` }} />
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between group">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-tertiary">redeem</span>
-                <span className="font-body-sm">Giftcards</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="font-data-mono text-body-sm">{formatNaira(giftcardVol)}</span>
-                <div className="w-24 h-1 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-tertiary" style={{ width: `${(giftcardVol / maxServiceVol) * 100}%` }} />
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between group">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-primary">swap_horizontal_circle</span>
-                <span className="font-body-sm">P2P Escrow</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="font-data-mono text-body-sm">{formatNaira(p2pVol)}</span>
-                <div className="w-24 h-1 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: `${(p2pVol / maxServiceVol) * 100}%` }} />
-                </div>
+          <div className="flex gap-4 items-start">
+            {/* Donut Chart */}
+            <div className="relative w-24 h-24 flex-shrink-0">
+              <div
+                className="w-full h-full rounded-full"
+                style={{
+                  background: donutSegments.every((s) => s.percent === 0)
+                    ? undefined
+                    : `conic-gradient(${donutSegments.map((s) => {
+                        const colors: Record<string, string> = {
+                          Crypto: "var(--color-primary)",
+                          "Airtime/Data": "var(--color-secondary)",
+                          Giftcards: "var(--color-tertiary)",
+                          "P2P Escrow": "var(--color-status-info)",
+                        };
+                        return `${colors[s.name] || "#888"} ${s.start}% ${s.start + s.percent}%`;
+                      }).join(", ")})`,
+                }}
+              />
+              <div className="absolute inset-3 bg-surface-bright rounded-full flex items-center justify-center">
+                <span className="font-data-mono text-[10px] text-on-surface-variant text-center leading-tight">
+                  {formatNaira(totalServiceVol)}
+                </span>
               </div>
             </div>
+            {/* Service Breakdown */}
+            <div className="flex-1 space-y-2 min-w-0">
+              {services.map((sv) => (
+                <div key={sv.name} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className={`material-symbols-outlined text-[14px] ${sv.color}`}>{sv.icon}</span>
+                    <span className="font-body-sm text-[11px] truncate">{sv.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className="font-data-mono text-[10px] text-on-surface-variant">{sv.count} txns</span>
+                    <span className="font-data-mono text-[11px] font-medium">{formatNaira(sv.vol)}</span>
+                    <span className="font-data-mono text-[10px] text-on-surface-variant w-8 text-right">
+                      {((sv.vol / totalServiceVol) * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Profit row */}
+          <div className="mt-3 pt-2 border-t border-subtle flex items-center justify-between">
+            <span className="font-label-caps text-[10px] text-on-surface-variant uppercase">Est. Revenue</span>
+            <span className="font-data-mono text-body-sm text-status-success">{formatNaira(safeTotalProfit)}</span>
           </div>
         </div>
 
-        {/* Revenue Graph */}
-        <div className="col-span-2 bg-surface-bright border border-subtle p-3 rounded relative overflow-hidden group">
-          <div className="flex justify-between items-center mb-1">
-            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">Transaction Trend</p>
-            <span className="font-data-mono text-status-success text-[10px]">{stats.totalTransactions} total</span>
+        {/* 7-Day Activity */}
+        <div className="col-span-2 bg-surface-bright border border-subtle p-3 rounded">
+          <div className="flex justify-between items-center mb-3">
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">7-Day Activity</p>
+            <div className="flex gap-3">
+              <span className="font-data-mono text-[10px] text-on-surface-variant">avg {avgDaily.toFixed(1)}/day</span>
+              <span className="font-data-mono text-[10px] text-status-success">{successRate}% success</span>
+            </div>
           </div>
-          <div className="h-32 w-full" />
+          {/* Bar Chart */}
+          <div className="flex items-end gap-1.5 h-24 mb-2">
+            {days.map((day) => {
+              const heightPct = (day.count / maxDayCount) * 100;
+              const isPeak = day.date === peakDay.date;
+              return (
+                <div key={day.date} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <span className="font-data-mono text-[9px] text-on-surface-variant">{day.count}</span>
+                  <div
+                    className={`w-full rounded-t-sm transition-all ${isPeak ? "bg-primary" : "bg-primary/40"}`}
+                    style={{ height: `${Math.max(heightPct, 4)}%` }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          {/* Day labels */}
+          <div className="flex gap-1.5">
+            {days.map((day) => {
+              const isPeak = day.date === peakDay.date;
+              return (
+                <div key={day.date} className="flex-1 text-center">
+                  <span className={`font-data-mono text-[9px] ${isPeak ? "text-primary font-bold" : "text-on-surface-variant"}`}>
+                    {day.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {/* Summary metrics */}
+          <div className="mt-3 pt-2 border-t border-subtle grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <p className="font-data-mono text-headline-sm text-on-surface">{totalWeekTxns}</p>
+              <p className="font-label-caps text-[9px] text-on-surface-variant uppercase">Total Txns</p>
+            </div>
+            <div className="text-center">
+              <p className="font-data-mono text-headline-sm text-on-surface">{peakDay.label}</p>
+              <p className="font-label-caps text-[9px] text-on-surface-variant uppercase">Peak Day</p>
+            </div>
+            <div className="text-center">
+              <p className="font-data-mono text-headline-sm text-on-surface">{formatNaira(days.reduce((s, d) => s + d.volume, 0))}</p>
+              <p className="font-label-caps text-[9px] text-on-surface-variant uppercase">Week Volume</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -297,40 +526,36 @@ export default function DashboardPage() {
       {/* Alerts & System Health */}
       <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-unit">
         <div className="bg-surface-bright border border-subtle p-3 rounded">
-          <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-4">Critical Alerts</h3>
-          <div className="space-y-2">
-            {pendingWithdrawals > 0 && (
-              <div className="flex items-center justify-between bg-surface-container-low p-2 rounded border-l-2 border-status-danger">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-status-danger">priority_high</span>
-                  <span className="font-body-sm">{pendingWithdrawals} Pending Withdrawals</span>
-                </div>
-                <span className="bg-status-danger/20 text-status-danger px-2 py-0.5 rounded text-[10px] font-bold">URGENT</span>
-              </div>
-            )}
-            {flaggedTxns > 0 && (
-              <div className="flex items-center justify-between bg-surface-container-low p-2 rounded border-l-2 border-status-warning">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-status-warning">flag</span>
-                  <span className="font-body-sm">{flaggedTxns} Flagged Transactions</span>
-                </div>
-                <span className="bg-status-warning/20 text-status-warning px-2 py-0.5 rounded text-[10px] font-bold">REVIEW</span>
-              </div>
-            )}
-            {stats.pendingTxns > 0 && (
-              <div className="flex items-center justify-between bg-surface-container-low p-2 rounded border-l-2 border-status-info">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-status-info">pending</span>
-                  <span className="font-body-sm">{stats.pendingTxns} Pending Transactions</span>
-                </div>
-                <span className="bg-status-info/20 text-status-info px-2 py-0.5 rounded text-[10px] font-bold">ACT</span>
-              </div>
-            )}
-            {pendingWithdrawals === 0 && flaggedTxns === 0 && stats.pendingTxns === 0 && (
-              <div className="flex items-center gap-3 bg-surface-container-low p-2 rounded border-l-2 border-status-success">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">Action Center</h3>
+            <span className="font-data-mono text-[10px] text-on-surface-variant">{activeAlerts.length} active</span>
+          </div>
+          <div className="space-y-2 max-h-52 overflow-y-auto no-scrollbar">
+            {activeAlerts.length === 0 ? (
+              <div className="flex items-center gap-3 bg-surface-container-low p-2.5 rounded border-l-2 border-status-success">
                 <span className="material-symbols-outlined text-status-success">check_circle</span>
-                <span className="font-body-sm">All clear — no critical alerts</span>
+                <span className="font-body-sm">All clear — no actions needed</span>
               </div>
+            ) : (
+              activeAlerts.map((alert) => (
+                <a
+                  key={alert.id}
+                  href={alert.href}
+                  className={`flex items-center justify-between bg-surface-container-low p-2.5 rounded border-l-2 ${alert.borderColor} hover:bg-surface-container-highest transition-colors cursor-pointer group`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={`material-symbols-outlined text-[18px] ${alert.iconColor}`}>{alert.icon}</span>
+                    <div className="min-w-0">
+                      <p className="font-body-sm font-medium truncate">{alert.title}</p>
+                      <p className="text-[10px] text-on-surface-variant">{alert.subtitle}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`${alert.badgeColor} px-1.5 py-0.5 rounded text-[9px] font-bold`}>{alert.badge}</span>
+                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                  </div>
+                </a>
+              ))
             )}
           </div>
         </div>

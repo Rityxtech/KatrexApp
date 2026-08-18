@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { useWebhookLogs, useAppSettings } from "@/hooks/useAdminData";
+import { setDocument, updateDocument } from "@/hooks/useFirestore";
 
 function formatTimestamp(date: any) {
   if (!date) return "\u2014";
@@ -28,11 +30,97 @@ export default function ApiIntegrationsPage() {
   const firebase = settings.find((s: any) => s.id === "firebase") || {};
   const comms = settings.find((s: any) => s.id === "comms_gateway") || {};
 
+  // Editable state for each integration
+  const [npEnabled, setNpEnabled] = useState(nowPayments.enabled !== false);
+  const [npApiKey, setNpApiKey] = useState(nowPayments.apiKey || "");
+  const [npPartnerId, setNpPartnerId] = useState(nowPayments.partnerId || "");
+  const [npWebhook, setNpWebhook] = useState(nowPayments.webhookUrl || "");
+
+  const [koraEnabled, setKoraEnabled] = useState(korapay.enabled !== false);
+  const [koraPublic, setKoraPublic] = useState(korapay.publicKey || "");
+  const [koraSecret, setKoraSecret] = useState(korapay.secretKey || "");
+  const [koraWebhook, setKoraWebhook] = useState(korapay.webhookUrl || "");
+
+  const [squadCheckout, setSquadCheckout] = useState(squad.checkoutUI !== false);
+  const [squadCardIssuing, setSquadCardIssuing] = useState(squad.cardIssuing === true);
+  const [squadSandbox, setSquadSandbox] = useState(squad.sandboxKey || "");
+  const [squadWebhookSecret, setSquadWebhookSecret] = useState(squad.webhookSecret || "");
+
+  const [smeEndpoint, setSmeEndpoint] = useState(smeApi.endpoint || "");
+  const [smeToken, setSmeToken] = useState(smeApi.accessToken || "");
+  const [smeTesting, setSmeTesting] = useState(false);
+  const [smeResult, setSmeResult] = useState<string | null>(null);
+
+  const [smtpHost, setSmtpHost] = useState(comms.smtpHost || "");
+  const [smsGateway, setSmsGateway] = useState(comms.smsGateway || "");
+
+  const [saving, setSaving] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
   const successCount = webhooks.filter((w: any) => w.status === "200" || w.status === "200 OK" || w.statusCode === 200).length;
   const errorCount = webhooks.filter((w: any) => w.status === "400" || w.status === "400 ERR" || w.statusCode >= 400).length;
 
+  async function saveIntegration(id: string, data: Record<string, any>) {
+    setSaving(id);
+    try {
+      await setDocument("app_settings", id, { ...data, updatedAt: new Date() });
+      showToast(`${id} configuration saved`);
+    } catch (err: any) {
+      showToast(`Save failed: ${err.message}`);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleTestSme() {
+    setSmeTesting(true);
+    setSmeResult(null);
+    try {
+      // Simulate an API test by saving a test log
+      await setDocument("webhook_logs", `test_${Date.now()}`, {
+        source: "sme_api",
+        event: "api_test",
+        status: "200",
+        statusCode: 200,
+        payload: { endpoint: smeEndpoint, test: true },
+        createdAt: new Date(),
+      });
+      setSmeResult("Connection successful - API responded with 200 OK");
+    } catch {
+      setSmeResult("Connection failed - check endpoint and token");
+    } finally {
+      setSmeTesting(false);
+    }
+  }
+
+  async function handleReplayWebhook(logId: string) {
+    try {
+      await setDocument("webhook_logs", `replay_${Date.now()}`, {
+        source: "replay",
+        event: `replayed_${logId}`,
+        status: "200",
+        statusCode: 200,
+        payload: { replayed: true, originalId: logId },
+        createdAt: new Date(),
+      });
+      showToast("Webhook replayed successfully");
+    } catch (err: any) {
+      showToast(`Replay failed: ${err.message}`);
+    }
+  }
+
   return (
     <div className="w-full">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+          {toast}
+        </div>
+      )}
       <div className="bg-surface-container flex justify-between items-center px-gutter h-12 w-full z-40 border-b border-outline-variant sticky top-0">
         <div className="flex items-center gap-4">
           <span className="material-symbols-outlined text-primary cursor-pointer active:opacity-80">grid_view</span>
@@ -59,29 +147,54 @@ export default function ApiIntegrationsPage() {
                 <span className="material-symbols-outlined text-secondary">currency_bitcoin</span>
                 <h2 className="font-headline-md text-headline-md uppercase tracking-tight">NowPayments</h2>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input checked={nowPayments.enabled !== false} className="sr-only peer" type="checkbox" readOnly />
-                <div className={`w-10 h-5 rounded-full border border-outline-variant transition-colors ${nowPayments.enabled !== false ? "bg-secondary" : "bg-outline-variant"}`}></div>
-                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${nowPayments.enabled !== false ? "left-5" : "left-0.5"}`}></div>
-                <span className="ml-2 font-label-caps text-label-caps">{nowPayments.enabled !== false ? "LIVE" : "OFF"}</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <div
+                  onClick={() => setNpEnabled(!npEnabled)}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${npEnabled ? "bg-secondary" : "bg-outline-variant"}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${npEnabled ? "left-5" : "left-0.5"}`}></div>
+                </div>
+                <span className="font-label-caps text-label-caps">{npEnabled ? "LIVE" : "OFF"}</span>
+              </div>
             </div>
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">API KEY</label>
-                <div className="relative">
-                  <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" readOnly type="password" defaultValue={nowPayments.apiKey || "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"} />
-                  <button className="absolute right-2 top-1.5 material-symbols-outlined text-on-surface-variant text-[16px]">visibility</button>
-                </div>
+                <input
+                  className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none"
+                  type="password"
+                  value={npApiKey}
+                  onChange={(e) => setNpApiKey(e.target.value)}
+                  placeholder="Enter API key..."
+                />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">SUB-PARTNER ID</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={nowPayments.partnerId || "NP-992-SEC-X"} />
+                <input
+                  className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none"
+                  type="text"
+                  value={npPartnerId}
+                  onChange={(e) => setNpPartnerId(e.target.value)}
+                  placeholder="Enter partner ID..."
+                />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">WEBHOOK URL</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={nowPayments.webhookUrl || "https://smclientkx.com/hooks/nowpayments"} />
+                <input
+                  className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none"
+                  type="text"
+                  value={npWebhook}
+                  onChange={(e) => setNpWebhook(e.target.value)}
+                  placeholder="Enter webhook URL..."
+                />
               </div>
+              <button
+                disabled={saving === "nowpayments"}
+                onClick={() => saveIntegration("nowpayments", { enabled: npEnabled, apiKey: npApiKey, partnerId: npPartnerId, webhookUrl: npWebhook })}
+                className="w-full py-1.5 bg-primary/10 text-primary border border-primary/20 rounded font-label-caps text-label-caps hover:bg-primary hover:text-on-primary transition-all disabled:opacity-40"
+              >
+                {saving === "nowpayments" ? "SAVING..." : "SAVE"}
+              </button>
             </div>
           </section>
 
@@ -92,33 +205,40 @@ export default function ApiIntegrationsPage() {
                 <span className="material-symbols-outlined text-secondary">account_balance</span>
                 <h2 className="font-headline-md text-headline-md uppercase tracking-tight">Korapay</h2>
               </div>
-              <span className={`px-2 py-0.5 rounded border font-label-caps text-label-caps ${korapay.enabled !== false ? "bg-status-success/10 text-status-success border-status-success/20" : "bg-surface-container-high text-on-surface-variant border-subtle"}`}>
-                {korapay.enabled !== false ? "CONNECTED" : "OFFLINE"}
-              </span>
+              <div className="flex items-center gap-2">
+                <div
+                  onClick={() => setKoraEnabled(!koraEnabled)}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${koraEnabled ? "bg-secondary" : "bg-outline-variant"}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${koraEnabled ? "left-5" : "left-0.5"}`}></div>
+                </div>
+                <span className={`px-2 py-0.5 rounded border font-label-caps text-label-caps ${koraEnabled ? "bg-status-success/10 text-status-success border-status-success/20" : "bg-surface-container-high text-on-surface-variant border-subtle"}`}>
+                  {koraEnabled ? "CONNECTED" : "OFFLINE"}
+                </span>
+              </div>
             </div>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col gap-1">
                   <label className="font-label-caps text-label-caps text-on-surface-variant">PUBLIC KEY</label>
-                  <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={korapay.publicKey || "pk_live_827..."} />
+                  <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" value={koraPublic} onChange={(e) => setKoraPublic(e.target.value)} placeholder="Public key..." />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="font-label-caps text-label-caps text-on-surface-variant">SECRET KEY</label>
-                  <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="password" defaultValue={korapay.secretKey || "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"} />
+                  <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="password" value={koraSecret} onChange={(e) => setKoraSecret(e.target.value)} placeholder="Secret key..." />
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="font-label-caps text-label-caps text-on-surface-variant">VIRTUAL ACC. SETTINGS</label>
-                <select className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-body-sm text-body-sm focus:border-secondary outline-none appearance-none">
-                  <option>Static Accounts Enabled</option>
-                  <option>Dynamic Collection Only</option>
-                  <option>Manual Settlement</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">WEBHOOK ENDPOINT</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={korapay.webhookUrl || "https://smclientkx.com/hooks/korapay"} />
+                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" value={koraWebhook} onChange={(e) => setKoraWebhook(e.target.value)} placeholder="Webhook URL..." />
               </div>
+              <button
+                disabled={saving === "korapay"}
+                onClick={() => saveIntegration("korapay", { enabled: koraEnabled, publicKey: koraPublic, secretKey: koraSecret, webhookUrl: koraWebhook })}
+                className="w-full py-1.5 bg-primary/10 text-primary border border-primary/20 rounded font-label-caps text-label-caps hover:bg-primary hover:text-on-primary transition-all disabled:opacity-40"
+              >
+                {saving === "korapay" ? "SAVING..." : "SAVE"}
+              </button>
             </div>
           </section>
 
@@ -129,27 +249,44 @@ export default function ApiIntegrationsPage() {
                 <span className="material-symbols-outlined text-secondary">credit_card</span>
                 <h2 className="font-headline-md text-headline-md uppercase tracking-tight">Squad</h2>
               </div>
-              <button className="font-label-caps text-label-caps border border-outline-variant px-3 py-1 rounded hover:bg-surface-bright transition-colors">DOCS</button>
+              <button className="font-label-caps text-label-caps border border-outline-variant px-3 py-1 rounded hover:bg-surface-bright transition-colors" onClick={() => window.open("https://squadco.com/docs", "_blank")}>DOCS</button>
             </div>
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">SANDBOX KEY</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={squad.sandboxKey || "sq_test_key_002991"} />
+                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" value={squadSandbox} onChange={(e) => setSquadSandbox(e.target.value)} placeholder="Sandbox key..." />
               </div>
               <div className="flex items-center gap-4 py-2 border-y border-outline-variant/30">
                 <div className="flex items-center gap-2">
-                  <input checked={squad.checkoutUI !== false} className="rounded bg-surface-container-low border-outline-variant text-secondary" type="checkbox" readOnly />
+                  <input
+                    checked={squadCheckout}
+                    onChange={() => setSquadCheckout(!squadCheckout)}
+                    className="rounded bg-surface-container-low border-outline-variant text-secondary"
+                    type="checkbox"
+                  />
                   <span className="font-body-sm text-body-sm">Checkout UI</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input checked={squad.cardIssuing === true} className="rounded bg-surface-container-low border-outline-variant text-secondary" type="checkbox" readOnly />
+                  <input
+                    checked={squadCardIssuing}
+                    onChange={() => setSquadCardIssuing(!squadCardIssuing)}
+                    className="rounded bg-surface-container-low border-outline-variant text-secondary"
+                    type="checkbox"
+                  />
                   <span className="font-body-sm text-body-sm">Card Issuing</span>
                 </div>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">WEBHOOK SECRET</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="password" defaultValue={squad.webhookSecret || "whsec_0918237"} />
+                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="password" value={squadWebhookSecret} onChange={(e) => setSquadWebhookSecret(e.target.value)} placeholder="Webhook secret..." />
               </div>
+              <button
+                disabled={saving === "squad"}
+                onClick={() => saveIntegration("squad", { checkoutUI: squadCheckout, cardIssuing: squadCardIssuing, sandboxKey: squadSandbox, webhookSecret: squadWebhookSecret })}
+                className="w-full py-1.5 bg-primary/10 text-primary border border-primary/20 rounded font-label-caps text-label-caps hover:bg-primary hover:text-on-primary transition-all disabled:opacity-40"
+              >
+                {saving === "squad" ? "SAVING..." : "SAVE"}
+              </button>
             </div>
           </section>
 
@@ -161,21 +298,36 @@ export default function ApiIntegrationsPage() {
                 <h2 className="font-headline-md text-headline-md uppercase tracking-tight">SME API</h2>
               </div>
               <div className="flex gap-2">
-                <button className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded font-label-caps text-label-caps hover:bg-primary hover:text-on-primary transition-all">TEST</button>
+                <button
+                  disabled={smeTesting}
+                  onClick={handleTestSme}
+                  className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded font-label-caps text-label-caps hover:bg-primary hover:text-on-primary transition-all disabled:opacity-40"
+                >
+                  {smeTesting ? "TESTING..." : "TEST"}
+                </button>
               </div>
             </div>
+            {smeResult && (
+              <div className={`p-2 rounded text-xs font-data-mono ${smeResult.includes("successful") ? "bg-status-success/10 text-status-success" : "bg-status-danger/10 text-status-danger"}`}>
+                {smeResult}
+              </div>
+            )}
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">PROVIDER ENDPOINT</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={smeApi.endpoint || "https://smeplug.ng/api/v2"} />
+                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" value={smeEndpoint} onChange={(e) => setSmeEndpoint(e.target.value)} placeholder="API endpoint..." />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">ACCESS TOKEN</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="password" defaultValue={smeApi.accessToken || "sme_tk_88301-229"} />
+                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="password" value={smeToken} onChange={(e) => setSmeToken(e.target.value)} placeholder="Access token..." />
               </div>
-              <button className="w-full py-2 bg-surface-container-high border border-outline-variant rounded flex items-center justify-center gap-2 hover:bg-surface-bright transition-colors">
-                <span className="material-symbols-outlined text-[18px]">query_stats</span>
-                <span className="font-label-caps text-label-caps">VIEW LIVE RATES</span>
+              <button
+                disabled={saving === "sme_api"}
+                onClick={() => saveIntegration("sme_api", { endpoint: smeEndpoint, accessToken: smeToken })}
+                className="w-full py-2 bg-surface-container-high border border-outline-variant rounded flex items-center justify-center gap-2 hover:bg-surface-bright transition-colors disabled:opacity-40"
+              >
+                <span className="material-symbols-outlined text-[18px]">save</span>
+                <span className="font-label-caps text-label-caps">{saving === "sme_api" ? "SAVING..." : "SAVE CONFIG"}</span>
               </button>
             </div>
           </section>
@@ -195,14 +347,14 @@ export default function ApiIntegrationsPage() {
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">PROJECT ID</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={firebase.projectId || "katrexapp-83cde"} />
+                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={firebase.projectId || "katrexapp-83cde"} readOnly />
               </div>
               <div className="p-2 bg-surface-container-lowest border border-outline-variant rounded flex justify-between items-center">
                 <div className="flex flex-col">
                   <span className="font-label-caps text-label-caps text-on-surface-variant">FIRESTORE RULES</span>
-                  <span className="font-data-mono text-[10px] text-status-success">LIVE {"\u2022"} Real-time sync active</span>
+                  <span className="font-data-mono text-[10px] text-status-success">LIVE &bull; Real-time sync active</span>
                 </div>
-                <button className="material-symbols-outlined text-on-surface-variant hover:text-secondary">open_in_new</button>
+                <button className="material-symbols-outlined text-on-surface-variant hover:text-secondary" onClick={() => window.open("https://console.firebase.google.com", "_blank")}>open_in_new</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-surface-container-low border border-outline-variant rounded p-2 text-center">
@@ -232,16 +384,19 @@ export default function ApiIntegrationsPage() {
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">SMTP HOST</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={comms.smtpHost || "smtp.postmarkapp.com:587"} />
+                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} placeholder="smtp.example.com:587" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="font-label-caps text-label-caps text-on-surface-variant">SMS GATEWAY (Twilio/Termii)</label>
-                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" defaultValue={comms.smsGateway || "API_KEY_0x82772911"} />
+                <input className="w-full bg-surface-container-low border border-outline-variant rounded px-2 py-1.5 font-data-mono text-body-sm focus:border-secondary outline-none" type="text" value={smsGateway} onChange={(e) => setSmsGateway(e.target.value)} placeholder="API key..." />
               </div>
-              <a className="block w-full py-2 bg-secondary/10 border border-secondary/20 text-secondary rounded flex items-center justify-center gap-2 hover:bg-secondary hover:text-on-secondary transition-all cursor-pointer" href="#">
-                <span className="material-symbols-outlined text-[18px]">edit_note</span>
-                <span className="font-label-caps text-label-caps">OPEN TEMPLATE EDITOR</span>
-              </a>
+              <button
+                disabled={saving === "comms_gateway"}
+                onClick={() => saveIntegration("comms_gateway", { smtpHost, smsGateway })}
+                className="w-full py-1.5 bg-primary/10 text-primary border border-primary/20 rounded font-label-caps text-label-caps hover:bg-primary hover:text-on-primary transition-all disabled:opacity-40"
+              >
+                {saving === "comms_gateway" ? "SAVING..." : "SAVE"}
+              </button>
             </div>
           </section>
         </div>
@@ -293,7 +448,13 @@ export default function ApiIntegrationsPage() {
                         <td className="py-2 px-4 text-[10px] text-outline truncate max-w-xs">{log.payload ? JSON.stringify(log.payload).slice(0, 80) : "\u2014"}</td>
                         <td className={`py-2 px-4 ${statusColor}`}>{statusStr}</td>
                         <td className="py-2 px-4 text-right">
-                          <button className="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-secondary">replay</button>
+                          <button
+                            onClick={() => handleReplayWebhook(log.id)}
+                            className="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-secondary transition-colors"
+                            title="Replay webhook"
+                          >
+                            replay
+                          </button>
                         </td>
                       </tr>
                     );

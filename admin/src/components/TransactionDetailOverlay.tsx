@@ -1,186 +1,285 @@
 "use client";
 
 import { useState } from "react";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/lib/firebase";
+import { updateDocument } from "@/hooks/useFirestore";
 
-export default function TransactionDetailOverlay() {
-  const [open, setOpen] = useState(false);
+interface Props {
+  transaction: any;
+  onClose: () => void;
+}
+
+function formatDate(date: any) {
+  if (!date) return "\u2014";
+  const d = date?.toDate ? date.toDate() : new Date(date);
+  return d.toLocaleString("en-GB", {
+    year: "numeric", month: "short", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+}
+
+const STATUS_STYLES: Record<string, { bg: string; label: string }> = {
+  completed: { bg: "bg-status-success/10 text-status-success", label: "SUCCESS" },
+  pending: { bg: "bg-status-warning/10 text-status-warning", label: "PENDING" },
+  failed: { bg: "bg-status-danger/10 text-status-danger", label: "FAILED" },
+  flagged: { bg: "bg-status-danger/10 text-status-danger", label: "FLAGGED" },
+  processing: { bg: "bg-status-info/10 text-status-info", label: "PROCESSING" },
+};
+
+const TYPE_LABELS: Record<string, { icon: string; label: string }> = {
+  deposit: { icon: "account_balance_wallet", label: "Deposit" },
+  withdrawal: { icon: "account_balance_wallet", label: "Withdrawal" },
+  send: { icon: "send", label: "Crypto Send" },
+  crypto: { icon: "currency_bitcoin", label: "Crypto" },
+  airtime: { icon: "settings_cell", label: "Airtime" },
+  data: { icon: "settings_cell", label: "Data" },
+  giftcard: { icon: "redeem", label: "Gift Card" },
+  p2p: { icon: "swap_horizontal_circle", label: "P2P Trade" },
+  swap: { icon: "swap_horiz", label: "Swap" },
+};
+
+export default function TransactionDetailOverlay({ transaction: tx, onClose }: Props) {
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const statusStyle = STATUS_STYLES[tx.status] || { bg: "bg-surface-container-high text-on-surface-variant", label: tx.status?.toUpperCase() || "UNKNOWN" };
+  const typeMeta = TYPE_LABELS[tx.type] || TYPE_LABELS[tx.paymentMethod] || { icon: "receipt_long", label: tx.type || tx.paymentMethod || "Unknown" };
+  const amount = tx.amountNaira
+    ? `\u20a6${tx.amountNaira.toLocaleString()}`
+    : tx.amountCoin
+    ? `${tx.amountCoin} ${tx.coinSymbol || ""}`
+    : "\u2014";
+
+  function flash(type: "success" | "error", text: string) {
+    setActionMsg({ type, text });
+    setTimeout(() => setActionMsg(null), 4000);
+  }
+
+  // Flag as suspicious
+  const handleFlag = async () => {
+    setActionLoading(true);
+    try {
+      await updateDocument("transactions", tx.id, {
+        status: "flagged",
+        flaggedAt: new Date(),
+      });
+      flash("success", "Transaction flagged as suspicious");
+    } catch (e: any) {
+      flash("error", e.message || "Failed to flag transaction");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Reverse/refund — only for withdrawals and sends
+  const handleReverse = async () => {
+    if (tx.type !== "withdrawal" && tx.type !== "send") {
+      flash("error", "Only withdrawal/send transactions can be reversed");
+      return;
+    }
+    if (tx.status !== "completed" && tx.status !== "pending") {
+      flash("error", "Only completed or pending transactions can be reversed");
+      return;
+    }
+    if (!confirm("Reverse this transaction and refund the user?")) return;
+    setActionLoading(true);
+    try {
+      const adminApi = httpsCallable(functions, "adminApi");
+      await adminApi({
+        action: "processWithdrawal",
+        txId: tx.id,
+        withdrawalAction: "reject", // reject = refund the user
+      });
+      flash("success", "Transaction reversed. Funds refunded to user.");
+    } catch (e: any) {
+      flash("error", e.message || "Failed to reverse transaction");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Build timeline from available dates
+  const timeline: { label: string; date: any; icon: string; color: string }[] = [];
+  if (tx.createdAt) timeline.push({ label: "Initiated", date: tx.createdAt, icon: "person", color: "bg-outline-variant" });
+  if (tx.completedAt) timeline.push({ label: "Completed", date: tx.completedAt, icon: "check", color: "bg-status-success" });
+  if (tx.failedAt) timeline.push({ label: "Failed", date: tx.failedAt, icon: "close", color: "bg-status-danger" });
+  if (tx.flaggedAt) timeline.push({ label: "Flagged", date: tx.flaggedAt, icon: "flag", color: "bg-status-danger" });
+  if (tx.processedBy) timeline.push({ label: `Processed by admin`, date: null, icon: "admin_panel_settings", color: "bg-secondary" });
+  // Sort newest first
+  timeline.sort((a, b) => {
+    const da = a.date?.toDate ? a.date.toDate() : a.date ? new Date(a.date) : new Date(0);
+    const db = b.date?.toDate ? b.date.toDate() : b.date ? new Date(b.date) : new Date(0);
+    return db.getTime() - da.getTime();
+  });
 
   return (
     <>
-      {/* Hidden trigger - rows can call this via context in future */}
+      {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-[60] bg-surface-deep/80 backdrop-blur-sm ${
-          open ? "flex" : "hidden"
-        } items-center justify-center p-4`}
-        onClick={() => setOpen(false)}
+        className="fixed inset-0 z-[60] bg-surface-deep/80 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={onClose}
       >
         <div
-          className="w-full max-w-4xl bg-surface-container border border-subtle shadow-2xl rounded-xl overflow-hidden flex flex-col md:flex-row h-[751px]"
+          className="w-full max-w-4xl bg-surface-container border border-subtle shadow-2xl rounded-xl overflow-hidden flex flex-col md:flex-row max-h-[85vh]"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Transaction Core Details (Left Panel) */}
+          {/* Left Panel — Transaction Details */}
           <div className="flex-1 p-5 border-r border-subtle overflow-y-auto">
+            {/* Header */}
             <div className="flex justify-between items-start mb-6">
               <div>
-                <span className="font-label-caps text-label-caps text-secondary">
-                  TRANSACTION ID
-                </span>
-                <h3 className="font-headline-md text-headline-md">#KTX-98214</h3>
+                <span className="font-label-caps text-label-caps text-secondary">TRANSACTION ID</span>
+                <h3 className="font-headline-md text-headline-md text-on-surface">
+                  #{tx.reference || tx.id?.slice(0, 16)}
+                </h3>
               </div>
-              <span className="bg-status-success/10 text-status-success px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest">
-                SUCCESS
+              <span className={`${statusStyle.bg} px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest`}>
+                {statusStyle.label}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-max-gap mb-8">
+
+            {/* Action message toast */}
+            {actionMsg && (
+              <div className={`mb-4 px-3 py-2 rounded-lg text-body-sm font-medium ${
+                actionMsg.type === "success" ? "bg-status-success/10 text-status-success" : "bg-status-danger/10 text-status-danger"
+              }`}>
+                {actionMsg.text}
+              </div>
+            )}
+
+            {/* Core details grid */}
+            <div className="grid grid-cols-2 gap-max-gap mb-6">
               <div className="space-y-4">
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">
-                    SENDER
-                  </p>
-                  <p className="font-body-md font-bold">John Doe</p>
-                  <p className="text-body-sm text-on-primary-container">
-                    ID: U-88219-X
-                  </p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">USER (UID)</p>
+                  <p className="font-data-mono text-body-sm text-on-surface break-all">{tx.uid || "\u2014"}</p>
                 </div>
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">
-                    RECIPIENT DETAILS
-                  </p>
-                  <p className="font-data-mono text-body-sm bg-surface-deep p-2 rounded border border-outline-variant">
-                    1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">TYPE</p>
+                  <p className="font-body-md flex items-center gap-2 text-on-surface">
+                    <span className={`material-symbols-outlined text-[18px] ${
+                      typeMeta.icon === "currency_bitcoin" ? "text-primary" :
+                      typeMeta.icon === "send" || typeMeta.icon === "account_balance_wallet" ? "text-status-danger" :
+                      "text-secondary"
+                    }`}>{typeMeta.icon}</span>
+                    {typeMeta.label}
                   </p>
                 </div>
+                {tx.description && (
+                  <div>
+                    <p className="font-label-caps text-label-caps text-on-surface-variant">DESCRIPTION</p>
+                    <p className="text-body-sm text-on-surface">{tx.description}</p>
+                  </div>
+                )}
+                {tx.paymentMethod && (
+                  <div>
+                    <p className="font-label-caps text-label-caps text-on-surface-variant">PAYMENT METHOD</p>
+                    <p className="text-body-sm text-on-surface capitalize">{tx.paymentMethod}</p>
+                  </div>
+                )}
               </div>
               <div className="space-y-4">
                 <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">
-                    ASSET TYPE
-                  </p>
-                  <p className="font-body-md flex items-center gap-2">
-                    <span className="material-symbols-outlined text-secondary">
-                      currency_bitcoin
-                    </span>{" "}
-                    Bitcoin (BTC)
-                  </p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">AMOUNT</p>
+                  <p className="font-data-mono text-headline-md text-on-surface">{amount}</p>
+                  {tx.fee > 0 && (
+                    <p className="text-[10px] text-on-surface-variant">
+                      Fee: {"\u20a6"}{tx.fee.toLocaleString()}
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">
-                    AMOUNT &amp; FEES
-                  </p>
-                  <p className="font-data-mono text-headline-md text-on-surface">
-                    0.024 BTC
-                  </p>
-                  <p className="text-[10px] text-on-primary-container">
-                    Fee: 0.00012 BTC ($5.42)
-                  </p>
-                </div>
+                {tx.coinSymbol && (
+                  <div>
+                    <p className="font-label-caps text-label-caps text-on-surface-variant">CRYPTO AMOUNT</p>
+                    <p className="font-data-mono text-body-sm text-on-surface">
+                      {tx.amountCoin || "\u2014"} {tx.coinSymbol}
+                    </p>
+                  </div>
+                )}
+                {tx.cardBrand && (
+                  <div>
+                    <p className="font-label-caps text-label-caps text-on-surface-variant">CARD BRAND</p>
+                    <p className="text-body-sm text-on-surface">{tx.cardBrand}</p>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="bg-surface-deep/50 p-4 rounded-lg border border-outline-variant">
-              <h4 className="font-label-caps text-label-caps text-secondary mb-4">
-                BLOCKCHAIN EXPLORER DATA
-              </h4>
-              <div className="space-y-2 font-data-mono text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Hash:</span>
-                  <span className="text-primary truncate ml-4">
-                    f4184fc596403b9d638783cf57...
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Confirmations:</span>
-                  <span>12 Blocks</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Network:</span>
-                  <span>Mainnet</span>
+
+            {/* Blockchain / reference data */}
+            {(tx.txHash || tx.reference) && (
+              <div className="bg-surface-deep/50 p-4 rounded-lg border border-outline-variant mb-6">
+                <h4 className="font-label-caps text-label-caps text-secondary mb-3">REFERENCE DATA</h4>
+                <div className="space-y-2 font-data-mono text-[11px]">
+                  {tx.txHash && (
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Hash:</span>
+                      <span className="text-primary truncate ml-4 max-w-[200px]" title={tx.txHash}>{tx.txHash}</span>
+                    </div>
+                  )}
+                  {tx.reference && (
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Reference:</span>
+                      <span className="text-on-surface">{tx.reference}</span>
+                    </div>
+                  )}
+                  {tx.confirmations !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Confirmations:</span>
+                      <span className="text-on-surface">{tx.confirmations}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-            {/* Detail View Actions */}
-            <div className="mt-8 flex flex-wrap gap-2">
-              <button className="flex-1 bg-status-danger text-white py-2 rounded font-label-caps text-label-caps hover:bg-red-600 transition-colors">
-                FLAG SUSPICIOUS
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleFlag}
+                disabled={actionLoading || tx.status === "flagged"}
+                className="flex-1 bg-status-danger text-white py-2 rounded font-label-caps text-label-caps hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {tx.status === "flagged" ? "ALREADY FLAGGED" : "FLAG SUSPICIOUS"}
               </button>
-              <button className="flex-1 bg-surface-bright border border-subtle py-2 rounded font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">
+              <button
+                onClick={handleReverse}
+                disabled={actionLoading || (tx.type !== "withdrawal" && tx.type !== "send")}
+                className="flex-1 bg-surface-bright border border-subtle py-2 rounded font-label-caps text-label-caps hover:bg-surface-container-high transition-colors text-on-surface disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 REVERSE / REFUND
               </button>
             </div>
           </div>
 
-          {/* Transaction Timeline (Right Panel) */}
+          {/* Right Panel — Activity Timeline */}
           <div className="w-full md:w-80 bg-surface-container-low p-5 flex flex-col relative">
             <div className="flex justify-between items-center mb-6">
-              <h4 className="font-label-caps text-label-caps text-on-primary-container">
-                ACTIVITY LOG
-              </h4>
+              <h4 className="font-label-caps text-label-caps text-on-primary-container">ACTIVITY LOG</h4>
               <button
                 className="p-1 hover:bg-surface-bright rounded"
-                onClick={() => setOpen(false)}
+                onClick={onClose}
               >
-                <span className="material-symbols-outlined">close</span>
+                <span className="material-symbols-outlined text-on-surface-variant">close</span>
               </button>
             </div>
             <div className="flex-1 relative">
-              {/* Vertical Timeline Line */}
+              {/* Vertical line */}
               <div className="absolute left-2.5 top-0 bottom-0 w-[1px] bg-outline-variant"></div>
               <div className="space-y-6">
-                <div className="relative pl-8">
-                  <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-status-success flex items-center justify-center">
-                    <span
-                      className="material-symbols-outlined text-[12px] text-white"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      check
-                    </span>
+                {timeline.length === 0 && (
+                  <p className="text-[11px] text-on-surface-variant pl-8">No activity recorded</p>
+                )}
+                {timeline.map((item, i) => (
+                  <div key={i} className="relative pl-8">
+                    <div className={`absolute left-0 top-1 w-5 h-5 rounded-full ${item.color} flex items-center justify-center`}>
+                      <span className="material-symbols-outlined text-[12px] text-white">{item.icon}</span>
+                    </div>
+                    <p className="text-[11px] font-bold text-on-surface">{item.label}</p>
+                    <p className="text-[10px] text-on-surface-variant">{formatDate(item.date)}</p>
                   </div>
-                  <p className="text-[11px] font-bold">Transaction Completed</p>
-                  <p className="text-[10px] text-on-surface-variant">
-                    Oct 27, 2023 &bull; 14:22:10
-                  </p>
-                </div>
-                <div className="relative pl-8">
-                  <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-secondary flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[12px] text-on-secondary-fixed">
-                      sync
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-bold">Network Broadcast</p>
-                  <p className="text-[10px] text-on-surface-variant">
-                    Oct 27, 2023 &bull; 14:20:45
-                  </p>
-                </div>
-                <div className="relative pl-8">
-                  <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-outline-variant flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[12px]">
-                      person
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-bold">Initiated by User</p>
-                  <p className="text-[10px] text-on-surface-variant">
-                    Oct 27, 2023 &bull; 14:18:02
-                  </p>
-                  <p className="text-[9px] mt-1 italic text-on-primary-container">
-                    IP: 192.168.1.44 (Lagos, NG)
-                  </p>
-                </div>
-                <div className="relative pl-8">
-                  <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-status-info flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[12px] text-white">
-                      security
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-bold">Security Check Passed</p>
-                  <p className="text-[10px] text-on-surface-variant">
-                    Oct 27, 2023 &bull; 14:18:00
-                  </p>
-                </div>
+                ))}
               </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-subtle">
-              <button className="w-full bg-surface-container-highest py-2 border border-outline-variant rounded font-label-caps text-label-caps hover:bg-surface-bright transition-colors">
-                VIEW FULL AUDIT TRAIL
-              </button>
             </div>
           </div>
         </div>

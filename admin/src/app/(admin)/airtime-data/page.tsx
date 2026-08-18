@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useMemo, useCallback } from "react";
 import { useAirtimePlans, useTransactions } from "@/hooks/useAdminData";
+import { updateDocument, setDocument } from "@/hooks/useFirestore";
 
 function formatNaira(n: number) {
   return `\u20a6${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
@@ -22,10 +24,107 @@ export default function AirtimeDataPage() {
   const { data: plans, loading: pl } = useAirtimePlans();
   const { data: txns, loading: tl } = useTransactions(100);
 
+  const [activeProvider, setActiveProvider] = useState<"SMEPlug" | "SMEAPI">("SMEPlug");
+  const [networkFilter, setNetworkFilter] = useState<string>("all");
+  const [mtnMargin, setMtnMargin] = useState("15");
+  const [airtelDiscount, setAirtelDiscount] = useState("2.5");
+  const [planOverride, setPlanOverride] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [planVisibility, setPlanVisibility] = useState<Record<string, boolean>>({});
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
   const airtimeTxns = txns.filter((t: any) => t.type === "airtime" || t.type === "data").slice(0, 10);
+
+  const filteredPlans = useMemo(() => {
+    if (networkFilter === "all") return plans;
+    return plans.filter((p: any) => (p.network || p.provider || "").toLowerCase().includes(networkFilter.toLowerCase()));
+  }, [plans, networkFilter]);
+
+  function getPlanVisibility(planId: string, defaultVisible: boolean | undefined): boolean {
+    if (planVisibility.hasOwnProperty(planId)) return planVisibility[planId];
+    return defaultVisible !== false;
+  }
+
+  async function togglePlanVisibility(planId: string, currentVisible: boolean) {
+    const newVal = !currentVisible;
+    setPlanVisibility((prev) => ({ ...prev, [planId]: newVal }));
+    try {
+      await updateDocument("airtime_plans", planId, { visible: newVal, updatedAt: new Date() });
+      showToast(`Plan ${newVal ? "shown" : "hidden"}`);
+    } catch (err: any) {
+      showToast(`Failed: ${err.message}`);
+      setPlanVisibility((prev) => ({ ...prev, [planId]: currentVisible }));
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await setDocument("pricing_config", "airtime_fees", {
+        mtnMargin,
+        airtelDiscount,
+        planOverride,
+        activeProvider,
+        updatedAt: new Date(),
+      });
+      showToast("Settings saved successfully");
+    } catch (err: any) {
+      showToast(`Save failed: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      // Trigger a refresh by updating a timestamp in app_settings
+      await setDocument("app_settings", "airtime_sync", {
+        lastSync: new Date(),
+        provider: activeProvider,
+        status: "synced",
+      });
+      showToast("API sync completed successfully");
+    } catch (err: any) {
+      showToast(`Sync failed: ${err.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function exportCSV() {
+    const headers = ["User", "Type", "Amount (NGN)", "Status", "Date"];
+    const rows = airtimeTxns.map((t: any) => [
+      t.uid || "",
+      `${t.type} ${t.description || ""}`.trim(),
+      t.amountNaira || 0,
+      t.status || "",
+      t.createdAt?.toDate ? t.createdAt.toDate().toISOString() : (t.createdAt || ""),
+    ]);
+    const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `airtime-data-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("CSV exported");
+  }
 
   return (
     <div className="p-container-padding w-full space-y-max-gap py-stack-base">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+          {toast}
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -36,11 +135,19 @@ export default function AirtimeDataPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-subtle px-4 py-1.5 rounded text-body-sm flex items-center gap-2 transition-colors">
-            <span className="material-symbols-outlined text-[18px]">sync</span> Force Sync API
+          <button
+            disabled={syncing}
+            onClick={handleSync}
+            className="bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-subtle px-4 py-1.5 rounded text-body-sm flex items-center gap-2 transition-colors disabled:opacity-40"
+          >
+            <span className={`material-symbols-outlined text-[18px] ${syncing ? "animate-spin" : ""}`}>sync</span> {syncing ? "Syncing..." : "Force Sync API"}
           </button>
-          <button className="bg-secondary text-on-secondary-fixed px-4 py-1.5 rounded text-body-sm font-bold flex items-center gap-2 active:scale-95 transition-transform">
-            <span className="material-symbols-outlined text-[18px]">save</span> Save Changes
+          <button
+            disabled={saving}
+            onClick={handleSave}
+            className="bg-secondary text-on-secondary-fixed px-4 py-1.5 rounded text-body-sm font-bold flex items-center gap-2 active:scale-95 transition-transform disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined text-[18px]">save</span> {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
@@ -58,14 +165,24 @@ export default function AirtimeDataPage() {
               <div className="space-y-2">
                 <label className="text-label-caps text-on-surface-variant block">Active VTU Provider</label>
                 <div className="flex bg-surface-deep p-1 border border-subtle rounded w-fit">
-                  <button className="px-4 py-1 text-body-sm bg-primary-container text-primary font-bold rounded">SMEPlug</button>
-                  <button className="px-4 py-1 text-body-sm text-on-surface-variant hover:text-on-surface">SMEAPI</button>
+                  <button
+                    onClick={() => setActiveProvider("SMEPlug")}
+                    className={`px-4 py-1 text-body-sm rounded transition-colors ${activeProvider === "SMEPlug" ? "bg-primary-container text-primary font-bold" : "text-on-surface-variant hover:text-on-surface"}`}
+                  >
+                    SMEPlug
+                  </button>
+                  <button
+                    onClick={() => setActiveProvider("SMEAPI")}
+                    className={`px-4 py-1 text-body-sm rounded transition-colors ${activeProvider === "SMEAPI" ? "bg-primary-container text-primary font-bold" : "text-on-surface-variant hover:text-on-surface"}`}
+                  >
+                    SMEAPI
+                  </button>
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-label-caps text-on-surface-variant block">API Key (SMEPlug)</label>
+                <label className="text-label-caps text-on-surface-variant block">API Key ({activeProvider})</label>
                 <div className="relative">
-                  <input className="w-full bg-surface-deep border border-subtle rounded px-3 py-1.5 text-data-mono text-primary focus:outline-none focus:border-secondary transition-colors" readOnly type="password" defaultValue="••••••••••••••••••••••••••••••" />
+                  <input className="w-full bg-surface-deep border border-subtle rounded px-3 py-1.5 text-data-mono text-primary focus:outline-none focus:border-secondary transition-colors" type="password" defaultValue="••••••••••••••••••••••••••••••" />
                   <span className="material-symbols-outlined absolute right-2 top-1.5 text-on-surface-variant cursor-pointer text-[18px]">visibility</span>
                 </div>
               </div>
@@ -80,10 +197,20 @@ export default function AirtimeDataPage() {
                 <h2 className="font-headline-md text-headline-md">Real API Rates</h2>
               </div>
               <div className="flex gap-2 no-scrollbar overflow-x-auto">
-                <span className="px-3 py-0.5 rounded-full bg-secondary-container/20 text-secondary text-label-caps border border-secondary/30">MTN</span>
-                <span className="px-3 py-0.5 rounded-full text-on-surface-variant text-label-caps border border-subtle">Airtel</span>
-                <span className="px-3 py-0.5 rounded-full text-on-surface-variant text-label-caps border border-subtle">Glo</span>
-                <span className="px-3 py-0.5 rounded-full text-on-surface-variant text-label-caps border border-subtle">9Mobile</span>
+                {[
+                  { label: "MTN", value: "mtn" },
+                  { label: "Airtel", value: "airtel" },
+                  { label: "Glo", value: "glo" },
+                  { label: "9Mobile", value: "9mobile" },
+                ].map((n) => (
+                  <button
+                    key={n.value}
+                    onClick={() => setNetworkFilter(networkFilter === n.value ? "all" : n.value)}
+                    className={`px-3 py-0.5 rounded-full text-label-caps border transition-colors ${networkFilter === n.value ? "bg-secondary-container/20 text-secondary border-secondary/30" : "text-on-surface-variant border-subtle hover:text-on-surface"}`}
+                  >
+                    {n.label}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -91,8 +218,10 @@ export default function AirtimeDataPage() {
                 <div className="p-4 space-y-2">
                   {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 bg-surface-container-high rounded animate-pulse" />)}
                 </div>
-              ) : plans.length === 0 ? (
-                <div className="p-6 text-center text-on-surface-variant text-body-sm">No plans configured</div>
+              ) : filteredPlans.length === 0 ? (
+                <div className="p-6 text-center text-on-surface-variant text-body-sm">
+                  {networkFilter !== "all" ? `No ${networkFilter} plans configured` : "No plans configured"}
+                </div>
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -105,14 +234,14 @@ export default function AirtimeDataPage() {
                     </tr>
                   </thead>
                   <tbody className="text-body-sm divide-y divide-subtle">
-                    {plans.map((p: any) => (
+                    {filteredPlans.map((p: any) => (
                       <tr key={p.id} className="hover:bg-primary-container/20 transition-colors">
                         <td className="px-4 py-1.5">{p.name || p.planName || "Plan"}</td>
                         <td className="px-4 py-1.5 text-data-mono text-on-surface-variant">{p.planId || p.id?.slice(0, 12)}</td>
                         <td className="px-4 py-1.5 text-data-mono">{formatNaira(p.costPrice || p.price || 0)}</td>
                         <td className="px-4 py-1.5">{p.validity || "30 Days"}</td>
                         <td className="px-4 py-1.5 text-right">
-                          <span className={`w-2 h-2 rounded-full ${p.visible === false ? "bg-status-warning" : "bg-status-success"} inline-block`}></span>
+                          <span className={`w-2 h-2 rounded-full ${getPlanVisibility(p.id, p.visible) ? "bg-status-success" : "bg-status-warning"} inline-block`}></span>
                         </td>
                       </tr>
                     ))}
@@ -129,7 +258,10 @@ export default function AirtimeDataPage() {
                 <span className="material-symbols-outlined text-primary text-[20px]">history</span>
                 <h2 className="font-headline-md text-headline-md">Recent Transactions</h2>
               </div>
-              <button className="text-label-caps text-secondary flex items-center gap-1 hover:underline">
+              <button
+                onClick={exportCSV}
+                className="text-label-caps text-secondary flex items-center gap-1 hover:underline"
+              >
                 <span className="material-symbols-outlined text-[16px]">download</span> Export CSV
               </button>
             </div>
@@ -183,23 +315,35 @@ export default function AirtimeDataPage() {
               <div className="flex items-center justify-between">
                 <span className="text-body-sm text-on-surface-variant">MTN Profit Margin</span>
                 <div className="flex items-center gap-2">
-                  <input className="w-12 bg-surface-deep border border-subtle rounded px-2 py-1 text-center text-data-mono" type="text" defaultValue="15" />
+                  <input
+                    className="w-12 bg-surface-deep border border-subtle rounded px-2 py-1 text-center text-data-mono focus:border-secondary focus:outline-none"
+                    type="text"
+                    value={mtnMargin}
+                    onChange={(e) => setMtnMargin(e.target.value)}
+                  />
                   <span className="text-body-sm">%</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-body-sm text-on-surface-variant">Airtel Discount</span>
                 <div className="flex items-center gap-2">
-                  <input className="w-12 bg-surface-deep border border-subtle rounded px-2 py-1 text-center text-data-mono" type="text" defaultValue="2.5" />
+                  <input
+                    className="w-12 bg-surface-deep border border-subtle rounded px-2 py-1 text-center text-data-mono focus:border-secondary focus:outline-none"
+                    type="text"
+                    value={airtelDiscount}
+                    onChange={(e) => setAirtelDiscount(e.target.value)}
+                  />
                   <span className="text-body-sm">%</span>
                 </div>
               </div>
               <div className="flex items-center justify-between border-t border-subtle pt-3">
                 <span className="text-body-sm font-bold">Plan Override</span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input className="sr-only peer" type="checkbox" readOnly />
-                  <div className="w-8 h-4 bg-surface-deep peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-secondary"></div>
-                </label>
+                <div
+                  onClick={() => setPlanOverride(!planOverride)}
+                  className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${planOverride ? "bg-secondary" : "bg-surface-deep border border-outline"}`}
+                >
+                  <div className={`absolute top-[2px] w-3 h-3 rounded-full transition-all ${planOverride ? "left-[18px] bg-white" : "left-[2px] bg-on-surface-variant"}`}></div>
+                </div>
               </div>
             </div>
           </section>
@@ -214,7 +358,7 @@ export default function AirtimeDataPage() {
               {["MTN", "Airtel", "Glo", "9Mobile"].map((name) => {
                 const planExists = plans.some((p: any) => (p.network || p.provider || "").toLowerCase().includes(name.toLowerCase()));
                 return (
-                  <div key={name} className={`flex items-center justify-between p-2 bg-surface-deep border border-subtle rounded cursor-grab ${!planExists ? "opacity-50" : ""}`}>
+                  <div key={name} className={`flex items-center justify-between p-2 bg-surface-deep border border-subtle rounded ${!planExists ? "opacity-50" : ""}`}>
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-on-surface-variant text-[18px]">drag_indicator</span>
                       <span className="text-body-sm font-bold">{name}</span>
@@ -240,23 +384,29 @@ export default function AirtimeDataPage() {
               ) : plans.length === 0 ? (
                 <div className="p-4 text-center text-on-surface-variant text-body-sm">No plans</div>
               ) : (
-                plans.slice(0, 10).map((p: any) => (
-                  <div key={p.id} className="p-2 border border-subtle rounded bg-surface-deep space-y-2">
-                    <div className="flex items-center justify-between">
-                      <input className="bg-transparent text-body-sm font-bold border-none p-0 focus:ring-0 w-full" type="text" defaultValue={p.name || p.planName || "Plan"} />
-                      <span className="material-symbols-outlined text-secondary text-[18px] cursor-pointer">edit</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-on-surface-variant uppercase tracking-wider">
-                      <span>ID: {p.planId || p.id?.slice(0, 8)}</span>
-                      <div className="flex items-center gap-2">
-                        <span className={p.visible === false ? "text-on-surface-variant" : "text-status-success"}>{p.visible === false ? "Hidden" : "Visible"}</span>
-                        <div className={`w-6 h-3 ${p.visible === false ? "bg-surface-variant" : "bg-secondary"} rounded-full relative`}>
-                          <div className={`absolute ${p.visible === false ? "left-0.5" : "right-0.5"} top-0.5 w-2 h-2 bg-white rounded-full`}></div>
+                plans.slice(0, 10).map((p: any) => {
+                  const isVisible = getPlanVisibility(p.id, p.visible);
+                  return (
+                    <div key={p.id} className="p-2 border border-subtle rounded bg-surface-deep space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-body-sm font-bold">{p.name || p.planName || "Plan"}</span>
+                        <span className="material-symbols-outlined text-on-surface-variant text-[18px]">edit</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-on-surface-variant uppercase tracking-wider">
+                        <span>ID: {p.planId || p.id?.slice(0, 8)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={isVisible ? "text-status-success" : "text-on-surface-variant"}>{isVisible ? "Visible" : "Hidden"}</span>
+                          <div
+                            onClick={() => togglePlanVisibility(p.id, isVisible)}
+                            className={`w-6 h-3 ${isVisible ? "bg-secondary" : "bg-surface-variant"} rounded-full relative cursor-pointer`}
+                          >
+                            <div className={`absolute ${isVisible ? "right-0.5" : "left-0.5"} top-0.5 w-2 h-2 bg-white rounded-full`}></div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </section>

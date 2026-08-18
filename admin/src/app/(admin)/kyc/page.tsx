@@ -1,6 +1,9 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { useKycQueue, useUsers } from "@/hooks/useAdminData";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { getApps } from "firebase/app";
 
 function timeAgo(date: any) {
   if (!date) return "";
@@ -21,6 +24,16 @@ function formatTimestamp(date: any) {
 export default function KycPage() {
   const { data: pendingKyc, loading } = useKycQueue();
   const { data: allUsers } = useUsers(1000);
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ uid: string; name: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [docViewer, setDocViewer] = useState<{ url: string; name: string } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   const verifiedUsers = allUsers.filter((u: any) => u.kycStatus === "verified" || u.kycStatus === "completed");
   const rejectedUsers = allUsers.filter((u: any) => u.kycStatus === "rejected");
@@ -30,8 +43,67 @@ export default function KycPage() {
     .filter((u: any) => u.kycStatus === "verified" || u.kycStatus === "rejected" || u.kycStatus === "completed")
     .slice(0, 10);
 
+  async function handleApprove(uid: string) {
+    setProcessing(uid);
+    try {
+      const functions = getFunctions(getApps()[0], "us-central1");
+      const adminApi = httpsCallable(functions, "adminApi");
+      await adminApi({ action: "reviewKyc", uid, decision: "approve" });
+      showToast("KYC approved successfully");
+    } catch (err: any) {
+      showToast(`Approval failed: ${err.message}`);
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  async function handleReject() {
+    if (!rejectModal) return;
+    setProcessing(rejectModal.uid);
+    try {
+      const functions = getFunctions(getApps()[0], "us-central1");
+      const adminApi = httpsCallable(functions, "adminApi");
+      await adminApi({
+        action: "reviewKyc",
+        uid: rejectModal.uid,
+        decision: "reject",
+        reason: rejectReason.trim() || undefined,
+      });
+      showToast("KYC rejected");
+      setRejectModal(null);
+      setRejectReason("");
+    } catch (err: any) {
+      showToast(`Rejection failed: ${err.message}`);
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  async function handleRequestDocs(uid: string) {
+    try {
+      const functions = getFunctions(getApps()[0], "us-central1");
+      const adminApi = httpsCallable(functions, "adminApi");
+      await adminApi({
+        action: "sendPushNotification",
+        title: "Additional Documents Required",
+        body: "Please upload a clear photo of your government-issued ID to complete verification.",
+        targetType: "individual",
+        targetUid: uid,
+      });
+      showToast("Document request sent to user");
+    } catch (err: any) {
+      showToast(`Failed to send request: ${err.message}`);
+    }
+  }
+
   return (
     <div className="px-container-padding pt-5 space-y-gutter w-full">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+          {toast}
+        </div>
+      )}
+
       {/* Verification Metrics */}
       <section className="grid grid-cols-3 gap-2">
         <div className="bg-surface-container border border-subtle p-stack-base">
@@ -62,54 +134,80 @@ export default function KycPage() {
             No pending KYC reviews
           </div>
         ) : (
-          pendingKyc.slice(0, 5).map((user: any) => (
-            <div key={user.id} className="bg-surface-container border-l-2 border-l-secondary border-y border-r border-subtle p-container-padding flex flex-col gap-3">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-surface-bright border border-subtle flex items-center justify-center">
-                    <span className="material-symbols-outlined text-outline">account_circle</span>
-                  </div>
-                  <div>
-                    <p className="font-headline-md text-on-background leading-none">{user.displayName || user.email || user.id?.slice(0, 12)}</p>
-                    <p className="font-body-sm text-outline">Ref: KYC-{user.id?.slice(0, 8)}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className="bg-status-warning/10 text-status-warning border border-status-warning/20 font-label-caps px-2 py-0.5 rounded">AWAITING REVIEW</span>
-                  <span className="font-data-mono text-[10px] text-outline">{timeAgo(user.createdAt)}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2 bg-surface-deep/50 p-2 border border-subtle/50">
-                <div className="flex justify-between items-center">
+          pendingKyc.slice(0, 10).map((user: any) => {
+            const isProcessing = processing === user.id;
+            return (
+              <div key={user.id} className="bg-surface-container border-l-2 border-l-secondary border-y border-r border-subtle p-container-padding flex flex-col gap-3">
+                <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-status-success text-sm">verified_user</span>
-                    <span className="font-label-caps">BVN DATA</span>
+                    <div className="w-10 h-10 bg-surface-bright border border-subtle flex items-center justify-center">
+                      <span className="material-symbols-outlined text-outline">account_circle</span>
+                    </div>
+                    <div>
+                      <p className="font-headline-md text-on-background leading-none">{user.displayName || user.email || user.id?.slice(0, 12)}</p>
+                      <p className="font-body-sm text-outline">Ref: KYC-{user.id?.slice(0, 8)}</p>
+                    </div>
                   </div>
-                  <span className="font-data-mono text-status-success text-xs">{user.bvn ? "VERIFIED" : "NOT PROVIDED"}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-status-warning text-sm">pending</span>
-                    <span className="font-label-caps">ID DOCUMENT</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="bg-status-warning/10 text-status-warning border border-status-warning/20 font-label-caps px-2 py-0.5 rounded">AWAITING REVIEW</span>
+                    <span className="font-data-mono text-[10px] text-outline">{timeAgo(user.createdAt)}</span>
                   </div>
-                  <span className="font-data-mono text-status-warning text-xs">{user.idDocumentUrl ? "UPLOADED" : "MANUAL REVIEW"}</span>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <button className="bg-surface-bright border border-subtle text-on-surface py-2 font-label-caps hover:bg-surface-variant transition-colors flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-sm">description</span> DOCS REQ.
-                </button>
-                <button className="bg-status-danger/10 border border-status-danger/30 text-status-danger py-2 font-label-caps hover:bg-status-danger/20 transition-colors flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-sm">block</span> REJECT
-                </button>
-                <button className="col-span-2 bg-status-success text-on-primary py-2.5 font-label-caps active:opacity-80 transition-opacity flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-sm">check_circle</span> APPROVE VERIFICATION
-                </button>
+                <div className="grid grid-cols-1 gap-2 bg-surface-deep/50 p-2 border border-subtle/50">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-status-success text-sm">verified_user</span>
+                      <span className="font-label-caps">BVN DATA</span>
+                    </div>
+                    <span className="font-data-mono text-status-success text-xs">{user.bvn ? "VERIFIED" : "NOT PROVIDED"}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-status-warning text-sm">pending</span>
+                      <span className="font-label-caps">ID DOCUMENT</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-data-mono text-status-warning text-xs">{user.idDocumentUrl ? "UPLOADED" : "MANUAL REVIEW"}</span>
+                      {user.idDocumentUrl && (
+                        <button
+                          onClick={() => setDocViewer({ url: user.idDocumentUrl, name: user.displayName || user.id?.slice(0, 12) })}
+                          className="material-symbols-outlined text-primary text-sm hover:text-secondary transition-colors"
+                          title="View document"
+                        >
+                          visibility
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    disabled={isProcessing}
+                    onClick={() => handleRequestDocs(user.id)}
+                    className="bg-surface-bright border border-subtle text-on-surface py-2 font-label-caps hover:bg-surface-variant transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-sm">description</span> DOCS REQ.
+                  </button>
+                  <button
+                    disabled={isProcessing}
+                    onClick={() => { setRejectModal({ uid: user.id, name: user.displayName || user.email || user.id?.slice(0, 12) }); setRejectReason(""); }}
+                    className="bg-status-danger/10 border border-status-danger/30 text-status-danger py-2 font-label-caps hover:bg-status-danger/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-sm">{isProcessing ? "hourglass_top" : "block"}</span> REJECT
+                  </button>
+                  <button
+                    disabled={isProcessing}
+                    onClick={() => handleApprove(user.id)}
+                    className="col-span-2 bg-status-success text-on-primary py-2.5 font-label-caps active:opacity-80 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-sm">{isProcessing ? "hourglass_top" : "check_circle"}</span> {isProcessing ? "PROCESSING..." : "APPROVE VERIFICATION"}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </section>
 
@@ -147,6 +245,70 @@ export default function KycPage() {
           )}
         </div>
       </section>
+
+      {/* Reject Modal */}
+      {rejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setRejectModal(null)}>
+          <div className="bg-surface-container border border-border-subtle rounded-xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-headline-md text-headline-md text-status-danger">REJECT KYC</h3>
+              <button onClick={() => setRejectModal(null)} className="material-symbols-outlined text-on-surface-variant hover:text-on-surface">close</button>
+            </div>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Rejecting KYC for <span className="font-bold text-on-surface">{rejectModal.name}</span>
+            </p>
+            <div>
+              <label className="font-label-caps text-[9px] text-on-surface-variant block mb-1">REJECTION REASON</label>
+              <textarea
+                className="w-full bg-surface-deep border border-border-subtle rounded px-3 py-2 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-status-danger focus:outline-none min-h-[100px] resize-y"
+                placeholder="Reason for rejection (will be shown to user)..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setRejectModal(null)}
+                className="flex-1 border border-border-subtle py-2 rounded font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-bright transition-colors"
+              >
+                CANCEL
+              </button>
+              <button
+                disabled={processing === rejectModal.uid}
+                onClick={handleReject}
+                className="flex-1 bg-status-danger text-on-primary py-2 rounded font-label-caps text-label-caps disabled:opacity-40"
+              >
+                {processing === rejectModal.uid ? "PROCESSING..." : "REJECT"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {docViewer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setDocViewer(null)}>
+          <div className="bg-surface-container border border-border-subtle rounded-xl overflow-hidden w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-3 border-b border-border-subtle flex items-center justify-between">
+              <h3 className="font-headline-md text-headline-md text-on-surface">ID Document: {docViewer.name}</h3>
+              <button onClick={() => setDocViewer(null)} className="material-symbols-outlined text-on-surface-variant hover:text-on-surface">close</button>
+            </div>
+            <div className="p-4 bg-surface-deep flex items-center justify-center min-h-[300px]">
+              <img src={docViewer.url} alt="ID Document" className="max-w-full max-h-[500px] object-contain rounded" />
+            </div>
+            <div className="p-3 border-t border-border-subtle flex justify-end">
+              <a
+                href={docViewer.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-primary text-on-primary px-4 py-2 rounded font-label-caps text-label-caps flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">open_in_new</span> OPEN FULL SIZE
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

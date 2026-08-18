@@ -1,7 +1,5 @@
 "use client";
 
-import { useTransactions } from "@/hooks/useAdminData";
-
 function formatDate(date: any) {
   if (!date) return "\u2014";
   const d = date?.toDate ? date.toDate() : new Date(date);
@@ -11,6 +9,7 @@ function formatDate(date: any) {
 const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
   deposit: { icon: "account_balance_wallet", color: "text-secondary" },
   withdrawal: { icon: "account_balance_wallet", color: "text-status-danger" },
+  send: { icon: "send", color: "text-status-danger" },
   crypto: { icon: "currency_bitcoin", color: "text-primary" },
   airtime: { icon: "settings_cell", color: "text-secondary" },
   data: { icon: "settings_cell", color: "text-secondary" },
@@ -27,25 +26,15 @@ const STATUS_BADGES: Record<string, string> = {
   processing: "bg-status-info/10 text-status-info",
 };
 
-export default function TransactionTable() {
-  const { data: txns, loading } = useTransactions(50);
+interface Props {
+  transactions: any[];
+  loading: boolean;
+  onViewTransaction: (tx: any) => void;
+}
 
+export default function TransactionTable({ transactions, loading, onViewTransaction }: Props) {
   return (
     <div className="flex-1 bg-surface-container border border-subtle rounded-lg flex flex-col overflow-hidden min-h-[400px]">
-      <div className="flex justify-between items-center px-4 py-2 bg-surface-container-high border-b border-subtle">
-        <div className="flex items-center gap-3 w-1/3">
-          <span className="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
-          <input className="bg-transparent border-none focus:ring-0 text-body-sm w-full placeholder:text-outline" placeholder="Search by ID, User, or Hash..." type="text" />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 text-[10px] font-label-caps text-status-success">
-            <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> LIVE
-          </span>
-          <button className="p-1 text-on-surface-variant hover:text-primary transition-colors"><span className="material-symbols-outlined">filter_list</span></button>
-          <button className="p-1 text-on-surface-variant hover:text-primary transition-colors"><span className="material-symbols-outlined">more_vert</span></button>
-        </div>
-      </div>
-
       <div className="overflow-auto flex-1">
         {loading ? (
           <div className="p-4 space-y-2">
@@ -53,7 +42,7 @@ export default function TransactionTable() {
               <div key={i} className="h-10 bg-surface-container-high rounded animate-pulse" />
             ))}
           </div>
-        ) : txns.length === 0 ? (
+        ) : transactions.length === 0 ? (
           <div className="p-8 text-center text-on-surface-variant text-body-sm">No transactions found</div>
         ) : (
           <table className="w-full border-collapse">
@@ -69,14 +58,24 @@ export default function TransactionTable() {
               </tr>
             </thead>
             <tbody className="font-data-mono text-body-sm divide-y divide-outline-variant/30">
-              {txns.map((tx: any) => {
+              {transactions.map((tx: any) => {
                 const meta = TYPE_ICONS[tx.type] || TYPE_ICONS[tx.paymentMethod] || { icon: "receipt_long", color: "text-on-surface-variant" };
                 const badge = STATUS_BADGES[tx.status] || "bg-surface-container-high text-on-surface-variant";
-                const amount = tx.amountNaira ? `\u20a6${tx.amountNaira.toLocaleString()}` : tx.amountCoin ? `${tx.amountCoin} ${tx.coinSymbol || ""}` : "\u2014";
+                const amount = tx.amountNaira
+                  ? `\u20a6${tx.amountNaira.toLocaleString()}`
+                  : tx.amountCoin
+                  ? `${tx.amountCoin} ${tx.coinSymbol || ""}`
+                  : "\u2014";
                 return (
-                  <tr key={tx.id} className="hover:bg-primary-container/20 cursor-pointer group">
+                  <tr
+                    key={tx.id}
+                    className="hover:bg-primary-container/20 cursor-pointer group"
+                    onClick={() => onViewTransaction(tx)}
+                  >
                     <td className="px-4 py-2 text-secondary">#{tx.reference || tx.id?.slice(0, 12)}</td>
-                    <td className="px-4 py-2"><span className="text-on-surface">{tx.uid?.slice(0, 16) || "\u2014"}</span></td>
+                    <td className="px-4 py-2">
+                      <span className="text-on-surface">{tx.uid?.slice(0, 16) || "\u2014"}</span>
+                    </td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-1.5">
                         <span className={`material-symbols-outlined text-[16px] ${meta.color}`}>{meta.icon}</span>
@@ -97,12 +96,6 @@ export default function TransactionTable() {
             </tbody>
           </table>
         )}
-      </div>
-
-      <div className="px-4 py-2 border-t border-subtle flex justify-between items-center bg-surface-container-low">
-        <span className="text-[10px] font-label-caps text-on-surface-variant">
-          SHOWING {txns.length} ENTRIES (LIVE)
-        </span>
       </div>
     </div>
   );

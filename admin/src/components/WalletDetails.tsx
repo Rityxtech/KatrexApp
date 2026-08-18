@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useTransactions, useWallets } from "@/hooks/useAdminData";
+import { useState, useMemo, useCallback } from "react";
+import { useTransactions, useWallets, useUsers } from "@/hooks/useAdminData";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApps } from "firebase/app";
+import { setDocument } from "@/hooks/useFirestore";
 
 async function processWithdrawal(txId: string, action: "approve" | "reject") {
   const functions = getFunctions(getApps()[0], "us-central1");
@@ -12,7 +13,6 @@ async function processWithdrawal(txId: string, action: "approve" | "reject") {
 }
 
 function parseRecipient(recipient?: string) {
-  // recipient is formatted as "accountName - bankName - accountNumber"
   if (!recipient) return { accountName: "\u2014", bankName: "\u2014", accountNumber: "\u2014" };
   const parts = recipient.split(" - ").map((p) => p.trim());
   if (parts.length >= 3) {
@@ -53,9 +53,37 @@ const DEPOSIT_ICONS: Record<string, string> = {
 export default function WalletDetails() {
   const { data: txns, loading: lt } = useTransactions(50);
   const { data: wallets, loading: lw } = useWallets();
+  const { data: users } = useUsers(500);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [foundUser, setFoundUser] = useState<any>(null);
+  const [adjustType, setAdjustType] = useState("ADD (+)");
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const loading = lt || lw;
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const searchedUser = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.trim().toLowerCase();
+    return users.find((u: any) =>
+      u.displayName?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.id?.toLowerCase().includes(q)
+    ) || null;
+  }, [searchQuery, users]);
+
+  const searchedWallet = useMemo(() => {
+    if (!searchedUser) return null;
+    return wallets.find((w: any) => w.uid === searchedUser.id) || null;
+  }, [searchedUser, wallets]);
 
   async function handleAction(txId: string, action: "approve" | "reject") {
     const verb = action === "approve" ? "approve" : "reject";
@@ -63,13 +91,70 @@ export default function WalletDetails() {
     setProcessing(txId);
     try {
       await processWithdrawal(txId, action);
-      window.alert(`Withdrawal ${action}d successfully.`);
+      showToast(`Withdrawal ${action}d successfully.`);
     } catch (err: any) {
-      console.error("[processWithdrawal] failed:", err);
-      window.alert(`Failed to ${verb} withdrawal: ${err?.message || "Unknown error"}`);
+      showToast(`Failed to ${verb} withdrawal: ${err?.message || "Unknown error"}`);
     } finally {
       setProcessing(null);
     }
+  }
+
+  async function handleManualOverride() {
+    if (!foundUser || !adjustAmount) {
+      showToast("Search for a user and enter an amount");
+      return;
+    }
+    if (!adjustReason.trim()) {
+      showToast("Please provide a reason for the adjustment");
+      return;
+    }
+    setAdjusting(true);
+    try {
+      const amount = parseFloat(adjustAmount);
+      const isAdd = adjustType === "ADD (+)";
+      const finalAmount = isAdd ? amount : -amount;
+
+      // Create a transaction record for the adjustment
+      await setDocument("transactions", `adj_${Date.now()}`, {
+        uid: foundUser.id,
+        type: "adjustment",
+        status: "completed",
+        amountNaira: Math.abs(finalAmount),
+        description: `${isAdd ? "Credit" : "Debit"}: ${adjustReason}`,
+        reference: `adj_${Date.now()}`,
+        processedBy: "admin",
+        createdAt: new Date(),
+        completedAt: new Date(),
+      });
+
+      showToast(`Balance ${isAdd ? "increased" : "decreased"} by ${formatNaira(amount)} for ${foundUser.displayName || foundUser.email}`);
+      setAdjustAmount("");
+      setAdjustReason("");
+    } catch (err: any) {
+      showToast(`Override failed: ${err.message}`);
+    } finally {
+      setAdjusting(false);
+    }
+  }
+
+  function exportCSV() {
+    const headers = ["Timestamp", "User", "Type", "Amount", "Description"];
+    const rows = adjustments.map((r: any) => [
+      r.createdAt?.toDate ? r.createdAt.toDate().toISOString() : (r.createdAt || ""),
+      r.uid || "",
+      r.type || "",
+      r.amountNaira || 0,
+      (r.description || "").replace(/,/g, ";"),
+    ]);
+    const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `wallet-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("CSV exported");
   }
 
   const withdrawalQueue = txns
@@ -105,6 +190,11 @@ export default function WalletDetails() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+          {toast}
+        </div>
+      )}
       {/* Left Column */}
       <div className="lg:col-span-8 space-y-5">
         {/* Withdrawal Approvals Queue */}
@@ -187,30 +277,75 @@ export default function WalletDetails() {
                 <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">FIND USER BY HANDLE OR ID</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-                  <input className="w-full bg-surface-deep border border-subtle h-10 pl-10 pr-4 font-body-md focus:border-secondary focus:ring-0 outline-none transition-all" placeholder="e.g. @username or USR-9201" type="text" />
+                  <input
+                    className="w-full bg-surface-deep border border-subtle h-10 pl-10 pr-4 font-body-md focus:border-secondary focus:ring-0 outline-none transition-all"
+                    placeholder="e.g. @username or USR-9201"
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </div>
-              <div className="p-3 border border-outline-variant/20 bg-surface-deep/40 rounded flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-surface-container-high rounded border border-secondary/30 flex items-center justify-center text-secondary font-bold">?</div>
-                  <div>
-                    <p className="font-body-md font-bold text-on-surface">Search for a user</p>
-                    <p className="font-data-mono text-[10px] text-on-surface-variant">{wallets.length} wallets available</p>
+              {searchedUser ? (
+                <div className="p-3 border border-secondary/30 bg-surface-deep/40 rounded flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-surface-container-high rounded border border-secondary/30 flex items-center justify-center text-secondary font-bold">
+                      {(searchedUser.displayName || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-body-md font-bold text-on-surface">{searchedUser.displayName || searchedUser.email}</p>
+                      <p className="font-data-mono text-[10px] text-on-surface-variant">
+                        {searchedWallet ? `Balance: ${formatNaira(searchedWallet.nairaBalance || 0)}` : "No wallet found"}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-data-mono text-[9px] text-status-success bg-status-success/10 px-1.5 py-0.5 rounded">FOUND</span>
+                </div>
+              ) : (
+                <div className="p-3 border border-outline-variant/20 bg-surface-deep/40 rounded flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-surface-container-high rounded border border-secondary/30 flex items-center justify-center text-secondary font-bold">?</div>
+                    <div>
+                      <p className="font-body-md font-bold text-on-surface">{searchQuery ? "No user found" : "Search for a user"}</p>
+                      <p className="font-data-mono text-[10px] text-on-surface-variant">{wallets.length} wallets available</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
             <div className="space-y-3 border-l border-outline-variant/10 pl-0 md:pl-4">
               <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">ADJUST BALANCE (OVERRIDE)</label>
               <div className="flex gap-2">
-                <select className="bg-surface-deep border border-subtle h-10 px-2 font-body-sm text-on-surface focus:border-secondary outline-none">
+                <select
+                  value={adjustType}
+                  onChange={(e) => setAdjustType(e.target.value)}
+                  className="bg-surface-deep border border-subtle h-10 px-2 font-body-sm text-on-surface focus:border-secondary outline-none"
+                >
                   <option>ADD (+)</option>
                   <option>SUB (-)</option>
                 </select>
-                <input className="flex-1 bg-surface-deep border border-subtle h-10 px-3 font-data-mono focus:border-secondary outline-none" placeholder="Amount" type="number" />
+                <input
+                  className="flex-1 bg-surface-deep border border-subtle h-10 px-3 font-data-mono focus:border-secondary outline-none"
+                  placeholder="Amount"
+                  type="number"
+                  value={adjustAmount}
+                  onChange={(e) => setAdjustAmount(e.target.value)}
+                />
               </div>
-              <input className="w-full bg-surface-deep border border-subtle h-10 px-3 font-body-sm focus:border-secondary outline-none" placeholder="Reason for adjustment (Internal Use)" type="text" />
-              <button className="w-full h-10 bg-surface-bright border border-secondary text-secondary font-label-caps text-label-caps hover:bg-secondary hover:text-on-secondary transition-all">EXECUTE MANUAL OVERRIDE</button>
+              <input
+                className="w-full bg-surface-deep border border-subtle h-10 px-3 font-body-sm focus:border-secondary outline-none"
+                placeholder="Reason for adjustment (Internal Use)"
+                type="text"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+              />
+              <button
+                disabled={!searchedUser || !adjustAmount || adjusting}
+                onClick={handleManualOverride}
+                className="w-full h-10 bg-surface-bright border border-secondary text-secondary font-label-caps text-label-caps hover:bg-secondary hover:text-on-secondary transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {adjusting ? "PROCESSING..." : "EXECUTE MANUAL OVERRIDE"}
+              </button>
             </div>
           </div>
         </section>
@@ -222,7 +357,7 @@ export default function WalletDetails() {
               <span className="material-symbols-outlined text-status-info">history_edu</span>
               <h3 className="font-headline-md text-headline-md">Recent Transactions Audit</h3>
             </div>
-            <button className="text-secondary font-label-caps text-[10px] hover:underline">EXPORT CSV</button>
+            <button onClick={exportCSV} className="text-secondary font-label-caps text-[10px] hover:underline">EXPORT CSV</button>
           </div>
           <div className="overflow-x-auto">
             {adjustments.length === 0 ? (

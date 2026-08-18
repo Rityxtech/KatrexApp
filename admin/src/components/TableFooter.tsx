@@ -43,22 +43,24 @@ export default function TableFooter({
             {selectedCount} selected
           </span>
         )}
-        <div className="flex items-center gap-1 ml-2">
-          <button
-            onClick={onBulkBlock}
-            disabled={selectedCount === 0 || bulkLoading}
-            className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant border border-subtle rounded text-[10px] font-bold hover:bg-surface-container-highest transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            BLOCK SELECTED
-          </button>
-          <button
-            onClick={onBulkDelete}
-            disabled={selectedCount === 0 || bulkLoading}
-            className="px-2 py-0.5 bg-surface-container-high text-status-danger border border-subtle rounded text-[10px] font-bold hover:bg-status-danger/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            DELETE
-          </button>
-        </div>
+        {selectedCount > 0 && (
+          <div className="flex items-center gap-1 ml-2">
+            <button
+              onClick={onBulkBlock}
+              disabled={bulkLoading}
+              className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant border border-subtle rounded text-[10px] font-bold hover:bg-surface-container-highest transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              BLOCK SELECTED
+            </button>
+            <button
+              onClick={onBulkDelete}
+              disabled={bulkLoading}
+              className="px-2 py-0.5 bg-surface-container-high text-status-danger border border-subtle rounded text-[10px] font-bold hover:bg-status-danger/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              DELETE
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-1">
         <button
