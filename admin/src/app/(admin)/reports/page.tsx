@@ -134,39 +134,51 @@ export default function ReportsPage() {
     showToast("CSV exported successfully");
   }
 
-  async function exportPDF() {
+  function exportPDF() {
     try {
-      const { default: jsPDF } = await import("jspdf");
-      const pdfDoc = new jsPDF({ orientation: "landscape" });
-      pdfDoc.setFontSize(16);
-      pdfDoc.text("KatrexApp - Reports & Analytics", 14, 20);
-      pdfDoc.setFontSize(10);
-      pdfDoc.text(`Generated: ${new Date().toLocaleString()} | Period: ${dateFrom && dateTo ? `${dateFrom} to ${dateTo}` : period}`, 14, 30);
-      pdfDoc.text(`Total Volume: ${formatNaira(totalVol)} | Fees: ${formatNaira(totalFees)} | Transactions: ${filteredTxns.length}`, 14, 38);
-      pdfDoc.text(`Users: ${stats.totalUsers} | Verified: ${stats.verifiedUsers}`, 14, 44);
+      const rows = filteredTxns.slice(0, 40).map((t: any) => `
+        <tr>
+          <td>${(t.id || "").slice(0, 8)}</td>
+          <td>${t.type || ""}</td>
+          <td>${t.status || ""}</td>
+          <td style="text-align:right">${formatNaira(t.amountNaira || 0)}</td>
+          <td style="text-align:right">${formatNaira(t.fee || 0)}</td>
+          <td>${(t.uid || "").slice(0, 12)}</td>
+        </tr>`).join("");
 
-      // Transaction table
-      pdfDoc.setFontSize(8);
-      let y = 56;
-      const headers = ["ID", "Type", "Status", "Amount", "Fee", "User"];
-      pdfDoc.text(headers.join("  |  "), 14, y);
-      y += 6;
-      filteredTxns.slice(0, 40).forEach((t: any) => {
-        if (y > 190) { pdfDoc.addPage(); y = 20; }
-        const row = [
-          (t.id || "").slice(0, 8),
-          t.type || "",
-          t.status || "",
-          formatNaira(t.amountNaira || 0),
-          formatNaira(t.fee || 0),
-          (t.uid || "").slice(0, 12),
-        ];
-        pdfDoc.text(row.join("  |  "), 14, y);
-        y += 5;
-      });
+      const html = `<!DOCTYPE html><html><head><title>KatrexApp Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 30px; font-size: 12px; }
+          h1 { font-size: 18px; margin: 0 0 6px; }
+          .meta { color: #666; margin-bottom: 16px; }
+          .stats { display: flex; gap: 24px; margin-bottom: 20px; }
+          .stat { background: #f5f5f5; padding: 10px 16px; border-radius: 6px; }
+          .stat strong { display: block; font-size: 14px; }
+          .stat span { color: #666; font-size: 11px; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          th { background: #f0f0f0; text-align: left; padding: 6px 8px; border-bottom: 2px solid #ddd; }
+          td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+          @media print { body { padding: 10px; } }
+        </style></head><body>
+        <h1>KatrexApp — Reports &amp; Analytics</h1>
+        <div class="meta">Generated: ${new Date().toLocaleString()} | Period: ${dateFrom && dateTo ? dateFrom + " to " + dateTo : period}</div>
+        <div class="stats">
+          <div class="stat"><strong>${formatNaira(totalVol)}</strong><span>Total Volume</span></div>
+          <div class="stat"><strong>${formatNaira(totalFees)}</strong><span>Total Fees</span></div>
+          <div class="stat"><strong>${filteredTxns.length}</strong><span>Transactions</span></div>
+          <div class="stat"><strong>${stats.totalUsers}</strong><span>Users</span></div>
+          <div class="stat"><strong>${stats.verifiedUsers}</strong><span>Verified</span></div>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Type</th><th>Status</th><th style="text-align:right">Amount</th><th style="text-align:right">Fee</th><th>User</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <script>window.onload=function(){window.print();}</script>
+        </body></html>`;
 
-      pdfDoc.save(`katrex-report-${new Date().toISOString().slice(0, 10)}.pdf`);
-      showToast("PDF exported successfully");
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(html); w.document.close(); }
+      showToast("PDF report generated — use Print to save as PDF");
     } catch (err: any) {
       showToast(`PDF export failed: ${err.message}`);
     }
