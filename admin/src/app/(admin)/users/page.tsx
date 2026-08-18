@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
-import { useUsers } from "@/hooks/useAdminData";
+import { useUsers, useWallets } from "@/hooks/useAdminData";
 import UserTable from "@/components/UserTable";
 import TableFooter from "@/components/TableFooter";
 import UserEditDrawer from "@/components/UserEditDrawer";
@@ -13,6 +13,16 @@ const PAGE_SIZE = 25;
 
 export default function UsersPage() {
   const { data: users, loading } = useUsers(1000);
+  const { data: wallets } = useWallets();
+
+  // Build wallet lookup map: uid → wallet data
+  const walletMap = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const w of wallets) {
+      if (w.uid) map.set(w.uid, w);
+    }
+    return map;
+  }, [wallets]);
 
   // ─── Filter state ──────────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -35,9 +45,12 @@ export default function UsersPage() {
   const [menuUserId, setMenuUserId] = useState<string | null>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
-  // ─── Filtered users ────────────────────────────────────────────
+  // ─── Filtered users (enriched with wallet balance) ────────────
   const filtered = useMemo(() => {
-    let list = users;
+    let list = users.map((u: any) => {
+      const wallet = walletMap.get(u.id);
+      return { ...u, nairaBalance: wallet?.nairaBalance || 0 };
+    });
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -61,7 +74,7 @@ export default function UsersPage() {
       });
     }
     return list;
-  }, [users, search, kycFilter, statusFilter]);
+  }, [users, walletMap, search, kycFilter, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
