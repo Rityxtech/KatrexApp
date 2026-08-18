@@ -109,11 +109,11 @@ export default function UserTable({
                     onClick={() => onViewUser(user)}
                   >
                     <div className="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center text-secondary border border-outline-variant text-[12px] font-bold">
-                      {getInitials(user.displayName || user.name || user.email || "")}
+                      {getInitials(user.fullName || user.displayName || user.name || user.email || "")}
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="font-body-md text-on-surface font-semibold truncate">
-                        {user.displayName || user.name || "Unknown"}
+                        {user.fullName || user.displayName || user.name || "Unknown"}
                       </span>
                       <span className="font-body-sm text-on-surface-variant text-[11px] truncate">
                         {user.email || ""} &bull; ID: {user.id?.slice(0, 8)}

@@ -55,7 +55,7 @@ export default function UsersPage() {
       const q = search.toLowerCase();
       list = list.filter(
         (u: any) =>
-          (u.displayName || u.name || "").toLowerCase().includes(q) ||
+          (u.fullName || u.displayName || u.name || "").toLowerCase().includes(q) ||
           (u.email || "").toLowerCase().includes(q) ||
           (u.id || "").toLowerCase().includes(q)
       );
@@ -117,7 +117,7 @@ export default function UsersPage() {
     const header = ["Name", "Email", "UID", "Status", "KYC Tier", "Balance (NGN)", "Joined"].map(escape).join(",");
     const rows = filtered.map((u: any) =>
       [
-        u.displayName || u.name || "",
+        u.fullName || u.displayName || u.name || "",
         u.email || "",
         u.id || "",
         u.kycStatus || (u.verified ? "verified" : "pending"),
@@ -147,7 +147,7 @@ export default function UsersPage() {
 
     const headers = ["Name", "Email", "Status", "Tier", "Balance"];
     const data = filtered.slice(0, 200).map((u: any) => [
-      (u.displayName || u.name || "Unknown").slice(0, 25),
+      (u.fullName || u.displayName || u.name || "Unknown").slice(0, 25),
       (u.email || "").slice(0, 30),
       u.kycStatus || (u.verified ? "verified" : "pending"),
       `Tier ${u.kycTier ?? 1}`,
