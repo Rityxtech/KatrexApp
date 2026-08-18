@@ -6,6 +6,8 @@ import { useTransactions, useWallets, useUsers } from "@/hooks/useAdminData";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApps } from "firebase/app";
 import { setDocument } from "@/hooks/useFirestore";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 async function processWithdrawal(txId: string, action: "approve" | "reject") {
   const functions = getFunctions(getApps()[0], "us-central1");
@@ -115,6 +117,21 @@ export default function WalletDetails() {
       const isAdd = adjustType === "ADD (+)";
       const finalAmount = isAdd ? amount : -amount;
 
+      // Read current wallet balance
+      const walletRef = doc(db, "wallets", foundUser.id);
+      const walletSnap = await getDoc(walletRef);
+      const currentBalance = walletSnap.exists()
+        ? (walletSnap.data()?.nairaBalance || 0)
+        : 0;
+      const newBalance = currentBalance + finalAmount;
+
+      // Update the wallet balance
+      await setDocument("wallets", foundUser.id, {
+        uid: foundUser.id,
+        nairaBalance: newBalance,
+        updatedAt: new Date(),
+      });
+
       // Create a transaction record for the adjustment
       await setDocument("transactions", `adj_${Date.now()}`, {
         uid: foundUser.id,
@@ -128,7 +145,7 @@ export default function WalletDetails() {
         completedAt: new Date(),
       });
 
-      showToast(`Balance ${isAdd ? "increased" : "decreased"} by ${formatNaira(amount)} for ${foundUser.displayName || foundUser.email}`);
+      showToast(`Balance ${isAdd ? "increased" : "decreased"} by ${formatNaira(amount)} for ${foundUser.displayName || foundUser.email}. New balance: ${formatNaira(newBalance)}`);
       setAdjustAmount("");
       setAdjustReason("");
     } catch (err: any) {
