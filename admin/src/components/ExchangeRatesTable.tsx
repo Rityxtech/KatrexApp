@@ -17,6 +17,8 @@ const COIN_META: Record<string, { color: string; logo: string }> = {
 };
 
 function formatNaira(n: number) {
+  if (n >= 1_000_000_000_000) return `\u20a6${(n / 1_000_000_000_000).toFixed(2)}T`;
+  if (n >= 1_000_000_000) return `\u20a6${(n / 1_000_000_000).toFixed(2)}B`;
   if (n >= 1_000_000) return `\u20a6${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `\u20a6${(n / 1_000).toFixed(2)}K`;
   return `\u20a6${n.toFixed(2)}`;

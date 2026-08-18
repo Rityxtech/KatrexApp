@@ -3,6 +3,8 @@
 import { useAdminStats } from "@/hooks/useAdminData";
 
 function formatNaira(n: number) {
+  if (n >= 1_000_000_000_000) return `\u20a6${(n / 1_000_000_000_000).toFixed(2)}T`;
+  if (n >= 1_000_000_000) return `\u20a6${(n / 1_000_000_000).toFixed(2)}B`;
   if (n >= 1_000_000) return `\u20a6${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `\u20a6${(n / 1_000).toFixed(1)}K`;
   return `\u20a6${n.toFixed(0)}`;
@@ -36,17 +38,49 @@ export default function DashboardPage() {
   ).length;
   const flaggedTxns = txns.filter((t: any) => t.status === "flagged").length;
 
-  const cryptoVol = market.reduce(
-    (sum: number, m: any) => sum + (m.volume24h || 0) * (m.priceNaira || 0),
-    0
-  );
+  // Total crypto holdings value in Naira (all users' crypto balances * current prices)
+  const totalCryptoValue = wallets.reduce((sum: number, w: any) => {
+    const cryptoBalances = w.cryptoBalances || {};
+    let walletValue = 0;
+    for (const [symbol, balance] of Object.entries(cryptoBalances)) {
+      const coin = market.find((m: any) =>
+        m.symbol?.toLowerCase() === symbol.toLowerCase() ||
+        m.id?.toLowerCase() === symbol.toLowerCase()
+      );
+      const priceNaira = Number(coin?.priceNaira) || 0;
+      const balanceNum = Number(balance) || 0;
+      walletValue += balanceNum * priceNaira;
+    }
+    return sum + walletValue;
+  }, 0);
+  const safeCryptoValue = isNaN(totalCryptoValue) ? 0 : totalCryptoValue;
+
+  // Platform profit from fees
+  const cryptoProfit = txns
+    .filter((t: any) => t.type === "crypto" && t.status === "completed" && t.feeAmount)
+    .reduce((s: number, t: any) => {
+      const coin = market.find((m: any) => m.symbol?.toLowerCase() === t.coinSymbol?.toLowerCase());
+      const priceNaira = Number(coin?.priceNaira) || 0;
+      const feeNum = Number(t.feeAmount) || 0;
+      return s + feeNum * priceNaira;
+    }, 0);
+  const p2pProfit = txns
+    .filter((t: any) => t.type === "p2p" && t.status === "completed" && t.escrowFeeNaira)
+    .reduce((s: number, t: any) => s + (Number(t.escrowFeeNaira) || 0), 0);
 
   const airtimeVol = txns
     .filter((t: any) => (t.type === "airtime" || t.type === "data") && t.status === "completed")
     .reduce((s: number, t: any) => s + (t.amountNaira || 0), 0);
+  const airtimeProfit = airtimeVol * 0.05;
+
   const giftcardVol = txns
     .filter((t: any) => t.type === "giftcard" && t.status === "completed")
     .reduce((s: number, t: any) => s + (t.amountNaira || 0), 0);
+  const giftcardProfit = giftcardVol * 0.03;
+
+  const totalProfit = cryptoProfit + p2pProfit + airtimeProfit + giftcardProfit;
+  const safeTotalProfit = isNaN(totalProfit) ? 0 : totalProfit;
+
   const p2pVol = txns
     .filter((t: any) => t.type === "p2p" && t.status === "completed")
     .reduce((s: number, t: any) => s + (t.amountNaira || 0), 0);
@@ -93,14 +127,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* NGN Volume */}
+        {/* Crypto Value */}
         <div className="bg-surface-bright border border-subtle p-3 rounded flex flex-col justify-between">
           <div>
-            <p className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">NGN Volume</p>
-            <p className="font-headline-lg text-headline-lg text-secondary">{formatNaira(stats.totalVolume)}</p>
+            <p className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Crypto Value</p>
+            <p className="font-headline-lg text-headline-lg text-secondary">{formatNaira(safeCryptoValue)}</p>
           </div>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-status-success font-data-mono text-[10px]">{stats.completedTxns} completed</span>
+            <span className="text-status-success font-data-mono text-[10px]">{stats.marketCoins} coins</span>
             <div className="sparkline-container bg-surface-container-low rounded-sm overflow-hidden flex items-end px-1 pb-1">
               <div className="flex items-end gap-[1px] h-full w-full">
                 <div className="bg-secondary/40 w-full h-[60%]" />
@@ -114,14 +148,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Crypto Volume */}
+        {/* Platform Profit */}
         <div className="bg-surface-bright border border-subtle p-3 rounded flex flex-col justify-between">
           <div>
-            <p className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Crypto Vol</p>
-            <p className="font-headline-lg text-headline-lg text-on-surface">{formatNaira(cryptoVol)}</p>
+            <p className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Platform Profit</p>
+            <p className="font-headline-lg text-headline-lg text-primary">{formatNaira(safeTotalProfit)}</p>
           </div>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-on-surface-variant font-data-mono text-[10px]">{stats.marketCoins} coins</span>
+            <span className="text-on-surface-variant font-data-mono text-[10px]">all services</span>
             <div className="sparkline-container bg-surface-container-low rounded-sm overflow-hidden flex items-end px-1 pb-1">
               <div className="flex items-end gap-[1px] h-full w-full">
                 <div className="bg-primary/40 w-full h-[80%]" />
