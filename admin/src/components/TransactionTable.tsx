@@ -1,4 +1,5 @@
 "use client";
+// v2 — typed props interface
 
 function formatDate(date: any) {
   if (!date) return "\u2014";

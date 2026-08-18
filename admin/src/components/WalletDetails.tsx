@@ -1,4 +1,5 @@
 "use client";
+// v2 — full wallet management with search, override, export
 
 import { useState, useMemo, useCallback } from "react";
 import { useTransactions, useWallets, useUsers } from "@/hooks/useAdminData";

@@ -1,4 +1,5 @@
 "use client";
+// v2 — typed props interface
 
 interface Props {
   totalItems: number;

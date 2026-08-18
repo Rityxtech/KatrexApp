@@ -1,4 +1,5 @@
 "use client";
+// v2 — typed props interface
 
 import { useState } from "react";
 import { httpsCallable } from "firebase/functions";

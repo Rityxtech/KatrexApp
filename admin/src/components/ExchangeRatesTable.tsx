@@ -1,4 +1,5 @@
 "use client";
+// v2 — typed props interface
 
 import { useMarketData } from "@/hooks/useAdminData";
 
