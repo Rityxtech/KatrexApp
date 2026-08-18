@@ -12,6 +12,7 @@ import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/squad_service.dart';
+import '../services/cloud_functions_service.dart';
 import '../services/hd_wallet_service.dart';
 import '../services/network_fee_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -280,7 +281,7 @@ class _DepositScreenState extends State<DepositScreen> {
       final ref = 'smclientkx-dep-${DateTime.now().millisecondsSinceEpoch}';
 
       if (_selectedCardIndex != null && _selectedCardIndex! < user.savedCards.length) {
-        // Saved card: charge directly using token
+        // Saved card: charge directly using token, then server-side credit.
         final card = user.savedCards[_selectedCardIndex!];
         final tokenId = card['tokenId'] as String;
 
@@ -290,37 +291,39 @@ class _DepositScreenState extends State<DepositScreen> {
           reference: ref,
         );
 
-        if (result.success) {
-          final verify = await SquadService.verifyTransaction(reference: result.reference!);
-          if (verify.success && verify.status == 'success') {
-            final tx = TransactionModel(
-              id: '',
-              uid: uid,
-              type: TransactionType.deposit,
-              status: TransactionStatus.completed,
-              amountNaira: amount,
-              description: 'Card / Transfer deposit',
-              reference: result.reference!,
-              createdAt: DateTime.now(),
+        if (result.success && result.reference != null) {
+          // Create pending transaction — server will complete it.
+          final pendingTx = TransactionModel(
+            id: '',
+            uid: uid,
+            type: TransactionType.deposit,
+            status: TransactionStatus.pending,
+            amountNaira: amount,
+            description: 'Card deposit (saved card)',
+            reference: result.reference!,
+            createdAt: DateTime.now(),
+            paymentMethod: 'card',
+          );
+          final txId = await FirestoreService().createTransaction(pendingTx);
+
+          // Server-side verify + consume-once + atomic wallet credit.
+          final creditResult = await CloudFunctionsService.completeCardDeposit(
+            squadRef: result.reference!,
+            amount: amount,
+            transactionId: txId,
+            idempotencyKey: CloudFunctionsService.newIdempotencyKey(),
+          );
+          final success = creditResult['success'] as bool? ?? false;
+
+          if (success && mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Deposit of \u20A6${NumberFormat('#,##0').format(amount)} successful', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFF10B981)),
             );
-            await FirestoreService().createTransaction(tx);
-            final wallet = await FirestoreService().getWallet(uid);
-            await FirestoreService().updateWallet(wallet.copyWith(
-              nairaBalance: wallet.nairaBalance + amount,
-              updatedAt: DateTime.now(),
-            ));
-            if (mounted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Deposit of \u20A6${NumberFormat('#,##0').format(amount)} successful', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFF10B981)),
-              );
-            }
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Payment verification failed', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFFEF4444)),
-              );
-            }
+          } else if (!success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Payment could not be verified — if you were debited, contact support.', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFFEF4444)),
+            );
           }
         } else {
           if (mounted) {
@@ -345,43 +348,43 @@ class _DepositScreenState extends State<DepositScreen> {
 
         if (result.success && result.checkoutUrl != null) {
           if (!mounted) return;
+
+          // Create pending transaction — server will complete it.
+          final pendingTx = TransactionModel(
+            id: '',
+            uid: uid,
+            type: TransactionType.deposit,
+            status: TransactionStatus.pending,
+            amountNaira: amount,
+            description: 'Card / Transfer deposit',
+            reference: result.reference!,
+            createdAt: DateTime.now(),
+            paymentMethod: 'card',
+          );
+          final txId = await FirestoreService().createTransaction(pendingTx);
+
           final returnedRef = await SquadCheckoutSheet.show(context, checkoutUrl: result.checkoutUrl!);
           if (returnedRef != null) {
-            debugPrint('Checkout returned ref: $returnedRef, verifying...');
-            final verify = await SquadService.verifyTransaction(reference: result.reference!);
-            debugPrint('Verify result: success=${verify.success}, status=${verify.status}, error=${verify.errorMessage}');
-            if (verify.success && verify.status == 'success') {
-              debugPrint('Creating transaction in Firestore...');
-              final tx = TransactionModel(
-                id: '',
-                uid: uid,
-                type: TransactionType.deposit,
-                status: TransactionStatus.completed,
-                amountNaira: amount,
-                description: 'Card / Transfer deposit',
-                reference: result.reference!,
-                createdAt: DateTime.now(),
+            debugPrint('Checkout returned ref: $returnedRef, calling server to verify + credit...');
+
+            // Server-side verify + consume-once + atomic wallet credit.
+            final creditResult = await CloudFunctionsService.completeCardDeposit(
+              squadRef: result.reference!,
+              amount: amount,
+              transactionId: txId,
+              idempotencyKey: CloudFunctionsService.newIdempotencyKey(),
+            );
+            final success = creditResult['success'] as bool? ?? false;
+
+            if (success && mounted) {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Deposit of \u20A6${NumberFormat('#,##0').format(amount)} successful', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFF10B981)),
               );
-              await FirestoreService().createTransaction(tx);
-              debugPrint('Transaction created in Firestore successfully');
-              final wallet = await FirestoreService().getWallet(uid);
-              await FirestoreService().updateWallet(wallet.copyWith(
-                nairaBalance: wallet.nairaBalance + amount,
-                updatedAt: DateTime.now(),
-              ));
-              debugPrint('Wallet balance updated successfully');
-              if (mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Deposit of \u20A6${NumberFormat('#,##0').format(amount)} successful', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFF10B981)),
-                );
-              }
-            } else {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Payment verification failed', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFFEF4444)),
-                );
-              }
+            } else if (!success && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Payment could not be verified — if you were debited, contact support.', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFFEF4444)),
+              );
             }
           } else {
             if (mounted) {

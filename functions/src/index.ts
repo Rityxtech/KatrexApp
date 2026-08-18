@@ -5,7 +5,7 @@ import * as logger from "firebase-functions/logger";
 import {defineSecret} from "firebase-functions/params";
 import * as https from "https";
 import {initializeApp} from "firebase-admin/app";
-import {getFirestore} from "firebase-admin/firestore";
+import {getFirestore, FieldValue} from "firebase-admin/firestore";
 
 initializeApp();
 
@@ -199,44 +199,62 @@ export const squadWebhook = onRequest(
             const vaDoc = vaQuery.docs[0];
             const uid = vaDoc.id;
             const amountNaira = amount / 100;
+            const reference = transactionRef || `VA-${uid}-${Date.now()}`;
 
-            await db.collection("transactions").add({
-              id: "",
-              uid: uid,
-              type: "deposit",
-              status: "completed",
-              amountNaira: amountNaira,
-              description: `Bank transfer deposit to ${accountNumber}`,
-              reference: transactionRef || `VA-${uid}-${Date.now()}`,
-              paymentMethod: "virtual_account",
-              createdAt: new Date(),
-              completedAt: new Date(),
-            });
+            // Replay protection: check if this transaction_ref was already processed.
+            if (transactionRef) {
+              const existingTx = await db.collection("transactions")
+                .where("reference", "==", transactionRef)
+                .limit(1)
+                .get();
+              if (!existingTx.empty) {
+                logger.info(`Duplicate webhook: ${transactionRef} already processed`);
+                res.status(200).send({status: "already_processed"});
+                return;
+              }
+            }
 
+            // Atomic: create transaction + credit wallet + notify — all-or-nothing.
+            const txRef = db.collection("transactions").doc();
             const walletRef = db.collection("wallets").doc(uid);
-            const walletDoc = await walletRef.get();
-            const nairaBalance = walletDoc.exists
-              ? (walletDoc.data()?.nairaBalance || 0) as number
-              : 0;
-            await walletRef.set({
-              uid: uid,
-              nairaBalance: nairaBalance + amountNaira,
-              updatedAt: new Date(),
-            }, { merge: true });
-
             const notifRef = db.collection("notifications").doc();
-            await notifRef.set({
-              id: notifRef.id,
-              uid: uid,
-              type: "deposit",
-              title: "Deposit Successful",
-              body: `Your bank transfer deposit of ₦${amountNaira.toLocaleString()} has been credited.`,
-              preview: `Your bank transfer deposit of ₦${amountNaira.toLocaleString()} has been credited.`,
-              isRead: false,
-              createdAt: new Date(),
+
+            await db.runTransaction(async (txn) => {
+              // Create transaction record
+              txn.set(txRef, {
+                id: txRef.id,
+                uid: uid,
+                type: "deposit",
+                status: "completed",
+                amountNaira: amountNaira,
+                description: `Bank transfer deposit to ${accountNumber}`,
+                reference: reference,
+                paymentMethod: "virtual_account",
+                createdAt: new Date(),
+                completedAt: new Date(),
+              });
+
+              // Credit wallet atomically using FieldValue.increment
+              txn.set(walletRef, {
+                uid: uid,
+                nairaBalance: FieldValue.increment(amountNaira),
+                updatedAt: new Date(),
+              }, { merge: true });
+
+              // Create notification
+              txn.set(notifRef, {
+                id: notifRef.id,
+                uid: uid,
+                type: "deposit",
+                title: "Deposit Successful",
+                body: `Your bank transfer deposit of ₦${amountNaira.toLocaleString()} has been credited.`,
+                preview: `Your bank transfer deposit of ₦${amountNaira.toLocaleString()} has been credited.`,
+                isRead: false,
+                createdAt: new Date(),
+              });
             });
 
-            logger.info(`VA deposit credited: uid=${uid}, amount=${amountNaira}`);
+            logger.info(`VA deposit credited atomically: uid=${uid}, amount=${amountNaira}, ref=${reference}`);
           } else {
             logger.warn(`No virtual account found for ${accountNumber}`);
           }
