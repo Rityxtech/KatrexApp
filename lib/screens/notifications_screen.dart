@@ -91,7 +91,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _headerBtn(IconData icon, VoidCallback? onTap) {
+  Widget _headerBtn(dynamic icon, VoidCallback? onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -101,7 +101,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
-        child: Center(child: Icon(icon, size: 12, color: onTap == null ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF))),
+        child: Center(
+          child: icon is FaIconData
+              ? FaIcon(icon, size: 12, color: onTap == null ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF))
+              : Icon(icon as IconData, size: 12, color: onTap == null ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF)),
+        ),
       ),
     );
   }
@@ -255,7 +259,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 color: Colors.white.withOpacity(0.05),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: const Center(child: Icon(FontAwesomeIcons.bellSlash, size: 32, color: Color(0xFF6B7280))),
+              child: const Center(child: FaIcon(FontAwesomeIcons.bellSlash, size: 32, color: Color(0xFF6B7280))),
             ),
             const SizedBox(height: 24),
             Text("You're all caught up!", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),

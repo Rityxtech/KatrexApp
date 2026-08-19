@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../services/support_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 
@@ -32,6 +33,22 @@ Widget _avatar(String url, [double size = 40]) => Container(
       errorBuilder: (_, __, ___) => Container(color: const Color(0xFF2563EB), child: Icon(Icons.person, color: Colors.white, size: size * 0.5)),
     ),
   ),
+);
+
+/// Bot avatar for the AI assistant — gradient circle with a smart-toy icon.
+/// Used in place of the fake human avatar now that live chat is Gemini-backed.
+Widget _botAvatar(double size) => Container(
+  width: size, height: size,
+  decoration: BoxDecoration(
+    shape: BoxShape.circle,
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft, end: Alignment.bottomRight,
+      colors: [Color(0xFF8B5CF6), Color(0xFF3B82F6)],
+    ),
+    border: Border.all(color: const Color(0xFF0A0F1F), width: 2),
+    boxShadow: [BoxShadow(color: const Color(0xFF3B82F6).withOpacity(0.35), blurRadius: 10)],
+  ),
+  child: Icon(Icons.smart_toy_rounded, color: Colors.white, size: size * 0.55),
 );
 
 class CustomerSupportScreen extends StatefulWidget {
@@ -135,7 +152,7 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
               const SizedBox(height: 16),
               _actionCard(
                 title: 'Live Chat',
-                subtitle: 'Typically replies in under 2 mins',
+                subtitle: 'AI assistant • Instant replies',
                 icon: Icons.chat_bubble_rounded,
                 color: const Color(0xFF3B82F6),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportChatScreen())),
@@ -170,13 +187,19 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
   Widget _liveChatTrailing() => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      SizedBox(
-        width: 54, height: 28,
-        child: Stack(
+      Container(
+        width: 56, height: 28,
+        decoration: BoxDecoration(
+          color: const Color(0xFF3B82F6).withOpacity(0.15),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.4)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Positioned(right: 24, child: _avatar('https://i.pravatar.cc/100?img=47', 28)),
-            Positioned(right: 12, child: _avatar('https://i.pravatar.cc/100?img=44', 28)),
-            Positioned(right: 0, child: Container(width: 28, height: 28, decoration: BoxDecoration(color: const Color(0xFF3B82F6), shape: BoxShape.circle, border: Border.all(color: const Color(0xFF0A0F1F), width: 2)), child: Center(child: Text('+3', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold))))),
+            const Icon(Icons.bolt_rounded, color: Color(0xFF60A5FA), size: 14),
+            const SizedBox(width: 4),
+            Text('AI', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: const Color(0xFF60A5FA), letterSpacing: 0.5)),
           ],
         ),
       )
@@ -650,11 +673,201 @@ class SupportChatScreen extends StatefulWidget {
 }
 
 class _SupportChatScreenState extends State<SupportChatScreen> {
-  final _msgs = [
-    {'me':false,'text':'Hello John! Welcome to Katrex Support. How can I assist you today?','time':'10:45 AM'},
-    {'me':true,'text':'Hi Sarah, I tried withdrawing my BTC about an hour ago but it\'s still pending.','time':'10:46 AM'},
-    {'me':false,'text':'I can check the status on the blockchain for you. Could you please provide the withdrawal reference ID?','time':'10:48 AM','read':true},
-  ];
+  String? _chatId;
+  bool _isInitializing = true;
+  bool _isSending = false;
+  final _msgController = TextEditingController();
+  final _scrollController = ScrollController();
+  final List<Map<String, dynamic>> _messages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    _initChat();
+  }
+
+  void _onScroll() {
+    // reserved for future pagination
+  }
+
+  @override
+  void dispose() {
+    _msgController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initChat() async {
+    try {
+      final result = await SupportService.startAiChat();
+      final chatId = result['chatId'] as String?;
+      if (!mounted) return;
+      setState(() {
+        _chatId = chatId;
+        _isInitializing = false;
+      });
+      // Mark as read on open
+      if (chatId != null) {
+        SupportService.markAiChatRead(chatId);
+        // Load initial messages (one-time read, no live listener)
+        final msgs = await SupportService.loadAiChatMessages(chatId);
+        if (!mounted) return;
+        setState(() {
+          _messages.addAll(msgs);
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isInitializing = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Could not start chat. Please try again.', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600)),
+        backgroundColor: const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _msgController.text.trim();
+    if (text.isEmpty || _chatId == null || _isSending) return;
+    _msgController.clear();
+    setState(() => _isSending = true);
+
+    // Optimistically add the user message to the local list
+    final userMsg = <String, dynamic>{
+      'senderRole': 'user',
+      'senderUid': context.read<AuthProvider>().firebaseUser!.uid,
+      'text': text,
+      'createdAt': DateTime.now(),
+    };
+    setState(() => _messages.add(userMsg));
+    _scrollToBottom();
+
+    try {
+      // The reply comes back directly from the server — no Firestore
+      // listener needed. Both messages are persisted server-side for
+      // the admin audit trail.
+      final result = await SupportService.sendAiChatMessage(chatId: _chatId!, text: text);
+      final reply = result['reply'] as String? ?? '';
+      if (!mounted) return;
+
+      // Add the AI reply to the local list
+      final aiMsg = <String, dynamic>{
+        'senderRole': 'ai',
+        'text': reply,
+        'createdAt': DateTime.now(),
+      };
+      setState(() => _messages.add(aiMsg));
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().contains('resource-exhausted')
+        ? 'You are sending messages too quickly. Please wait a few minutes.'
+        : 'Failed to send message.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg, style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600)),
+        backgroundColor: const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+      // Remove the optimistic user message on failure
+      setState(() => _messages.remove(userMsg));
+      // Restore the text so the user does not lose their input.
+      _msgController.text = text;
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  /// Ends the AI chat session: triggers Gemini summary + admin notification.
+  /// Called from the more-menu and from the back button (after confirm).
+  Future<void> _closeChat({bool fromBackButton = false}) async {
+    if (_chatId == null) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
+    if (fromBackButton) {
+      final confirmed = await _confirmClose();
+      if (confirmed != true) return;
+    }
+    final chatId = _chatId!;
+    // Optimistically pop, then close server-side (fire-and-forget).
+    if (mounted) Navigator.of(context).pop();
+    try {
+      await SupportService.closeAiChat(chatId);
+    } catch (_) {
+      // Closing is best-effort — server-side dedup keeps it idempotent.
+    }
+  }
+
+  Future<bool> _confirmClose() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1423),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('End chat?', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w800)),
+        content: Text(
+          'A short summary will be sent to our support team for review.',
+          style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Stay', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF9CA3AF), fontWeight: FontWeight.w700)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('End chat', style: GoogleFonts.plusJakartaSans(color: const Color(0xFFEF4444), fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _showChatOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1423),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFEF4444)),
+              title: Text('End chat session', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+              subtitle: Text('Send a summary to the support team.', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF9CA3AF))),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _closeChat();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -669,20 +882,42 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             children: [
               _chatHeader(),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(20)),
-                        child: Text('Today, 10:45 AM', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white54, letterSpacing: 1)),
-                      ),
+                child: _isInitializing
+                  ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Color(0xFF6B7280), strokeWidth: 1.5)))
+                  : ListView(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(20),
+                      children: [
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(20)),
+                            child: Text('Chat with Katrex Assistant', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white54, letterSpacing: 1)),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ..._messages.map((data) {
+                          final uid = context.read<AuthProvider>().firebaseUser!.uid;
+                          final isMe = data['senderRole'] == 'user' && data['senderUid'] == uid;
+                          return _bubble(data, isMe);
+                        }),
+                        if (_messages.isEmpty)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 40),
+                              child: Text(
+                                'Ask Katrex Assistant anything about the app — funding your wallet, KYC, bills, gift cards, crypto, P2P and more.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF9CA3AF),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    ..._msgs.map((m) => _bubble(m)),
-                  ],
-                ),
               ),
               _chatInput(),
             ],
@@ -697,15 +932,15 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05)))),
     child: Row(
       children: [
-        _btn(i: Icons.arrow_back_rounded, t: () => Navigator.pop(context)),
+        _btn(i: Icons.arrow_back_rounded, t: () => _closeChat(fromBackButton: true)),
         const SizedBox(width: 12),
-        _avatar('https://i.pravatar.cc/100?img=47', 36),
+        _botAvatar(36),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Sarah (Agent)', style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+              Text('Katrex Assistant', style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
               const SizedBox(height: 4),
               Row(
                 children: [
@@ -717,15 +952,29 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             ],
           ),
         ),
-        _btn(i: Icons.more_vert_rounded, t: () {}),
+        _btn(i: Icons.more_vert_rounded, t: () => _showChatOptions()),
       ],
     ),
   );
 
-  Widget _bubble(Map m) {
-    final me = m['me'] as bool;
+  Widget _bubble(Map<String, dynamic> data, bool isMe) {
+    final text = (data['text'] as String?) ?? '';
+    final senderRole = (data['senderRole'] as String?) ?? 'user';
+    final isSystem = senderRole == 'system';
+    if (isSystem) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(20)),
+            child: Text(text, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white54, letterSpacing: 0.5), textAlign: TextAlign.center),
+          ),
+        ),
+      );
+    }
     return Align(
-      alignment: me ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
         child: Padding(
@@ -734,32 +983,23 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (!me) ...[
-                _avatar('https://i.pravatar.cc/100?img=47', 28),
+              if (!isMe) ...[
+                _botAvatar(28),
                 const SizedBox(width: 10),
               ],
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: me ? const Color(0xFF2563EB) : Colors.white.withOpacity(0.05),
+                    color: isMe ? const Color(0xFF2563EB) : Colors.white.withOpacity(0.05),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(20), topRight: const Radius.circular(20),
-                      bottomLeft: Radius.circular(me ? 20 : 6), bottomRight: Radius.circular(me ? 6 : 20),
+                      bottomLeft: Radius.circular(isMe ? 20 : 6), bottomRight: Radius.circular(isMe ? 6 : 20),
                     ),
-                    border: me ? null : Border.all(color: Colors.white.withOpacity(0.05)),
-                    boxShadow: me ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 4))] : null,
+                    border: isMe ? null : Border.all(color: Colors.white.withOpacity(0.05)),
+                    boxShadow: isMe ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 4))] : null,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(m['text'], style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white, height: 1.5)),
-                      if (m['read'] == true) ...[
-                        const SizedBox(height: 6),
-                        Text('Read ${m['time']}', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white54)),
-                      ],
-                    ],
-                  ),
+                  child: Text(text, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white, height: 1.5)),
                 ),
               ),
             ],
@@ -785,12 +1025,15 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: _msgController,
                     style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: 'Type a message...',
+                      hintText: 'Ask Katrex Assistant…',
                       hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white30),
                       border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
                 const Icon(Icons.attach_file_rounded, color: Colors.white54, size: 20),
@@ -799,13 +1042,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           ),
         ),
         const SizedBox(width: 12),
-        Container(
-          width: 48, height: 48,
-          decoration: BoxDecoration(
-            color: const Color(0xFF2563EB), shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 4))],
+        GestureDetector(
+          onTap: _isSending ? null : _sendMessage,
+          child: Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB), shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 4))],
+            ),
+            child: _isSending
+              ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+              : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
           ),
-          child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
         ),
       ],
     ),

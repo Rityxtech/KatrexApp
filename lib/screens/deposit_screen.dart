@@ -836,7 +836,7 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   Widget _buildMethodCard({
-    required IconData icon,
+    required dynamic icon,
     required Color iconColor,
     required Color bgColor,
     required Color borderColor,
@@ -858,7 +858,7 @@ class _DepositScreenState extends State<DepositScreen> {
             Container(
               width: 48, height: 48,
               decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: borderColor)),
-              child: Center(child: Icon(icon, size: 18, color: iconColor)),
+              child: Center(child: icon is FaIconData ? FaIcon(icon, size: 18, color: iconColor) : Icon(icon as IconData, size: 18, color: iconColor)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1179,7 +1179,7 @@ class _DepositScreenState extends State<DepositScreen> {
     final last4 = (card['last4'] as String?) ?? '****';
     final displayName = brand.isNotEmpty ? brand : 'Card';
 
-    IconData cardIcon = FontAwesomeIcons.creditCard;
+    dynamic cardIcon = FontAwesomeIcons.creditCard;
     if (brand.toLowerCase().contains('master')) {
       cardIcon = FontAwesomeIcons.ccMastercard;
     } else if (brand.toLowerCase().contains('visa')) {
@@ -1203,7 +1203,7 @@ class _DepositScreenState extends State<DepositScreen> {
         ),
         child: Row(
           children: [
-            Icon(cardIcon, size: 24, color: Colors.white),
+            cardIcon is FaIconData ? FaIcon(cardIcon, size: 24, color: Colors.white) : Icon(cardIcon as IconData, size: 24, color: Colors.white),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1272,7 +1272,7 @@ class _DepositScreenState extends State<DepositScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.1))),
           child: Row(children: [
-            Icon(FontAwesomeIcons.bitcoin, size: 14, color: const Color(0xFFF7931A)),
+            const FaIcon(FontAwesomeIcons.bitcoin, size: 14, color: Color(0xFFF7931A)),
             const SizedBox(width: 8),
             Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
             const Spacer(),
@@ -1310,7 +1310,7 @@ class _DepositScreenState extends State<DepositScreen> {
         const SizedBox(height: 16),
         ...labels.map((label) {
           final asset = _cryptoAssets.firstWhere((a) => a['label'] == label);
-          return ListTile(leading: Icon(FontAwesomeIcons.bitcoin, size: 16, color: const Color(0xFFF7931A)),
+          return ListTile(leading: const FaIcon(FontAwesomeIcons.bitcoin, size: 16, color: Color(0xFFF7931A)),
             title: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
             onTap: () { ss(() { _cryptoSelectedAsset = asset['code']!; _cryptoSelectedNetwork = asset['network']!; }); Navigator.pop(ctx); _loadSavedAddressForAsset(ss); });
         }),

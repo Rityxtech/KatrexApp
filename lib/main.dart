@@ -10,6 +10,7 @@ import 'providers/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'screens/login_screen.dart';
 import 'services/hd_wallet_service.dart';
+import 'services/push_notification_service.dart';
 import 'services/trade_fee_service.dart';
 import 'utils/api_config.dart';
 import 'widgets/auth_gate.dart';
@@ -21,6 +22,10 @@ void main() async {
   );
   TradeFeeService.init();
   HdWalletService.init(ApiConfig.hdWalletMnemonic);
+  
+  // Initialize push notification settings & channel configurations
+  await PushNotificationService.instance.init();
+  
   runApp(const MyApp());
 }
 

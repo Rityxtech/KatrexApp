@@ -72,7 +72,15 @@ export default function UserTable({
         ) : (
           <div className="divide-y divide-subtle">
             {users.map((user: any) => {
-              const status = user.kycStatus || (user.verified ? "verified" : "pending");
+              const kycTierNum = user.kycTier ?? 0;
+              let status: string;
+              if (user.isActive === false) {
+                status = "suspended";
+              } else if (kycTierNum >= 1) {
+                status = "verified";
+              } else {
+                status = "pending";
+              }
               const badgeClass =
                 status === "verified" || status === "completed"
                   ? "bg-status-success/10 text-status-success border-status-success/20"
@@ -87,7 +95,7 @@ export default function UserTable({
                   : status === "pending"
                   ? "bg-status-warning"
                   : "bg-status-danger";
-              const tier = user.kycTier ? `Tier ${user.kycTier}` : "Tier 1";
+              const tier = `Tier ${kycTierNum}`;
               const balance = user.nairaBalance || 0;
               const isSelected = selectedIds.has(user.id);
 

@@ -43,3 +43,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+android/build/
+.gradle/
+**/build/
+
+# Node / JS / Web
+node_modules/
+**/node_modules/
+**/dist/
+functions/lib/
+functions-fiat/lib/
+.next/
+admin/.next/
+
+# Misc Tools & IDEs
+.zcode/
+nul
+

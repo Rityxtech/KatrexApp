@@ -29,6 +29,11 @@ class UserModel {
   /// Default display currency code (e.g. NGN, USD).
   final String defaultCurrency;
 
+  final String? country;
+
+  final String? transactionPin;
+  final bool biometricEnabled;
+
   /// Security settings.
   final bool twoFactorEnabled;
   final bool pinEnabled;
@@ -60,6 +65,9 @@ class UserModel {
     required this.referralCode,
     this.referredBy,
     this.defaultCurrency = 'NGN',
+    this.country,
+    this.transactionPin,
+    this.biometricEnabled = false,
     this.twoFactorEnabled = false,
     this.pinEnabled = false,
     this.paymentMethods = const [],
@@ -87,6 +95,9 @@ class UserModel {
       referralCode: map['referralCode'] as String,
       referredBy: map['referredBy'] as String?,
       defaultCurrency: map['defaultCurrency'] as String? ?? 'NGN',
+      country: map['country'] as String?,
+      transactionPin: map['transactionPin'] as String?,
+      biometricEnabled: map['biometricEnabled'] as bool? ?? false,
       twoFactorEnabled: map['twoFactorEnabled'] as bool? ?? false,
       pinEnabled: map['pinEnabled'] as bool? ?? false,
       paymentMethods: (map['paymentMethods'] as List?)?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [],
@@ -115,6 +126,9 @@ class UserModel {
       'referralCode': referralCode,
       'referredBy': referredBy,
       'defaultCurrency': defaultCurrency,
+      'country': country,
+      'transactionPin': transactionPin,
+      'biometricEnabled': biometricEnabled,
       'twoFactorEnabled': twoFactorEnabled,
       'pinEnabled': pinEnabled,
       'paymentMethods': paymentMethods,
@@ -139,6 +153,9 @@ class UserModel {
     bool? isPhoneVerified,
     String? referredBy,
     String? defaultCurrency,
+    String? country,
+    String? transactionPin,
+    bool? biometricEnabled,
     bool? twoFactorEnabled,
     bool? pinEnabled,
     List<Map<String, dynamic>>? paymentMethods,
@@ -163,6 +180,9 @@ class UserModel {
       referralCode: referralCode,
       referredBy: referredBy ?? this.referredBy,
       defaultCurrency: defaultCurrency ?? this.defaultCurrency,
+      country: country ?? this.country,
+      transactionPin: transactionPin ?? this.transactionPin,
+      biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       twoFactorEnabled: twoFactorEnabled ?? this.twoFactorEnabled,
       pinEnabled: pinEnabled ?? this.pinEnabled,
       paymentMethods: paymentMethods ?? this.paymentMethods,

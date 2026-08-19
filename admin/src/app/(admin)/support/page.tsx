@@ -3,8 +3,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useSupportTickets, useEmailCodes } from "@/hooks/useAdminData";
 import { updateDocument } from "@/hooks/useFirestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getApps } from "firebase/app";
 
 function timeAgo(date: any) {
   if (!date) return "";
@@ -13,7 +11,8 @@ function timeAgo(date: any) {
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
-  return `${Math.floor(mins / 60)}h ago`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / 1440)}d ago`;
 }
 
 const PRIORITY_CLASS: Record<string, string> = {
@@ -36,12 +35,20 @@ const CANNED_TEMPLATES: Record<string, string> = {
   "Withdrawal FAQ": "Withdrawals are processed within 1-24 hours depending on the amount and network conditions. Please ensure your KYC is verified for faster processing.",
 };
 
+type TabType = "tickets" | "emails" | "metrics" | "templates";
+
 export default function SupportPage() {
-  const { data: tickets, loading } = useSupportTickets(50);
-  const { data: emails } = useEmailCodes(10);
+  const { data: tickets, loading } = useSupportTickets(100);
+  const { data: emails } = useEmailCodes(25);
+  const [activeTab, setActiveTab] = useState<TabType>("tickets");
+  
+  // Filtering & Pagination State
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
+
+  // Chat State
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
@@ -62,6 +69,19 @@ export default function SupportPage() {
       return true;
     });
   }, [tickets, statusFilter, priorityFilter]);
+
+  // Reset page when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [statusFilter, priorityFilter]);
+
+  // Paginated Tickets for Left Sidebar
+  const paginatedTickets = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTickets.slice(start, start + pageSize);
+  }, [filteredTickets, currentPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / pageSize));
 
   const openTickets = tickets.filter((t: any) => t.status === "open" || t.status === "pending");
   const resolvedTickets = tickets.filter((t: any) => t.status === "resolved" || t.status === "closed");
@@ -90,6 +110,13 @@ export default function SupportPage() {
         respondedAt: new Date(),
         updatedAt: new Date(),
       });
+      // Update selected ticket state locally to show immediate reply in chat window
+      setSelectedTicket((prev: any) => prev ? {
+        ...prev,
+        adminReply: replyText.trim(),
+        status: "pending",
+        respondedAt: { toDate: () => new Date() },
+      } : null);
       setReplyText("");
       showToast("Reply sent successfully");
     } catch (err: any) {
@@ -113,7 +140,6 @@ export default function SupportPage() {
         }
         showToast(`${ids.length} ticket(s) closed`);
       } else if (action === "merge") {
-        // Merge: keep the first ticket, close the rest with a note
         const [keepId, ...mergeIds] = ids;
         for (const id of mergeIds) {
           await updateDocument("support_tickets", id, {
@@ -156,286 +182,544 @@ export default function SupportPage() {
     showToast("Template copied to clipboard");
   }
 
+  function injectTemplateDirectly(tplKey: string) {
+    setReplyText(CANNED_TEMPLATES[tplKey] || "");
+    showToast("Template loaded into input box");
+  }
+
   return (
-    <div className="px-container-padding flex flex-col gap-max-gap w-full">
+    <div className="px-container-padding flex flex-col gap-4 w-full">
       {toast && (
         <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
           {toast}
         </div>
       )}
 
-      {/* SLA & Performance Metrics */}
-      <section>
-        <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">SLA &amp; PERFORMANCE METRICS</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-          <div className="bg-surface-bright p-stack-base border border-border-subtle rounded flex flex-col">
-            <span className="font-label-caps text-label-caps text-on-surface-variant">AVG RESPONSE TIME</span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="font-headline-lg text-headline-lg font-black text-on-surface">{avgResponseTime}</span>
-              <span className="font-data-mono text-data-mono text-status-success">{tickets.length} tickets</span>
-            </div>
-          </div>
-          <div className="bg-surface-bright p-stack-base border border-border-subtle rounded flex flex-col">
-            <span className="font-label-caps text-label-caps text-on-surface-variant">RESOLUTION RATE</span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="font-headline-lg text-headline-lg font-black text-on-surface">{resolutionRate}%</span>
-              <span className="font-data-mono text-data-mono text-status-success">{resolvedTickets.length} resolved</span>
-            </div>
-          </div>
-          <div className="bg-surface-bright p-stack-base border border-border-subtle rounded flex flex-col">
-            <span className="font-label-caps text-label-caps text-on-surface-variant">OPEN TICKETS</span>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="font-headline-lg text-headline-lg font-black text-on-surface">{openTickets.length}</span>
-              <span className="flex items-center text-status-warning">
-                <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse mr-1"></span>
-                <span className="font-data-mono text-data-mono">LIVE</span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Tabs Switcher at top */}
+      <div className="flex border-b border-border-subtle bg-surface-container p-1 rounded-lg gap-1 self-start">
+        <button
+          onClick={() => setActiveTab("tickets")}
+          className={`px-4 py-1.5 rounded-md font-label-caps text-label-caps transition-all ${
+            activeTab === "tickets"
+              ? "bg-primary text-on-primary shadow-sm"
+              : "text-on-surface-variant hover:bg-surface-container-high"
+          }`}
+        >
+          Tickets &amp; Live Chat
+        </button>
+        <button
+          onClick={() => setActiveTab("emails")}
+          className={`px-4 py-1.5 rounded-md font-label-caps text-label-caps transition-all ${
+            activeTab === "emails"
+              ? "bg-primary text-on-primary shadow-sm"
+              : "text-on-surface-variant hover:bg-surface-container-high"
+          }`}
+        >
+          Verification Emails
+        </button>
+        <button
+          onClick={() => setActiveTab("metrics")}
+          className={`px-4 py-1.5 rounded-md font-label-caps text-label-caps transition-all ${
+            activeTab === "metrics"
+              ? "bg-primary text-on-primary shadow-sm"
+              : "text-on-surface-variant hover:bg-surface-container-high"
+          }`}
+        >
+          SLA &amp; Performance
+        </button>
+        <button
+          onClick={() => setActiveTab("templates")}
+          className={`px-4 py-1.5 rounded-md font-label-caps text-label-caps transition-all ${
+            activeTab === "templates"
+              ? "bg-primary text-on-primary shadow-sm"
+              : "text-on-surface-variant hover:bg-surface-container-high"
+          }`}
+        >
+          Canned Templates
+        </button>
+      </div>
 
-      {/* Ticket Queue */}
-      <section className="bg-surface-container border border-border-subtle overflow-hidden">
-        <div className="px-container-padding py-2 border-b border-border-subtle flex items-center justify-between">
-          <h2 className="font-label-caps text-label-caps text-on-surface-variant">TICKET QUEUE</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`bg-surface-container-high px-2 py-1 border rounded flex items-center gap-1 transition-colors ${showFilters ? "border-primary text-primary" : "border-border-subtle"}`}
-            >
-              <span className="material-symbols-outlined text-[14px]">filter_list</span>
-              <span className="font-label-caps text-label-caps">FILTERS</span>
-            </button>
+      {/* TAB 1: TICKETS & LIVE CHAT (Split screen) */}
+      {activeTab === "tickets" && (
+        <div className="flex flex-col gap-4 w-full">
+          {/* Quick Stats Header */}
+          <div className="flex flex-wrap gap-4 items-center justify-between bg-surface-container border border-border-subtle p-3 rounded-lg">
+            <div className="flex gap-4">
+              <div>
+                <span className="text-[10px] font-label-caps text-on-surface-variant block">TOTAL QUEUED</span>
+                <span className="text-body-sm font-bold text-on-surface">{filteredTickets.length} tickets</span>
+              </div>
+              <div className="border-r border-border-subtle h-8 self-center" />
+              <div>
+                <span className="text-[10px] font-label-caps text-on-surface-variant block">SELECTED</span>
+                <span className="text-body-sm font-bold text-primary">{selectedIds.size} tickets</span>
+              </div>
+            </div>
+            {/* Quick Bulk Actions */}
+            {selectedIds.size > 0 && (
+              <div className="flex gap-2 items-center bg-surface-deep px-3 py-1.5 rounded-md border border-border-subtle animate-fadeIn">
+                <span className="font-label-caps text-[10px] text-on-surface-variant">BULK ACTIONS:</span>
+                <button
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkAction("close")}
+                  className="bg-status-danger/10 hover:bg-status-danger/20 text-status-danger px-2.5 py-0.5 rounded text-[10px] font-label-caps transition-all"
+                >
+                  CLOSE
+                </button>
+                <button
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkAction("merge")}
+                  className="bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-0.5 rounded text-[10px] font-label-caps transition-all"
+                >
+                  MERGE
+                </button>
+                <button
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkAction("reassign")}
+                  className="bg-status-warning/10 hover:bg-status-warning/20 text-status-warning px-2.5 py-0.5 rounded text-[10px] font-label-caps transition-all"
+                >
+                  REASSIGN
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Redesigned 2-Column Messaging Workspace Container */}
+          <div className="w-full flex rounded-xl border border-border-subtle overflow-hidden bg-surface-bright" style={{ height: "calc(100vh - 185px)" }}>
+            {/* LEFT SIDEBAR: Ticket Lists (35% width / Min-width 360px) */}
+            <div className="w-[380px] border-r border-border-subtle flex flex-col bg-surface-deep">
+              {/* Filter Sub-header */}
+              <div className="p-3 bg-surface-container border-b border-border-subtle flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-label-caps text-label-caps text-on-surface font-bold">FILTERS</span>
+                  {(statusFilter !== "all" || priorityFilter !== "all") && (
+                    <button
+                      onClick={() => {
+                        setStatusFilter("all");
+                        setPriorityFilter("all");
+                      }}
+                      className="text-[10px] text-primary hover:underline"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-surface-bright border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:outline-none cursor-pointer text-xs"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="open">Open</option>
+                    <option value="pending">Pending</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                  <select
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                    className="bg-surface-bright border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:outline-none cursor-pointer text-xs"
+                  >
+                    <option value="all">All Priorities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Sidebar Scrollable Tickets list */}
+              <div className="flex-1 overflow-y-auto divide-y divide-border-subtle/50">
+                {loading ? (
+                  <div className="p-4 space-y-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="h-16 bg-surface-container-high rounded animate-pulse" />
+                    ))}
+                  </div>
+                ) : paginatedTickets.length === 0 ? (
+                  <div className="p-6 text-center text-on-surface-variant text-body-sm">
+                    No tickets match selected filters
+                  </div>
+                ) : (
+                  paginatedTickets.map((t: any) => {
+                    const isSelected = selectedTicket?.id === t.id;
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => setSelectedTicket(t)}
+                        className={`p-3 flex items-start gap-2.5 hover:bg-surface-container-high/50 cursor-pointer transition-all ${
+                          isSelected ? "bg-primary/10 border-l-4 border-primary" : ""
+                        }`}
+                      >
+                        {/* Selector checkbox */}
+                        <div
+                          className="pt-0.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelect(t.id);
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(t.id)}
+                            onChange={() => {}} // handled by click parent
+                            className="rounded border-border-subtle cursor-pointer text-primary focus:ring-primary w-3.5 h-3.5"
+                          />
+                        </div>
+
+                        {/* Ticket metadata */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-data-mono text-[11px] font-bold text-primary">
+                              #{t.reference || t.id?.slice(0, 8)}
+                            </span>
+                            <span className="font-data-mono text-[9px] text-on-surface-variant">
+                              {timeAgo(t.createdAt)}
+                            </span>
+                          </div>
+                          <p className="font-body-sm text-[12px] font-bold text-on-surface truncate">
+                            {t.userEmail || t.uid?.slice(0, 16) || "Anonymous User"}
+                          </p>
+                          <p className="font-body-sm text-[11px] text-on-surface-variant truncate mt-0.5">
+                            {t.subject || t.description || "\u2014"}
+                          </p>
+
+                          {/* Badges */}
+                          <div className="flex gap-1.5 mt-2">
+                            <span className={`text-[9px] font-label-caps px-1.5 py-0.2 rounded border ${STATUS_CLASS[t.status] || STATUS_CLASS.open}`}>
+                              {t.status || "open"}
+                            </span>
+                            <span className={`text-[9px] font-label-caps px-1.5 py-0.2 rounded border ${PRIORITY_CLASS[t.priority] || PRIORITY_CLASS.low}`}>
+                              {t.priority || "low"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Left Pane Pagination Bottom Bar */}
+              <div className="p-3 bg-surface-container border-t border-border-subtle flex items-center justify-between">
+                <span className="text-[10px] font-label-caps text-on-surface-variant">
+                  PAGE {currentPage} OF {totalPages}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="p-1 rounded bg-surface-deep border border-border-subtle disabled:opacity-40 text-on-surface animate-scaleUp"
+                  >
+                    <span className="material-symbols-outlined text-[16px] block">chevron_left</span>
+                  </button>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="p-1 rounded bg-surface-deep border border-border-subtle disabled:opacity-40 text-on-surface animate-scaleUp"
+                  >
+                    <span className="material-symbols-outlined text-[16px] block">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT WORKSPACE: Chat Conversation Window (65% width) */}
+            <div className="flex-1 flex flex-col bg-surface-container-lowest">
+              {selectedTicket ? (
+                <div className="flex-1 flex flex-col h-full overflow-hidden">
+                  {/* Chat Active Header */}
+                  <div className="p-3 bg-surface-container border-b border-border-subtle flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-body-sm text-body-sm font-bold text-on-surface">
+                          {selectedTicket.userEmail || "Anonymous User"}
+                        </span>
+                        <span className="font-data-mono text-[10px] bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded">
+                          #{selectedTicket.reference || selectedTicket.id?.slice(0, 8)}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-on-surface-variant block mt-0.5">
+                        User ID: {selectedTicket.uid || "N/A"}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedTicket.status}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value;
+                          try {
+                            await updateDocument("support_tickets", selectedTicket.id, {
+                              status: newStatus,
+                              updatedAt: new Date(),
+                            });
+                            setSelectedTicket((prev: any) => ({ ...prev, status: newStatus }));
+                            showToast(`Status updated to ${newStatus}`);
+                          } catch (err: any) {
+                            showToast(`Failed to update status: ${err.message}`);
+                          }
+                        }}
+                        className="bg-surface-bright border border-border-subtle rounded px-2.5 py-1 text-xs font-label-caps text-on-surface focus:outline-none"
+                      >
+                        <option value="open">Open</option>
+                        <option value="pending">Pending</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Messages Stream View Area */}
+                  <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                    {/* Ticket Subject/Description: First message */}
+                    <div className="flex flex-col items-start max-w-[80%]">
+                      <div className="bg-surface-container p-3 rounded-2xl rounded-tl-none border border-border-subtle shadow-sm">
+                        <span className="text-[9px] font-label-caps text-primary font-bold block mb-1">
+                          USER REQUEST &middot; {timeAgo(selectedTicket.createdAt)}
+                        </span>
+                        <p className="font-body-sm text-body-sm text-on-surface whitespace-pre-line">
+                          {selectedTicket.subject ? `Subject: ${selectedTicket.subject}\n\n` : ""}
+                          {selectedTicket.description || "Awaiting description..."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Admin Reply Message */}
+                    {selectedTicket.adminReply && (
+                      <div className="flex flex-col items-end max-w-[80%] ml-auto">
+                        <div className="bg-primary text-on-primary p-3 rounded-2xl rounded-tr-none shadow-sm">
+                          <span className="text-[9px] font-label-caps text-on-primary/70 font-bold block mb-1">
+                            SUPPORT ADMIN &middot; {timeAgo(selectedTicket.respondedAt)}
+                          </span>
+                          <p className="font-body-sm text-body-sm whitespace-pre-line">
+                            {selectedTicket.adminReply}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom Inline Editor for replies */}
+                  <div className="p-3 bg-surface-container border-t border-border-subtle flex flex-col gap-2">
+                    {/* Quick Canned Responses Injector */}
+                    <div className="flex items-center gap-2 justify-between">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <span className="text-[10px] font-label-caps text-on-surface-variant font-bold shrink-0">
+                          LOAD RESPONSE:
+                        </span>
+                        <div className="flex gap-1.5 overflow-x-auto py-0.5 scrollbar-thin flex-1">
+                          {Object.keys(CANNED_TEMPLATES).map((key) => (
+                            <button
+                              key={key}
+                              onClick={() => injectTemplateDirectly(key)}
+                              className="bg-surface-deep hover:bg-surface-container-high border border-border-subtle text-on-surface text-[10px] px-2 py-0.5 rounded-full shrink-0 transition-colors"
+                            >
+                              {key}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <textarea
+                        className="flex-1 bg-surface-bright border border-border-subtle rounded-lg p-2.5 font-body-sm text-body-sm focus:ring-1 focus:ring-primary focus:outline-none placeholder:text-on-surface-variant/40 resize-none h-[64px]"
+                        placeholder="Type response..."
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleReply();
+                          }
+                        }}
+                      />
+                      <button
+                        disabled={!replyText.trim() || sending}
+                        onClick={handleReply}
+                        className="bg-primary text-on-primary hover:bg-primary/95 px-5 rounded-lg font-label-caps text-label-caps disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center justify-center transition-colors font-bold"
+                      >
+                        {sending ? "SENDING..." : "SEND"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[48px] text-on-surface-variant/30 mb-2">
+                    forum
+                  </span>
+                  <p className="font-body-sm text-body-sm font-bold text-on-surface">No ticket selected</p>
+                  <p className="text-xs text-on-surface-variant/70 mt-1 max-w-[280px]">
+                    Select a support ticket from the sidebar queue to display the conversation and compose a reply.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        {showFilters && (
-          <div className="px-container-padding py-2 bg-surface-container-low border-b border-border-subtle flex gap-4">
-            <div className="flex items-center gap-2">
-              <label className="font-label-caps text-[9px] text-on-surface-variant">STATUS</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-surface-deep border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
-              >
-                <option value="all">All</option>
-                <option value="open">Open</option>
-                <option value="pending">Pending</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="font-label-caps text-[9px] text-on-surface-variant">PRIORITY</label>
-              <select
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="bg-surface-deep border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
-              >
-                <option value="all">All</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
+      )}
+
+      {/* TAB 2: VERIFICATION EMAILS */}
+      {activeTab === "emails" && (
+        <section className="bg-surface-container border border-border-subtle rounded-xl overflow-hidden flex flex-col">
+          <div className="p-4 border-b border-border-subtle">
+            <h2 className="font-label-caps text-label-caps text-on-surface font-bold">
+              VERIFICATION EMAILS LOG
+            </h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Logs of the most recently sent system-generated authentication and verification code emails.
+            </p>
           </div>
-        )}
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="p-4 space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-surface-container-high rounded animate-pulse" />)}
-            </div>
-          ) : filteredTickets.length === 0 ? (
-            <div className="p-6 text-center text-on-surface-variant text-body-sm">No support tickets match filters</div>
-          ) : (
+          <div className="overflow-x-auto min-h-[500px]">
             <table className="w-full text-left border-collapse">
               <thead className="bg-surface-deep text-on-surface-variant border-b border-border-subtle">
                 <tr>
-                  <th className="px-3 py-2 w-8">
-                    <input
-                      type="checkbox"
-                      checked={filteredTickets.length > 0 && selectedIds.size === filteredTickets.length}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedIds(new Set(filteredTickets.map((t: any) => t.id)));
-                        else setSelectedIds(new Set());
-                      }}
-                      className="rounded border-border-subtle"
-                    />
-                  </th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps">TID</th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps">USER</th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps">SUBJECT</th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps">PRIORITY</th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps">STATUS</th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps">CREATED</th>
+                  <th className="px-4 py-2.5 font-label-caps text-[10px]">EMAIL ADDRESS / USER ID</th>
+                  <th className="px-4 py-2.5 font-label-caps text-[10px]">CODE</th>
+                  <th className="px-4 py-2.5 font-label-caps text-[10px]">PURPOSE</th>
+                  <th className="px-4 py-2.5 font-label-caps text-[10px]">GENERATED</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {filteredTickets.map((t: any) => (
-                  <tr
-                    key={t.id}
-                    className={`hover:bg-surface-container-high transition-colors cursor-pointer ${selectedTicket?.id === t.id ? "bg-primary/5" : ""}`}
-                    onClick={() => setSelectedTicket(t)}
-                  >
-                    <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(t.id)}
-                        onChange={() => toggleSelect(t.id)}
-                        className="rounded border-border-subtle"
-                      />
+                {emails.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-on-surface-variant text-body-sm">
+                      No emails generated yet.
                     </td>
-                    <td className="px-3 py-1.5 font-data-mono text-data-mono text-primary">#{t.reference || t.id?.slice(0, 8)}</td>
-                    <td className="px-3 py-1.5 font-body-sm text-body-sm text-on-surface">{t.uid?.slice(0, 16) || t.userEmail || "\u2014"}</td>
-                    <td className="px-3 py-1.5 font-body-sm text-body-sm text-on-surface">{t.subject || t.description?.slice(0, 40) || "\u2014"}</td>
-                    <td className="px-3 py-1.5">
-                      <span className={`font-label-caps text-[8px] px-1.5 py-0.5 rounded border ${PRIORITY_CLASS[t.priority] || PRIORITY_CLASS.low}`}>{(t.priority || "low").toUpperCase()}</span>
-                    </td>
-                    <td className="px-3 py-1.5">
-                      <span className={`font-label-caps text-[8px] px-1.5 py-0.5 rounded border ${STATUS_CLASS[t.status] || STATUS_CLASS.open} uppercase`}>{t.status || "open"}</span>
-                    </td>
-                    <td className="px-3 py-1.5 font-data-mono text-[10px] text-on-surface-variant">{timeAgo(t.createdAt)}</td>
                   </tr>
-                ))}
+                ) : (
+                  emails.map((email: any) => (
+                    <tr key={email.id} className="hover:bg-surface-container-high/30 transition-colors">
+                      <td className="px-4 py-3 font-body-sm text-body-sm text-on-surface font-semibold">
+                        {email.email || email.uid || "\u2014"}
+                      </td>
+                      <td className="px-4 py-3 font-data-mono text-data-mono text-primary font-bold">
+                        {email.code || "\u2014"}
+                      </td>
+                      <td className="px-4 py-3 font-body-sm text-body-sm text-on-surface">
+                        {email.purpose || "verification"}
+                      </td>
+                      <td className="px-4 py-3 font-data-mono text-[11px] text-on-surface-variant">
+                        {timeAgo(email.createdAt)}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
-      {/* Active Live Chat */}
-      <section>
-        <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">ACTIVE LIVE CHAT</h2>
-        <div className="bg-surface-bright border border-border-subtle rounded-xl overflow-hidden flex flex-col">
-          <div className="p-stack-base bg-surface-container flex items-center justify-between border-b border-border-subtle">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center text-on-secondary text-[10px] font-bold">
-                {selectedTicket ? "!" : "?"}
+      {/* TAB 3: SLA & PERFORMANCE */}
+      {activeTab === "metrics" && (
+        <div className="flex flex-col gap-4">
+          <section className="bg-surface-container border border-border-subtle rounded-xl p-4">
+            <h2 className="font-label-caps text-label-caps text-on-surface font-bold mb-3">
+              KPI SUMMARY METRICS
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-surface-bright p-4 border border-border-subtle rounded-lg flex flex-col justify-between">
+                <span className="font-label-caps text-[10px] text-on-surface-variant block">
+                  AVG RESPONSE TIME
+                </span>
+                <span className="font-headline-lg text-headline-lg font-black text-on-surface mt-2">
+                  {avgResponseTime}
+                </span>
+                <span className="font-data-mono text-[10px] text-status-success mt-1">
+                  Based on {tickets.filter((t: any) => t.respondedAt || t.adminReply).length} responses
+                </span>
               </div>
-              <span className="font-body-sm text-body-sm font-bold">
-                {selectedTicket
-                  ? (selectedTicket.uid?.slice(0, 16) || selectedTicket.userEmail || "Selected ticket")
-                  : openTickets[0]?.uid?.slice(0, 16) || "No active chats"}
-              </span>
+              <div className="bg-surface-bright p-4 border border-border-subtle rounded-lg flex flex-col justify-between">
+                <span className="font-label-caps text-[10px] text-on-surface-variant block">
+                  TICKET RESOLUTION RATE
+                </span>
+                <span className="font-headline-lg text-headline-lg font-black text-on-surface mt-2">
+                  {resolutionRate}%
+                </span>
+                <span className="font-data-mono text-[10px] text-status-success mt-1">
+                  {resolvedTickets.length} of {tickets.length} resolved
+                </span>
+              </div>
+              <div className="bg-surface-bright p-4 border border-border-subtle rounded-lg flex flex-col justify-between">
+                <span className="font-label-caps text-[10px] text-on-surface-variant block">
+                  PENDING QUEUE SIZE
+                </span>
+                <span className="font-headline-lg text-headline-lg font-black text-on-surface mt-2">
+                  {openTickets.length}
+                </span>
+                <span className="text-[10px] text-status-warning mt-1 flex items-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-warning mr-1 animate-pulse" />
+                  Active live tickets
+                </span>
+              </div>
             </div>
-            <span className="font-data-mono text-[10px] text-on-surface-variant">
-              {selectedTicket ? `#${selectedTicket.reference || selectedTicket.id?.slice(0, 8)}` : openTickets.length > 0 ? "Active" : "Idle"}
-            </span>
-          </div>
-          <div className="p-3 bg-surface-container-lowest min-h-[80px]">
-            {(selectedTicket || openTickets[0]) ? (
-              <div className="space-y-2">
-                <div className="bg-surface-container-high p-2 rounded-lg max-w-[85%] border border-border-subtle">
-                  <p className="font-body-sm text-body-sm text-on-surface">
-                    {(selectedTicket || openTickets[0]).subject || (selectedTicket || openTickets[0]).description || "Awaiting user message..."}
-                  </p>
-                </div>
-                {(selectedTicket || openTickets[0]).adminReply && (
-                  <div className="bg-primary/10 p-2 rounded-lg max-w-[85%] ml-auto border border-primary/20">
-                    <p className="font-body-sm text-body-sm text-on-surface">{(selectedTicket || openTickets[0]).adminReply}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-on-surface-variant text-body-sm text-center py-4">No active chats</p>
-            )}
-          </div>
-          <div className="p-2 bg-surface-container flex gap-2 border-t border-border-subtle">
-            <input
-              className="flex-1 bg-surface-deep border border-border-subtle rounded px-2 py-1 font-body-sm text-body-sm focus:ring-1 focus:ring-primary focus:outline-none placeholder:text-on-surface-variant/40"
-              placeholder="Type response..."
-              type="text"
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleReply(); } }}
-            />
-            <button
-              disabled={!replyText.trim() || sending || !selectedTicket}
-              onClick={handleReply}
-              className="bg-primary text-on-primary px-3 py-1 rounded font-label-caps text-label-caps disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {sending ? "SENDING..." : "REPLY"}
-            </button>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* Email & Canned Responses */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-max-gap">
-        <div className="flex flex-col gap-2">
-          <h2 className="font-label-caps text-label-caps text-on-surface-variant px-1">RECENT EMAILS</h2>
-          <div className="bg-surface-bright border border-border-subtle rounded flex flex-col divide-y divide-border-subtle">
-            {emails.length === 0 ? (
-              <div className="p-4 text-center text-on-surface-variant text-body-sm">No recent emails</div>
-            ) : (
-              emails.slice(0, 5).map((email: any) => (
-                <div key={email.id} className="p-2 hover:bg-surface-container-high transition-colors">
-                  <p className="font-body-sm text-body-sm font-bold text-on-surface">{email.email || email.uid || "\u2014"}</p>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant truncate">Code: {email.code || "\u2014"} &middot; {email.purpose || "verification"}</p>
-                  <span className="font-data-mono text-[10px] text-on-primary-container">{timeAgo(email.createdAt)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <h2 className="font-label-caps text-label-caps text-on-surface-variant px-1">CANNED RESPONSES</h2>
-          <div className="bg-surface-bright border border-border-subtle rounded p-stack-base">
-            <label className="font-label-caps text-[9px] text-on-surface-variant mb-1 block">SELECT TEMPLATE</label>
-            <select
-              value={cannedTemplate}
-              onChange={(e) => setCannedTemplate(e.target.value)}
-              className="w-full bg-surface-deep border border-border-subtle rounded px-2 py-1.5 font-body-sm text-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
-            >
-              {Object.keys(CANNED_TEMPLATES).map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-            <p className="font-body-sm text-body-sm text-on-surface-variant mt-2 p-2 bg-surface-deep rounded min-h-[60px]">
-              {CANNED_TEMPLATES[cannedTemplate]}
+          {/* Details SLA policy */}
+          <div className="bg-surface-container border border-border-subtle rounded-xl p-4 text-on-surface-variant text-xs space-y-2">
+            <h3 className="font-label-caps text-label-caps text-on-surface font-bold">
+              ADMIN SLA POLICY &amp; TARGETS
+            </h3>
+            <p>
+              Our targets are to respond to all incoming user support tickets within a maximum time of 2 hours.
+              Resolution should be achieved within 24 hours of ticket opening.
             </p>
-            <button
-              onClick={handleCopyTemplate}
-              className="w-full mt-2 border border-primary text-primary px-3 py-1.5 rounded font-label-caps text-label-caps hover:bg-primary/5 transition-colors active:scale-95"
-            >
-              COPY TO CLIPBOARD
-            </button>
+            <ul className="list-disc list-inside space-y-1 mt-2 text-[11px]">
+              <li>Urgent/High priority tickets target response time: &lt; 30 minutes</li>
+              <li>Medium priority tickets target response time: &lt; 2 hours</li>
+              <li>General / Low priority tickets target response time: &lt; 6 hours</li>
+            </ul>
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Bulk Actions */}
-      <section>
-        <h2 className="font-label-caps text-label-caps text-on-surface-variant mb-2 px-1">
-          BULK ACTIONS {selectedIds.size > 0 && <span className="text-primary">({selectedIds.size} selected)</span>}
-        </h2>
-        <div className="grid grid-cols-3 gap-gutter">
-          <button
-            disabled={selectedIds.size === 0 || bulkLoading}
-            onClick={() => handleBulkAction("merge")}
-            className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <span className="material-symbols-outlined text-primary">merge</span>
-            <span className="font-label-caps text-label-caps">MERGE</span>
-          </button>
-          <button
-            disabled={selectedIds.size === 0 || bulkLoading}
-            onClick={() => handleBulkAction("close")}
-            className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <span className="material-symbols-outlined text-status-danger">cancel</span>
-            <span className="font-label-caps text-label-caps">CLOSE</span>
-          </button>
-          <button
-            disabled={selectedIds.size === 0 || bulkLoading}
-            onClick={() => handleBulkAction("reassign")}
-            className="bg-surface-container border border-border-subtle p-2 flex flex-col items-center justify-center gap-1 hover:bg-surface-container-high transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <span className="material-symbols-outlined text-secondary">move_up</span>
-            <span className="font-label-caps text-label-caps">REASSIGN</span>
-          </button>
-        </div>
-      </section>
+      {/* TAB 4: CANNED TEMPLATES */}
+      {activeTab === "templates" && (
+        <section className="bg-surface-container border border-border-subtle rounded-xl p-4 flex flex-col gap-4">
+          <div>
+            <h2 className="font-label-caps text-label-caps text-on-surface font-bold">
+              CANNED RESPONSE TEMPLATES
+            </h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Review and copy canned response templates to respond quickly to typical inquiries.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="font-label-caps text-[10px] text-on-surface-variant font-bold">
+                SELECT TEMPLATE
+              </label>
+              <select
+                value={cannedTemplate}
+                onChange={(e) => setCannedTemplate(e.target.value)}
+                className="w-full bg-surface-deep border border-border-subtle rounded-lg px-3 py-2 font-body-sm text-body-sm text-on-surface focus:outline-none cursor-pointer"
+              >
+                {Object.keys(CANNED_TEMPLATES).map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-2 bg-surface-deep p-3 rounded-lg border border-border-subtle min-h-[160px]">
+              <span className="font-label-caps text-[9px] text-on-surface-variant font-bold">
+                TEMPLATE CONTENT Preview
+              </span>
+              <p className="font-body-sm text-body-sm text-on-surface mt-1.5 flex-1 select-all whitespace-pre-line">
+                {CANNED_TEMPLATES[cannedTemplate]}
+              </p>
+              <button
+                onClick={handleCopyTemplate}
+                className="w-full mt-3 border border-primary text-primary hover:bg-primary/5 px-3 py-2 rounded-lg font-label-caps text-label-caps transition-all text-xs font-bold"
+              >
+                COPY TO CLIPBOARD
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

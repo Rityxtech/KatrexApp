@@ -65,7 +65,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   ];
 
   final List<String> _platforms = ['All', 'Instagram', 'TikTok', 'YouTube'];
-  final List<IconData> _platformIcons = [FontAwesomeIcons.layerGroup, FontAwesomeIcons.instagram, FontAwesomeIcons.tiktok, FontAwesomeIcons.youtube];
+  final List<dynamic> _platformIcons = [FontAwesomeIcons.layerGroup, FontAwesomeIcons.instagram, FontAwesomeIcons.tiktok, FontAwesomeIcons.youtube];
   final List<Color> _platformColors = [Colors.white, const Color(0xFFE1306C), Colors.white, const Color(0xFFFF0000)];
 
   void _openFilterSheet() => _showBottomSheet(const _FilterSheet());
@@ -488,7 +488,7 @@ class _CreateListingSheet extends StatefulWidget {
 class _CreateListingSheetState extends State<_CreateListingSheet> {
   String _selectedPlatform = 'Instagram';
   final List<String> _platforms = ['Instagram', 'TikTok', 'YouTube', 'X', 'WhatsApp'];
-  final List<IconData> _icons = [FontAwesomeIcons.instagram, FontAwesomeIcons.tiktok, FontAwesomeIcons.youtube, FontAwesomeIcons.xTwitter, FontAwesomeIcons.whatsapp];
+  final List<dynamic> _icons = [FontAwesomeIcons.instagram, FontAwesomeIcons.tiktok, FontAwesomeIcons.youtube, FontAwesomeIcons.xTwitter, FontAwesomeIcons.whatsapp];
 
   @override
   Widget build(BuildContext context) {
@@ -549,7 +549,7 @@ class _CreateListingSheetState extends State<_CreateListingSheet> {
 
   Widget _sectionTitle(String text) => Text(text, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF), letterSpacing: 1.5));
 
-  Widget _platformChip(String label, IconData icon, bool selected, VoidCallback onTap) {
+  Widget _platformChip(String label, dynamic icon, bool selected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(

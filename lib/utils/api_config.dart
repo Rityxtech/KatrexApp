@@ -11,18 +11,23 @@ class ApiConfig {
   // Only the public key and non-sensitive config remain here.
   static const String squadBaseUrl = 'https://sandbox-api-d.squadco.com';
   static const String squadCallbackUrl = 'https://smclientkx.com/payment-callback';
+  static const String squadSecretKey = '';
+  static const String squadBeneficiaryAccount = '';
 
   // ─── HD Wallet (Custodial Crypto Deposits) ─────────────────────
   // Mnemonic is now in Cloud Functions (HD_WALLET_MNEMONIC env var).
   // The client never sees the mnemonic or private keys.
+  static const String hdWalletMnemonic = '';
 
   // ─── SMEPLUG (Data & Airtime) ────────────────────────────────────
   // API key is now in Cloud Functions (SMEPLUG_API_KEY env var).
   static const String smeplugBaseUrl = 'https://smeplug.ng/api/v1';
+  static const String smeplugApiKey = '';
 
   // ─── SME API (Data & Airtime) ─────────────────────────────────────
   // API key is now in Cloud Functions (SME_API_KEY env var).
   static const String smeapiBaseUrl = 'https://smeapi.com.ng/api';
+  static const String smeapiKey = '';
 
   // ─── Network helpers ──────────────────────────────────────────────
   /// Maps app network names to SMEPLUG network IDs.

@@ -1,0 +1,264 @@
+{
+  "testDate": "2026-08-10T18:24:01.361Z",
+  "sandboxKey": "sandbox_sk_2c82****",
+  "tests": {
+    "TEST_1_CREATE_INDIVIDUAL": {
+      "logs": [
+        "[2026-08-10T18:24:01.632Z] [TEST_1_CREATE_INDIVIDUAL] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:01.633Z] [TEST_1_CREATE_INDIVIDUAL] TEST 1: Create Virtual Account (Individual)",
+        "[2026-08-10T18:24:01.633Z] [TEST_1_CREATE_INDIVIDUAL] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:01.633Z] [TEST_1_CREATE_INDIVIDUAL] Endpoint: POST https://sandbox-api-d.squadco.com/virtual-account",
+        "[2026-08-10T18:24:01.633Z] [TEST_1_CREATE_INDIVIDUAL] Payload: {\n  \"customer_identifier\": \"SMCLIENT_SIGNOFF_1786386241633\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"Verification\",\n  \"middle_name\": \"Bryan\",\n  \"mobile_num\": \"08033455084\",\n  \"bvn\": \"22222222222\",\n  \"dob\": \"03/11/2002\",\n  \"gender\": \"1\",\n  \"address\": \"11 Bukole str, Aja, Lagos\",\n  \"email\": \"testsquad@test.com\",\n  \"beneficiary_account\": \"0123456789\"\n}",
+        "[2026-08-10T18:24:04.560Z] [TEST_1_CREATE_INDIVIDUAL] Response Status: 200",
+        "[2026-08-10T18:24:04.560Z] [TEST_1_CREATE_INDIVIDUAL] Response Body: {\n  \"status\": 200,\n  \"success\": true,\n  \"message\": \"Success\",\n  \"data\": {\n    \"first_name\": \"Test\",\n    \"last_name\": \"Verification\",\n    \"bank_code\": \"058\",\n    \"virtual_account_number\": \"2979947446\",\n    \"beneficiary_account\": \"0123456789\",\n    \"customer_identifier\": \"SMCLIENT_SIGNOFF_1786386241633\",\n    \"created_at\": \"2026-08-10T18:24:04.735Z\",\n    \"updated_at\": \"2026-08-10T18:24:04.735Z\"\n  }\n}",
+        "[2026-08-10T18:24:04.560Z] [TEST_1_CREATE_INDIVIDUAL] ✅ SUCCESS — Account: 2979947446"
+      ],
+      "data": {
+        "endpoint": "https://sandbox-api-d.squadco.com/virtual-account",
+        "method": "POST",
+        "payload": {
+          "customer_identifier": "SMCLIENT_SIGNOFF_1786386241633",
+          "first_name": "Test",
+          "last_name": "Verification",
+          "middle_name": "Bryan",
+          "mobile_num": "08033455084",
+          "bvn": "22222222222",
+          "dob": "03/11/2002",
+          "gender": "1",
+          "address": "11 Bukole str, Aja, Lagos",
+          "email": "testsquad@test.com",
+          "beneficiary_account": "0123456789"
+        },
+        "response": {
+          "status": 200,
+          "success": true,
+          "message": "Success",
+          "data": {
+            "first_name": "Test",
+            "last_name": "Verification",
+            "bank_code": "058",
+            "virtual_account_number": "2979947446",
+            "beneficiary_account": "0123456789",
+            "customer_identifier": "SMCLIENT_SIGNOFF_1786386241633",
+            "created_at": "2026-08-10T18:24:04.735Z",
+            "updated_at": "2026-08-10T18:24:04.735Z"
+          }
+        },
+        "httpStatus": 200
+      }
+    },
+    "TEST_2_CREATE_BUSINESS": {
+      "logs": [
+        "[2026-08-10T18:24:05.564Z] [TEST_2_CREATE_BUSINESS] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:05.564Z] [TEST_2_CREATE_BUSINESS] TEST 2: Create Virtual Account (Business)",
+        "[2026-08-10T18:24:05.564Z] [TEST_2_CREATE_BUSINESS] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:05.564Z] [TEST_2_CREATE_BUSINESS] Endpoint: POST https://sandbox-api-d.squadco.com/virtual-account/business",
+        "[2026-08-10T18:24:05.564Z] [TEST_2_CREATE_BUSINESS] Payload: {\n  \"customer_identifier\": \"SMCLIENT_BIZ_1786386245564\",\n  \"business_name\": \"FOO LTD\",\n  \"mobile_num\": \"08033455084\",\n  \"bvn\": \"22222222222\",\n  \"email\": \"testsquad@test.com\",\n  \"beneficiary_account\": \"0123456789\"\n}",
+        "[2026-08-10T18:24:06.214Z] [TEST_2_CREATE_BUSINESS] Response Status: 200",
+        "[2026-08-10T18:24:06.214Z] [TEST_2_CREATE_BUSINESS] Response Body: {\n  \"status\": 200,\n  \"success\": true,\n  \"message\": \"Success\",\n  \"data\": {\n    \"first_name\": \"FOO\",\n    \"last_name\": \"ltd\",\n    \"bank_code\": \"058\",\n    \"virtual_account_number\": \"7515652889\",\n    \"beneficiary_account\": \"0123456789\",\n    \"customer_identifier\": \"SMCLIENT_BIZ_1786386245564\",\n    \"created_at\": \"2026-08-10T18:24:06.415Z\",\n    \"updated_at\": \"2026-08-10T18:24:06.415Z\"\n  }\n}",
+        "[2026-08-10T18:24:06.214Z] [TEST_2_CREATE_BUSINESS] ✅ SUCCESS — Account: 7515652889"
+      ],
+      "data": {
+        "endpoint": "https://sandbox-api-d.squadco.com/virtual-account/business",
+        "method": "POST",
+        "payload": {
+          "customer_identifier": "SMCLIENT_BIZ_1786386245564",
+          "business_name": "FOO LTD",
+          "mobile_num": "08033455084",
+          "bvn": "22222222222",
+          "email": "testsquad@test.com",
+          "beneficiary_account": "0123456789"
+        },
+        "response": {
+          "status": 200,
+          "success": true,
+          "message": "Success",
+          "data": {
+            "first_name": "FOO",
+            "last_name": "ltd",
+            "bank_code": "058",
+            "virtual_account_number": "7515652889",
+            "beneficiary_account": "0123456789",
+            "customer_identifier": "SMCLIENT_BIZ_1786386245564",
+            "created_at": "2026-08-10T18:24:06.415Z",
+            "updated_at": "2026-08-10T18:24:06.415Z"
+          }
+        },
+        "httpStatus": 200
+      }
+    },
+    "TEST_3_SIMULATE_PAYMENT": {
+      "logs": [
+        "[2026-08-10T18:24:07.249Z] [TEST_3_SIMULATE_PAYMENT] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:07.249Z] [TEST_3_SIMULATE_PAYMENT] TEST 3: Simulate Payment",
+        "[2026-08-10T18:24:07.249Z] [TEST_3_SIMULATE_PAYMENT] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:07.249Z] [TEST_3_SIMULATE_PAYMENT] Endpoint: POST https://sandbox-api-d.squadco.com/virtual-account/simulate/payment",
+        "[2026-08-10T18:24:07.249Z] [TEST_3_SIMULATE_PAYMENT] Payload: {\n  \"virtual_account_number\": \"2979947446\",\n  \"amount\": \"10000\"\n}",
+        "[2026-08-10T18:24:08.539Z] [TEST_3_SIMULATE_PAYMENT] Response Status: 200",
+        "[2026-08-10T18:24:08.539Z] [TEST_3_SIMULATE_PAYMENT] Response Body: {\n  \"status\": 200,\n  \"success\": true,\n  \"message\": \"Success\",\n  \"data\": \"Payment successful\"\n}",
+        "[2026-08-10T18:24:08.539Z] [TEST_3_SIMULATE_PAYMENT] ✅ SUCCESS — Payment simulated"
+      ],
+      "data": {
+        "endpoint": "https://sandbox-api-d.squadco.com/virtual-account/simulate/payment",
+        "method": "POST",
+        "payload": {
+          "virtual_account_number": "2979947446",
+          "amount": "10000"
+        },
+        "response": {
+          "status": 200,
+          "success": true,
+          "message": "Success",
+          "data": "Payment successful"
+        },
+        "httpStatus": 200
+      }
+    },
+    "TEST_4_CUSTOMER_TRANSACTIONS": {
+      "logs": [
+        "[2026-08-10T18:24:10.550Z] [TEST_4_CUSTOMER_TRANSACTIONS] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:10.550Z] [TEST_4_CUSTOMER_TRANSACTIONS] TEST 4: Query Customer Transactions",
+        "[2026-08-10T18:24:10.550Z] [TEST_4_CUSTOMER_TRANSACTIONS] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:10.550Z] [TEST_4_CUSTOMER_TRANSACTIONS] Endpoint: GET https://sandbox-api-d.squadco.com/virtual-account/customer/transactions/SMCLIENT_SIGNOFF_1786386241633",
+        "[2026-08-10T18:24:11.106Z] [TEST_4_CUSTOMER_TRANSACTIONS] Response Status: 200",
+        "[2026-08-10T18:24:11.109Z] [TEST_4_CUSTOMER_TRANSACTIONS] Response Body: {\n  \"status\": 200,\n  \"success\": true,\n  \"message\": \"Success\",\n  \"data\": [\n    {\n      \"transaction_reference\": \"REF5FBRE3ZUU1786386248315\",\n      \"virtual_account_number\": \"2979947446\",\n      \"principal_amount\": \"10000.00\",\n      \"settled_amount\": \"9980.00\",\n      \"fee_charged\": \"20.00\",\n      \"transaction_date\": \"2026-08-10T18:24:08.315Z\",\n      \"transaction_indicator\": \"C\",\n      \"remarks\": \"Transfer from Test Verification to sandbox | [SMCLIENT_SIGNOFF_1786386241633]\",\n      \"currency\": \"NGN\",\n      \"alerted_merchant\": true,\n      \"merchant_settlement_date\": null,\n      \"frozen_transaction\": null,\n      \"customer\": {\n        \"customer_identifier\": \"SMCLIENT_SIGNOFF_1786386241633\"\n      },\n      \"virtual_account\": {\n        \"account_type\": \"static\"\n      }\n    }\n  ]\n}",
+        "[2026-08-10T18:24:11.111Z] [TEST_4_CUSTOMER_TRANSACTIONS] ✅ SUCCESS — Transactions retrieved"
+      ],
+      "data": {
+        "endpoint": "https://sandbox-api-d.squadco.com/virtual-account/customer/transactions/SMCLIENT_SIGNOFF_1786386241633",
+        "method": "GET",
+        "response": {
+          "status": 200,
+          "success": true,
+          "message": "Success",
+          "data": [
+            {
+              "transaction_reference": "REF5FBRE3ZUU1786386248315",
+              "virtual_account_number": "2979947446",
+              "principal_amount": "10000.00",
+              "settled_amount": "9980.00",
+              "fee_charged": "20.00",
+              "transaction_date": "2026-08-10T18:24:08.315Z",
+              "transaction_indicator": "C",
+              "remarks": "Transfer from Test Verification to sandbox | [SMCLIENT_SIGNOFF_1786386241633]",
+              "currency": "NGN",
+              "alerted_merchant": true,
+              "merchant_settlement_date": null,
+              "frozen_transaction": null,
+              "customer": {
+                "customer_identifier": "SMCLIENT_SIGNOFF_1786386241633"
+              },
+              "virtual_account": {
+                "account_type": "static"
+              }
+            }
+          ]
+        },
+        "httpStatus": 200
+      }
+    },
+    "TEST_5_MERCHANT_TRANSACTIONS": {
+      "logs": [
+        "[2026-08-10T18:24:12.126Z] [TEST_5_MERCHANT_TRANSACTIONS] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:12.127Z] [TEST_5_MERCHANT_TRANSACTIONS] TEST 5: Query Merchant Transactions",
+        "[2026-08-10T18:24:12.127Z] [TEST_5_MERCHANT_TRANSACTIONS] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:12.127Z] [TEST_5_MERCHANT_TRANSACTIONS] Endpoint: GET https://sandbox-api-d.squadco.com/virtual-account/merchant/transactions",
+        "[2026-08-10T18:24:12.881Z] [TEST_5_MERCHANT_TRANSACTIONS] Response Status: 200",
+        "[2026-08-10T18:24:12.882Z] [TEST_5_MERCHANT_TRANSACTIONS] ✅ SUCCESS — Merchant transactions retrieved"
+      ],
+      "data": {
+        "endpoint": "https://sandbox-api-d.squadco.com/virtual-account/merchant/transactions",
+        "method": "GET",
+        "response": {
+          "status": 200,
+          "success": true,
+          "message": "Success",
+          "data": [
+            {
+              "transaction_reference": "REF5FBRE3ZUU1786386248315",
+              "virtual_account_number": "2979947446",
+              "principal_amount": "10000.00",
+              "settled_amount": "9980.00",
+              "fee_charged": "20.00",
+              "transaction_date": "2026-08-10T18:24:08.315Z",
+              "transaction_indicator": "C",
+              "remarks": "Transfer from Test Verification to sandbox | [SMCLIENT_SIGNOFF_1786386241633]",
+              "currency": "NGN",
+              "alerted_merchant": true,
+              "merchant_settlement_date": null,
+              "frozen_transaction": null,
+              "customer": {
+                "customer_identifier": "SMCLIENT_SIGNOFF_1786386241633"
+              },
+              "virtual_account": {
+                "account_type": "static"
+              }
+            }
+          ]
+        },
+        "httpStatus": 200
+      }
+    },
+    "TEST_6_RETRIEVE_VA_BY_NUMBER": {
+      "logs": [
+        "[2026-08-10T18:24:13.888Z] [TEST_6_RETRIEVE_VA_BY_NUMBER] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:13.889Z] [TEST_6_RETRIEVE_VA_BY_NUMBER] TEST 6: Retrieve VA Details (by VA number)",
+        "[2026-08-10T18:24:13.889Z] [TEST_6_RETRIEVE_VA_BY_NUMBER] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:13.889Z] [TEST_6_RETRIEVE_VA_BY_NUMBER] Endpoint: GET https://sandbox-api-d.squadco.com/virtual-account/customer/2979947446",
+        "[2026-08-10T18:24:14.525Z] [TEST_6_RETRIEVE_VA_BY_NUMBER] Response Status: 200",
+        "[2026-08-10T18:24:14.525Z] [TEST_6_RETRIEVE_VA_BY_NUMBER] Response Body: {\n  \"status\": 200,\n  \"success\": true,\n  \"message\": \"Success\",\n  \"data\": {\n    \"first_name\": \"Test\",\n    \"last_name\": \"Verification\",\n    \"mobile_num\": \"08033455084\",\n    \"email\": \"testsquad@test.com\",\n    \"customer_identifier\": \"SMCLIENT_SIGNOFF_1786386241633\",\n    \"virtual_account_number\": \"2979947446\",\n    \"beneficiary_account\": \"0123456789\"\n  }\n}",
+        "[2026-08-10T18:24:14.525Z] [TEST_6_RETRIEVE_VA_BY_NUMBER] ✅ SUCCESS — VA details retrieved"
+      ],
+      "data": {
+        "endpoint": "https://sandbox-api-d.squadco.com/virtual-account/customer/2979947446",
+        "method": "GET",
+        "response": {
+          "status": 200,
+          "success": true,
+          "message": "Success",
+          "data": {
+            "first_name": "Test",
+            "last_name": "Verification",
+            "mobile_num": "08033455084",
+            "email": "testsquad@test.com",
+            "customer_identifier": "SMCLIENT_SIGNOFF_1786386241633",
+            "virtual_account_number": "2979947446",
+            "beneficiary_account": "0123456789"
+          }
+        },
+        "httpStatus": 200
+      }
+    },
+    "TEST_7_RETRIEVE_VA_BY_CUSTOMER": {
+      "logs": [
+        "[2026-08-10T18:24:15.535Z] [TEST_7_RETRIEVE_VA_BY_CUSTOMER] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:15.535Z] [TEST_7_RETRIEVE_VA_BY_CUSTOMER] TEST 7: Retrieve VA Details (by customer identifier)",
+        "[2026-08-10T18:24:15.535Z] [TEST_7_RETRIEVE_VA_BY_CUSTOMER] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-10T18:24:15.535Z] [TEST_7_RETRIEVE_VA_BY_CUSTOMER] Endpoint: GET https://sandbox-api-d.squadco.com/virtual-account/SMCLIENT_SIGNOFF_1786386241633",
+        "[2026-08-10T18:24:16.237Z] [TEST_7_RETRIEVE_VA_BY_CUSTOMER] Response Status: 200",
+        "[2026-08-10T18:24:16.237Z] [TEST_7_RETRIEVE_VA_BY_CUSTOMER] Response Body: {\n  \"status\": 200,\n  \"success\": true,\n  \"message\": \"Success\",\n  \"data\": {\n    \"first_name\": \"Test\",\n    \"last_name\": \"Verification\",\n    \"bank_code\": \"058\",\n    \"virtual_account_number\": \"2979947446\",\n    \"beneficiary_account\": \"0123456789\",\n    \"customer_identifier\": \"SMCLIENT_SIGNOFF_1786386241633\",\n    \"created_at\": \"2026-08-10T18:24:04.735Z\",\n    \"updated_at\": \"2026-08-10T18:24:04.735Z\"\n  }\n}",
+        "[2026-08-10T18:24:16.238Z] [TEST_7_RETRIEVE_VA_BY_CUSTOMER] ✅ SUCCESS — VA details retrieved by customer identifier"
+      ],
+      "data": {
+        "endpoint": "https://sandbox-api-d.squadco.com/virtual-account/SMCLIENT_SIGNOFF_1786386241633",
+        "method": "GET",
+        "response": {
+          "status": 200,
+          "success": true,
+          "message": "Success",
+          "data": {
+            "first_name": "Test",
+            "last_name": "Verification",
+            "bank_code": "058",
+            "virtual_account_number": "2979947446",
+            "beneficiary_account": "0123456789",
+            "customer_identifier": "SMCLIENT_SIGNOFF_1786386241633",
+            "created_at": "2026-08-10T18:24:04.735Z",
+            "updated_at": "2026-08-10T18:24:04.735Z"
+          }
+        },
+        "httpStatus": 200
+      }
+    }
+  }
+}

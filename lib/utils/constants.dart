@@ -13,6 +13,7 @@ class FirestoreCollections {
   static const virtualAccounts = 'virtual_accounts';
   static const cryptoDeposits = 'crypto_deposits';
   static const appConfig = 'app_config';
+  static const fcmTokens = 'fcm_tokens';
 }
 
 class StoragePaths {

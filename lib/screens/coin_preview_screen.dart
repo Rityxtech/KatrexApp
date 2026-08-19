@@ -23,7 +23,7 @@ class CoinPreviewScreen extends StatefulWidget {
   final CoinMarketData? initialData;
   final String coinName;
   final String coinSymbol;
-  final IconData coinIcon;
+  final dynamic coinIcon;
   final String? iconUrl;
   final Color coinColor;
   final String balanceNaira;
@@ -54,6 +54,13 @@ class CoinPreviewScreen extends StatefulWidget {
 }
 
 class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
+  Widget _buildCoinIcon(double size, {Color? color}) {
+    final finalColor = color ?? widget.coinColor;
+    return widget.coinIcon is FaIconData
+        ? FaIcon(widget.coinIcon, size: size, color: finalColor)
+        : Icon(widget.coinIcon as IconData?, size: size, color: finalColor);
+  }
+
   int _selectedTimeframe = 1;
   final List<String> _timeframes = ['1H', '1D', '1W', '1M', '1Y', 'ALL'];
 
@@ -230,9 +237,9 @@ class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
                           imageUrl: widget.iconUrl!,
                           width: 14,
                           height: 14,
-                          errorWidget: (context, url, error) => FaIcon(widget.coinIcon, size: 12, color: widget.coinColor),
+                          errorWidget: (context, url, error) => _buildCoinIcon(12),
                         )
-                      : FaIcon(widget.coinIcon, size: 12, color: widget.coinColor),
+                      : _buildCoinIcon(12),
                 ),
               ),
               const SizedBox(width: 6),
@@ -275,9 +282,9 @@ class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
                         imageUrl: widget.iconUrl!,
                         width: 12,
                         height: 12,
-                        errorWidget: (context, url, error) => FaIcon(widget.coinIcon, size: 10, color: widget.coinColor),
+                        errorWidget: (context, url, error) => _buildCoinIcon(10),
                       )
-                    : FaIcon(widget.coinIcon, size: 10, color: widget.coinColor),
+                    : _buildCoinIcon(10),
                 const SizedBox(width: 4),
                 Text(widget.balanceCoin, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFFD1D5DB))),
               ],
@@ -1272,9 +1279,9 @@ class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
                                   imageUrl: widget.iconUrl!,
                                   width: 14,
                                   height: 14,
-                                  errorWidget: (context, url, error) => FaIcon(widget.coinIcon, size: 10, color: widget.coinColor),
+                                  errorWidget: (context, url, error) => _buildCoinIcon(10),
                                 )
-                              : FaIcon(widget.coinIcon, size: 10, color: widget.coinColor),
+                              : _buildCoinIcon(10),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -1530,9 +1537,9 @@ class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
                                 imageUrl: widget.iconUrl!,
                                 width: 10,
                                 height: 10,
-                                errorWidget: (context, url, error) => FaIcon(widget.coinIcon, size: 8, color: widget.coinColor),
+                                errorWidget: (context, url, error) => _buildCoinIcon(8),
                               )
-                            : FaIcon(widget.coinIcon, size: 8, color: widget.coinColor),
+                            : _buildCoinIcon(8),
                       ),
                     ),
                     const SizedBox(width: 6),

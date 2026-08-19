@@ -529,7 +529,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildTextInput({IconData? icon, required String hint, IconData? suffixIcon, TextAlign textAlign = TextAlign.left, bool obscure = false}) {
+  Widget _buildTextInput({IconData? icon, required String hint, dynamic suffixIcon, TextAlign textAlign = TextAlign.left, bool obscure = false}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
@@ -545,7 +545,11 @@ class _WalletScreenState extends State<WalletScreen> {
           hintStyle: GoogleFonts.robotoMono(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey.shade600, letterSpacing: 2),
           border: InputBorder.none,
           prefixIcon: icon != null ? Icon(icon, color: Colors.grey.shade400, size: 18) : null,
-          suffixIcon: suffixIcon != null ? Icon(suffixIcon, color: suffixIcon == FontAwesomeIcons.ccVisa ? Colors.blue : Colors.grey.shade500, size: suffixIcon == FontAwesomeIcons.ccVisa ? 20 : 14) : null,
+          suffixIcon: suffixIcon != null
+              ? (suffixIcon is FaIconData
+                  ? FaIcon(suffixIcon, color: suffixIcon == FontAwesomeIcons.ccVisa ? Colors.blue : Colors.grey.shade500, size: suffixIcon == FontAwesomeIcons.ccVisa ? 20 : 14)
+                  : Icon(suffixIcon as IconData, color: Colors.grey.shade500, size: 14))
+              : null,
           contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         ),
       ),

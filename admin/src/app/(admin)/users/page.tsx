@@ -66,8 +66,11 @@ export default function UsersPage() {
     }
     if (statusFilter !== "all") {
       list = list.filter((u: any) => {
-        const s = u.kycStatus || (u.verified ? "verified" : "pending");
-        if (statusFilter === "verified") return s === "verified" || s === "completed";
+        const kycTierNum = u.kycTier ?? 0;
+        const s = u.isActive === false ? "suspended"
+          : kycTierNum >= 1 ? "verified"
+          : "pending";
+        if (statusFilter === "verified") return s === "verified";
         if (statusFilter === "pending") return s === "pending";
         if (statusFilter === "suspended") return s === "suspended" || u.isActive === false;
         return true;
@@ -111,6 +114,12 @@ export default function UsersPage() {
     setPage(0);
   };
 
+  // ─── Shared helpers ─────────────────────────────────────────────
+  const getStatus = (u: any) => {
+    const t = u.kycTier ?? 0;
+    return u.isActive === false ? "suspended" : t >= 1 ? "verified" : "pending";
+  };
+
   // ─── CSV Export ────────────────────────────────────────────────
   const exportCsv = () => {
     const escape = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
@@ -120,8 +129,8 @@ export default function UsersPage() {
         u.fullName || u.displayName || u.name || "",
         u.email || "",
         u.id || "",
-        u.kycStatus || (u.verified ? "verified" : "pending"),
-        `Tier ${u.kycTier ?? 1}`,
+        getStatus(u),
+        `Tier ${u.kycTier ?? 0}`,
         u.nairaBalance || 0,
         u.createdAt?.toDate ? u.createdAt.toDate().toISOString() : u.createdAt || "",
       ].map(escape).join(",")
@@ -149,8 +158,8 @@ export default function UsersPage() {
     const data = filtered.slice(0, 200).map((u: any) => [
       (u.fullName || u.displayName || u.name || "Unknown").slice(0, 25),
       (u.email || "").slice(0, 30),
-      u.kycStatus || (u.verified ? "verified" : "pending"),
-      `Tier ${u.kycTier ?? 1}`,
+      getStatus(u),
+      `Tier ${u.kycTier ?? 0}`,
       `\u20a6${(u.nairaBalance || 0).toLocaleString()}`,
     ]);
 

@@ -43,7 +43,7 @@ export default function CryptoPage() {
   const visibleCount = coins.filter((c: any) => c.visible !== false).length;
   const hiddenCount = coins.length - visibleCount;
 
-  const feeSettings = settings.find((s: any) => s.id === "crypto_fees") || {};
+  const feeSettings = settings.find((s: any) => s.id === "trade_fees") || {};
 
   const handleToggle = async (coin: any) => {
     setToggling(coin.id);
@@ -97,10 +97,12 @@ export default function CryptoPage() {
     setFeeMessage(null);
     try {
       const formData = new FormData(e.target as HTMLFormElement);
-      await setDocument("app_settings", "crypto_fees", {
-        buyCommission: parseFloat(formData.get("buyCommission") as string) || 0,
-        sellSpread: parseFloat(formData.get("sellSpread") as string) || 0,
-        swapFee: parseFloat(formData.get("swapFee") as string) || 0,
+      await setDocument("app_config", "trade_fees", {
+        buyFeePercent: parseFloat(formData.get("buyFeePercent") as string) || 0,
+        sellFeePercent: parseFloat(formData.get("sellFeePercent") as string) || 0,
+        swapFeePercent: parseFloat(formData.get("swapFeePercent") as string) || 0,
+        sendFeePercent: parseFloat(formData.get("sendFeePercent") as string) || 0,
+        updatedAt: new Date(),
       });
       setFeeMessage("Fees updated successfully");
       setTimeout(() => setFeeMessage(null), 3000);
@@ -270,41 +272,67 @@ export default function CryptoPage() {
               <span className="font-label-caps text-label-caps text-secondary">Global Fee Overrides</span>
             </div>
             <form onSubmit={handleSaveFees} className="p-3 space-y-4">
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Buy Commission (%)</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    className="bg-surface-deep border border-subtle rounded px-2 py-1 text-data-mono text-data-mono text-on-surface w-full focus:ring-1 focus:ring-secondary outline-none"
-                    step="0.01"
-                    type="number"
-                    name="buyCommission"
-                    defaultValue={feeSettings.buyCommission ?? 1.25}
-                  />
-                  <span className="text-on-surface-variant text-body-sm">%</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Buy Fee (%)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="bg-surface-deep border border-subtle rounded px-2 py-1 text-data-mono text-data-mono text-on-surface w-full focus:ring-1 focus:ring-secondary outline-none"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      type="number"
+                      name="buyFeePercent"
+                      defaultValue={feeSettings.buyFeePercent ?? 0.5}
+                    />
+                    <span className="text-on-surface-variant text-body-sm">%</span>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Sell Spread (Fixed NGN)</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    className="bg-surface-deep border border-subtle rounded px-2 py-1 text-data-mono text-data-mono text-on-surface w-full focus:ring-1 focus:ring-secondary outline-none"
-                    step="10"
-                    type="number"
-                    name="sellSpread"
-                    defaultValue={feeSettings.sellSpread ?? 500}
-                  />
-                  <span className="text-on-surface-variant text-body-sm">{"\u20a6"}</span>
+                <div>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Sell Fee (%)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="bg-surface-deep border border-subtle rounded px-2 py-1 text-data-mono text-data-mono text-on-surface w-full focus:ring-1 focus:ring-secondary outline-none"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      type="number"
+                      name="sellFeePercent"
+                      defaultValue={feeSettings.sellFeePercent ?? 0.5}
+                    />
+                    <span className="text-on-surface-variant text-body-sm">%</span>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Swap Fee (%)</label>
-                <input
-                  className="bg-surface-deep border border-subtle rounded px-2 py-1 text-data-mono text-data-mono text-on-surface w-full focus:ring-1 focus:ring-secondary outline-none"
-                  step="0.01"
-                  type="number"
-                  name="swapFee"
-                  defaultValue={feeSettings.swapFee ?? 0.50}
-                />
+                <div>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Send Fee (%)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="bg-surface-deep border border-subtle rounded px-2 py-1 text-data-mono text-data-mono text-on-surface w-full focus:ring-1 focus:ring-secondary outline-none"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      type="number"
+                      name="sendFeePercent"
+                      defaultValue={feeSettings.sendFeePercent ?? 1.0}
+                    />
+                    <span className="text-on-surface-variant text-body-sm">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Swap Fee (%)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="bg-surface-deep border border-subtle rounded px-2 py-1 text-data-mono text-data-mono text-on-surface w-full focus:ring-1 focus:ring-secondary outline-none"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      type="number"
+                      name="swapFeePercent"
+                      defaultValue={feeSettings.swapFeePercent ?? 0.5}
+                    />
+                    <span className="text-on-surface-variant text-body-sm">%</span>
+                  </div>
+                </div>
               </div>
               {feeMessage && (
                 <div className={`text-body-sm font-label-caps ${feeMessage.includes("success") ? "text-status-success" : "text-status-danger"}`}>

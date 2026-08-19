@@ -1,0 +1,311 @@
+{
+  "testDate": "2026-08-07T12:11:42.212Z",
+  "project": "smclient-83cde",
+  "webhookUrl": "https://squadwebhook-nx6tlgm5aa-uc.a.run.app",
+  "sandboxKey": "sandbox_sk_2c82****",
+  "tests": {
+    "TEST_1_CREATE_VIRTUAL_ACCOUNT": {
+      "logs": [
+        "[2026-08-07T12:11:42.215Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-07T12:11:42.216Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] TEST 1: Create Virtual Account via Squad API",
+        "[2026-08-07T12:11:42.216Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-07T12:11:42.216Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] ",
+        "[2026-08-07T12:11:42.216Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] Endpoint: https://sandbox-api-d.squadco.com/virtual-account",
+        "[2026-08-07T12:11:42.217Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] Method: POST",
+        "[2026-08-07T12:11:42.217Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] Authorization: Bearer sandbox_sk_2c82****",
+        "[2026-08-07T12:11:42.217Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] ",
+        "[2026-08-07T12:11:42.217Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] REQUEST PAYLOAD:",
+        "[2026-08-07T12:11:42.217Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] {\n  \"first_name\": \"Test\",\n  \"last_name\": \"Verification\",\n  \"mobile_num\": \"08030000000\",\n  \"dob\": \"01/01/1990\",\n  \"gender\": \"1\",\n  \"address\": \"123 Test Street, Lagos\",\n  \"customer_identifier\": \"test_squad_verification_1786104702212\",\n  \"bvn\": \"22222222222\",\n  \"email\": \"testsquad@test.com\",\n  \"beneficiary_account\": \"0123456789\"\n}",
+        "[2026-08-07T12:11:45.283Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] ",
+        "[2026-08-07T12:11:45.283Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] RESPONSE STATUS: 200",
+        "[2026-08-07T12:11:45.283Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] RESPONSE BODY:",
+        "[2026-08-07T12:11:45.283Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] {\n  \"status\": 200,\n  \"success\": true,\n  \"message\": \"Success\",\n  \"data\": {\n    \"first_name\": \"Test\",\n    \"last_name\": \"Verification\",\n    \"bank_code\": \"058\",\n    \"virtual_account_number\": \"8541291713\",\n    \"beneficiary_account\": \"0123456789\",\n    \"customer_identifier\": \"test_squad_verification_1786104702212\",\n    \"created_at\": \"2026-08-07T12:11:45.212Z\",\n    \"updated_at\": \"2026-08-07T12:11:45.212Z\"\n  }\n}",
+        "[2026-08-07T12:11:45.285Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] ",
+        "[2026-08-07T12:11:45.286Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT] ✅ SUCCESS — Virtual account created successfully!",
+        "[2026-08-07T12:11:45.286Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT]    Account Number: 8541291713",
+        "[2026-08-07T12:11:45.286Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT]    Account Name: Test Verification",
+        "[2026-08-07T12:11:45.286Z] [TEST_1_CREATE_VIRTUAL_ACCOUNT]    Bank: GTBank"
+      ],
+      "data": {
+        "request": {
+          "endpoint": "https://sandbox-api-d.squadco.com/virtual-account",
+          "method": "POST",
+          "headers": {
+            "Authorization": "Bearer sandbox_sk_2c82****",
+            "Content-Type": "application/json"
+          },
+          "payload": {
+            "first_name": "Test",
+            "last_name": "Verification",
+            "mobile_num": "08030000000",
+            "dob": "01/01/1990",
+            "gender": "1",
+            "address": "123 Test Street, Lagos",
+            "customer_identifier": "test_squad_verification_1786104702212",
+            "bvn": "22222222222",
+            "email": "testsquad@test.com",
+            "beneficiary_account": "0123456789"
+          }
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "status": 200,
+            "success": true,
+            "message": "Success",
+            "data": {
+              "first_name": "Test",
+              "last_name": "Verification",
+              "bank_code": "058",
+              "virtual_account_number": "8541291713",
+              "beneficiary_account": "0123456789",
+              "customer_identifier": "test_squad_verification_1786104702212",
+              "created_at": "2026-08-07T12:11:45.212Z",
+              "updated_at": "2026-08-07T12:11:45.212Z"
+            }
+          }
+        }
+      }
+    },
+    "TEST_2_SIMULATE_PAYMENT": {
+      "logs": [
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] TEST 2: Simulate Payment to Virtual Account",
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] Virtual Account: 8541291713",
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] Amount: ₦5,000 (500000 kobo)",
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:45.289Z] [TEST_2_SIMULATE_PAYMENT] Setting up test virtual account record in Firestore...",
+        "[2026-08-07T12:11:48.009Z] [TEST_2_SIMULATE_PAYMENT] ✅ Virtual account record created in Firestore for uid: test_squad_verification_1786104702212",
+        "[2026-08-07T12:11:48.009Z] [TEST_2_SIMULATE_PAYMENT] Setting up test wallet in Firestore...",
+        "[2026-08-07T12:11:48.435Z] [TEST_2_SIMULATE_PAYMENT] ✅ Test wallet created with ₦0 balance",
+        "[2026-08-07T12:11:48.811Z] [TEST_2_SIMULATE_PAYMENT] Wallet balance BEFORE payment: ₦0",
+        "[2026-08-07T12:11:48.811Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:48.811Z] [TEST_2_SIMULATE_PAYMENT] Attempting Squad sandbox simulation endpoint...",
+        "[2026-08-07T12:11:48.811Z] [TEST_2_SIMULATE_PAYMENT] Trying: POST https://sandbox-api-d.squadco.com/virtual-account/fund",
+        "[2026-08-07T12:11:49.173Z] [TEST_2_SIMULATE_PAYMENT] Response: 404 — {\"status\":404,\"success\":false,\"message\":\"Not found\",\"data\":{}}",
+        "[2026-08-07T12:11:49.173Z] [TEST_2_SIMULATE_PAYMENT] Trying: POST https://sandbox-api-d.squadco.com/virtual-account/credit",
+        "[2026-08-07T12:11:49.739Z] [TEST_2_SIMULATE_PAYMENT] Response: 404 — {\"status\":404,\"success\":false,\"message\":\"Not found\",\"data\":{}}",
+        "[2026-08-07T12:11:49.739Z] [TEST_2_SIMULATE_PAYMENT] Trying: POST https://sandbox-api-d.squadco.com/virtual-account/simulate-payment",
+        "[2026-08-07T12:11:50.132Z] [TEST_2_SIMULATE_PAYMENT] Response: 404 — {\"status\":404,\"success\":false,\"message\":\"Not found\",\"data\":{}}",
+        "[2026-08-07T12:11:50.133Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:50.133Z] [TEST_2_SIMULATE_PAYMENT] Sandbox simulation API not available. Simulating webhook directly...",
+        "[2026-08-07T12:11:50.133Z] [TEST_2_SIMULATE_PAYMENT] This sends a properly-signed webhook to our Cloud Function,",
+        "[2026-08-07T12:11:50.133Z] [TEST_2_SIMULATE_PAYMENT] exactly as Squad would when a real bank transfer lands.",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT] WEBHOOK REQUEST:",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT]   URL: https://squadwebhook-nx6tlgm5aa-uc.a.run.app",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT]   Method: POST",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT]   Headers:",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT]     Content-Type: application/json",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT]     x-squad-signature: 26dbd6a4117c0791f49d...8f9a964c3c3fcd7c9486",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT]   Body:",
+        "[2026-08-07T12:11:50.136Z] [TEST_2_SIMULATE_PAYMENT]     {\n  \"event\": \"virtual_account_payment\",\n  \"data\": {\n    \"virtual_account_number\": \"8541291713\",\n    \"amount\": 500000,\n    \"transaction_ref\": \"SQUAD-TEST-1786104710133\",\n    \"currency\": \"NGN\",\n    \"session_id\": \"session_1786104710133\",\n    \"type\": \"virtual_account_payment\"\n  }\n}",
+        "[2026-08-07T12:11:52.687Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:52.687Z] [TEST_2_SIMULATE_PAYMENT] WEBHOOK RESPONSE:",
+        "[2026-08-07T12:11:52.687Z] [TEST_2_SIMULATE_PAYMENT]   Status: 200",
+        "[2026-08-07T12:11:52.687Z] [TEST_2_SIMULATE_PAYMENT]   Body: {\"status\":\"success\"}",
+        "[2026-08-07T12:11:52.687Z] [TEST_2_SIMULATE_PAYMENT] ✅ Webhook accepted and processed!",
+        "[2026-08-07T12:11:52.688Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:52.688Z] [TEST_2_SIMULATE_PAYMENT] Waiting 3 seconds for Firestore to process...",
+        "[2026-08-07T12:11:55.689Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:55.689Z] [TEST_2_SIMULATE_PAYMENT] Checking wallet balance AFTER payment...",
+        "[2026-08-07T12:11:56.075Z] [TEST_2_SIMULATE_PAYMENT] Wallet balance AFTER payment: ₦5000",
+        "[2026-08-07T12:11:56.075Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:56.075Z] [TEST_2_SIMULATE_PAYMENT] Checking for transaction record in Firestore...",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT] ✅ Transaction record found:",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT]   ID: 2wKqGBdogT3gYeAEmwvj",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT]   Type: deposit",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT]   Status: completed",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT]   Amount: ₦5000",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT]   Reference: SQUAD-TEST-1786104710133",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT]   Payment Method: virtual_account",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:56.936Z] [TEST_2_SIMULATE_PAYMENT] Checking for notification in Firestore...",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT] ✅ Notification record found:",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT]   Title: Deposit Successful",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT]   Body: Your bank transfer deposit of ₦5,000 has been credited.",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT] TEST 2 SUMMARY:",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT]   Wallet balance before: ₦0",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT]   Wallet balance after:  ₦5000",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT]   Difference:            ₦5000",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT]   ✅ Wallet was credited successfully!",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT] ",
+        "[2026-08-07T12:11:57.361Z] [TEST_2_SIMULATE_PAYMENT] Cleaning up test data from Firestore...",
+        "[2026-08-07T12:11:59.075Z] [TEST_2_SIMULATE_PAYMENT] ✅ Test data cleaned up"
+      ],
+      "data": {
+        "walletBalanceBefore": 0,
+        "/virtual-account/fund": {
+          "status": 404,
+          "body": {
+            "status": 404,
+            "success": false,
+            "message": "Not found",
+            "data": {}
+          }
+        },
+        "/virtual-account/credit": {
+          "status": 404,
+          "body": {
+            "status": 404,
+            "success": false,
+            "message": "Not found",
+            "data": {}
+          }
+        },
+        "/virtual-account/simulate-payment": {
+          "status": 404,
+          "body": {
+            "status": 404,
+            "success": false,
+            "message": "Not found",
+            "data": {}
+          }
+        },
+        "webhookSimulation": {
+          "request": {
+            "url": "https://squadwebhook-nx6tlgm5aa-uc.a.run.app",
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/json",
+              "x-squad-signature": "26dbd6a4117c0791f49d...8f9a964c3c3fcd7c9486"
+            },
+            "body": {
+              "event": "virtual_account_payment",
+              "data": {
+                "virtual_account_number": "8541291713",
+                "amount": 500000,
+                "transaction_ref": "SQUAD-TEST-1786104710133",
+                "currency": "NGN",
+                "session_id": "session_1786104710133",
+                "type": "virtual_account_payment"
+              }
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "status": "success"
+            }
+          }
+        },
+        "walletBalanceAfter": 5000,
+        "transactionRecord": {
+          "id": "2wKqGBdogT3gYeAEmwvj",
+          "type": "deposit",
+          "status": "completed",
+          "amountNaira": 5000,
+          "reference": "SQUAD-TEST-1786104710133",
+          "paymentMethod": "virtual_account"
+        },
+        "notificationRecord": {
+          "title": "Deposit Successful",
+          "body": "Your bank transfer deposit of ₦5,000 has been credited."
+        }
+      }
+    },
+    "TEST_3_NOTIFICATION_HANDLING": {
+      "logs": [
+        "[2026-08-07T12:11:59.076Z] [TEST_3_NOTIFICATION_HANDLING] ",
+        "[2026-08-07T12:11:59.076Z] [TEST_3_NOTIFICATION_HANDLING] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-07T12:11:59.076Z] [TEST_3_NOTIFICATION_HANDLING] TEST 3: Notification Handling (Webhook Handler)",
+        "[2026-08-07T12:11:59.076Z] [TEST_3_NOTIFICATION_HANDLING] ══════════════════════════════════════════════════════════════════════",
+        "[2026-08-07T12:11:59.076Z] [TEST_3_NOTIFICATION_HANDLING] ",
+        "[2026-08-07T12:11:59.077Z] [TEST_3_NOTIFICATION_HANDLING] 3a. Testing webhook security — sending INVALID signature...",
+        "[2026-08-07T12:11:59.675Z] [TEST_3_NOTIFICATION_HANDLING]   Response: 401 — {\"status\":\"error\",\"message\":\"Invalid signature\"}",
+        "[2026-08-07T12:11:59.675Z] [TEST_3_NOTIFICATION_HANDLING]   ✅ PASS — Webhook rejected invalid signature (401 Unauthorized)",
+        "[2026-08-07T12:11:59.675Z] [TEST_3_NOTIFICATION_HANDLING] ",
+        "[2026-08-07T12:11:59.675Z] [TEST_3_NOTIFICATION_HANDLING] 3b. Webhook Handler Code:",
+        "[2026-08-07T12:11:59.675Z] [TEST_3_NOTIFICATION_HANDLING] ",
+        "[2026-08-07T12:11:59.675Z] [TEST_3_NOTIFICATION_HANDLING] ✅ Notification handling documented"
+      ],
+      "data": {
+        "securityTest": {
+          "description": "Sent webhook with invalid signature to verify rejection",
+          "request": {
+            "signature": "invalid_signature_abc123"
+          },
+          "response": {
+            "status": 401,
+            "body": {
+              "status": "error",
+              "message": "Invalid signature"
+            }
+          },
+          "result": "PASS — Webhook correctly rejected invalid signature"
+        },
+        "webhookHandlerCode": "export const squadWebhook = onRequest(\n  {\n    region: \"us-central1\",\n    memory: \"256MiB\",\n    secrets: [squadSecretKey],\n  },\n  async (req, res) => {\n    try {\n      // ── Webhook signature verification ──────────────────────────\n      // Squad signs webhooks with HMAC-SHA256 using the secret key.\n      // The signature is sent in the `x-squad-signature` header.\n      const signature = req.headers[\"x-squad-signature\"] as string | undefined;\n      if (!signature) {\n        logger.warn(\"Squad webhook: missing signature header\");\n        res.status(401).send({status: \"error\", message: \"Missing signature\"});\n        return;\n      }\n\n      // Use rawBody if it's a Buffer/string, otherwise re-stringify the parsed body.\n      // Firebase Functions v2 may provide rawBody as a Buffer or as the parsed object.\n      let rawBody: string;\n      if (req.rawBody && Buffer.isBuffer(req.rawBody)) {\n        rawBody = req.rawBody.toString(\"utf8\");\n      } else if (req.rawBody && typeof req.rawBody === \"string\") {\n        rawBody = req.rawBody;\n      } else {\n        rawBody = JSON.stringify(req.body);\n      }\n      const secretVal = squadSecretKey.value().trim();\n      const expectedSig = crypto\n        .createHmac(\"sha256\", secretVal)\n        .update(rawBody)\n        .digest(\"hex\");\n\n      if (signature !== expectedSig) {\n        logger.warn(\"Squad webhook: invalid signature\", {\n          received: signature.substring(0, 20) + \"...\",\n          expected: expectedSig.substring(0, 20) + \"...\",\n          rawBodyLength: rawBody.length,\n          rawBodyPreview: rawBody.substring(0, 200),\n        });\n        res.status(401).send({status: \"error\", message: \"Invalid signature\"});\n        return;\n      }\n\n      const body = req.body;\n      const event = body?.event;\n      const data = body?.data;\n\n      logger.info(`Squad webhook received: ${event}`);\n\n      if (event === \"charge_successful\" && data) {\n        const tokenId = data.token_id as string | undefined;\n        const transactionRef = data.transaction_ref as string | undefined;\n        const email = data.email as string | undefined;\n        const customerName = data.customer_name as string | undefined;\n        const cardLast4 = data.card_last4 as string | undefined;\n        const cardBrand = data.card_brand as string | undefined;\n\n        if (tokenId && email) {\n          const db = getFirestore();\n          const usersRef = db.collection(\"users\");\n          const userQuery = await usersRef\n            .where(\"email\", \"==\", email)\n            .limit(1)\n            .get();\n\n          if (!userQuery.empty) {\n            const userDoc = userQuery.docs[0];\n            const uid = userDoc.id;\n            const userData = userDoc.data();\n            const savedCards = userData.savedCards || [];\n\n            const cardEntry = {\n              tokenId,\n              last4: cardLast4 || \"\",\n              brand: cardBrand || \"\",\n              email,\n              customerName: customerName || \"\",\n              transactionRef: transactionRef || \"\",\n              savedAt: new Date().toISOString(),\n            };\n\n            savedCards.push(cardEntry);\n\n            await userDoc.ref.update({\n              savedCards,\n              updatedAt: new Date(),\n            });\n\n            logger.info(`Card token saved for user ${uid}`);\n          } else {\n            logger.warn(`No user found for email ${email}`);\n          }\n        }\n      }\n\n      if (event === \"virtual_account_payment\" && data) {\n        const accountNumber = data.virtual_account_number as string | undefined;\n        const amount = data.amount as number | undefined;\n        const transactionRef = data.transaction_ref as string | undefined;\n\n        logger.info(`VA payment: account=${accountNumber}, amount=${amount}, ref=${transactionRef}`);\n\n        if (accountNumber && amount && transactionRef) {\n          const db = getFirestore();\n\n          // ── Replay attack protection ────────────────────────────\n          // Check if this transaction reference was already processed.\n          const existingTx = await db.collection(\"transactions\")\n            .where(\"reference\", \"==\", transactionRef)\n            .limit(1)\n            .get();\n          if (!existingTx.empty) {\n            logger.info(`Duplicate webhook: ${transactionRef} already processed`);\n            res.status(200).send({status: \"already_processed\"});\n            return;\n          }\n\n          const vaQuery = await db.collection(\"virtualAccounts\")\n            .where(\"account_number\", \"==\", accountNumber)\n            .limit(1)\n            .get();\n\n          if (!vaQuery.empty) {\n            const vaDoc = vaQuery.docs[0];\n            const uid = vaDoc.id;\n            const amountNaira = amount / 100;\n\n            // Use Firestore transaction for atomic balance update\n            const walletRef = db.collection(\"wallets\").doc(uid);\n            await db.runTransaction(async (txn) => {\n              const walletDoc = await txn.get(walletRef);\n              const nairaBalance = walletDoc.exists\n                ? (walletDoc.data()?.nairaBalance || 0) as number\n                : 0;\n\n              const txRef = db.collection(\"transactions\").doc();\n              txn.set(txRef, {\n                id: txRef.id,\n                uid: uid,\n                type: \"deposit\",\n                status: \"completed\",\n                amountNaira: amountNaira,\n                description: `Bank transfer deposit to ${accountNumber}`,\n                reference: transactionRef,\n                paymentMethod: \"virtual_account\",\n                createdAt: new Date(),\n                completedAt: new Date(),\n              });\n\n              txn.set(walletRef, {\n                uid: uid,\n                nairaBalance: nairaBalance + amountNaira,\n                updatedAt: new Date(),\n              }, {merge: true});\n\n              const notifRef = db.collection(\"notifications\").doc();\n              txn.set(notifRef, {\n                id: notifRef.id,\n                uid: uid,\n                type: \"deposit\",\n                title: \"Deposit Successful\",\n                body: `Your bank transfer deposit of \\u20A6${amountNaira.toLocaleString()} has been credited.`,\n                preview: `Your bank transfer deposit of \\u20A6${amountNaira.toLocaleString()} has been credited.`,\n                isRead: false,\n                createdAt: new Date(),\n              });\n            });\n\n            logger.info(`VA deposit credited: uid=${uid}, amount=${amountNaira}`);\n          } else {\n            logger.warn(`No virtual account found for ${accountNumber}`);\n          }\n        }\n      }\n\n      res.status(200).send({status: \"success\"});\n    } catch (error) {\n      logger.error(\"Squad webhook error:\", error);\n      res.status(500).send({status: \"error\"});\n    }\n  }\n);",
+        "webhookUrl": "https://squadwebhook-nx6tlgm5aa-uc.a.run.app",
+        "eventsHandled": [
+          {
+            "event": "charge_successful",
+            "description": "Saves card token for recurring/repeat card payments",
+            "fields": [
+              "token_id",
+              "transaction_ref",
+              "email",
+              "customer_name",
+              "card_last4",
+              "card_brand"
+            ],
+            "action": "Looks up user by email, saves card details to user's savedCards array in Firestore"
+          },
+          {
+            "event": "virtual_account_payment",
+            "description": "Credits user wallet when bank transfer deposit lands on virtual account",
+            "fields": [
+              "virtual_account_number",
+              "amount",
+              "transaction_ref"
+            ],
+            "action": "Looks up virtual account by account_number, atomically credits wallet + creates transaction + sends notification"
+          }
+        ],
+        "securityMeasures": [
+          {
+            "measure": "HMAC-SHA256 Signature Verification",
+            "description": "Every webhook is verified against the Squad secret key. The signature is sent in the 'x-squad-signature' header. Invalid signatures are rejected with 401.",
+            "header": "x-squad-signature",
+            "verifiedInTest": true
+          },
+          {
+            "measure": "Replay Attack Protection",
+            "description": "Transaction references are checked against existing Firestore records. If a reference was already processed, the webhook returns 200 with 'already_processed' and does not double-credit the user."
+          },
+          {
+            "measure": "Atomic Wallet Credit (Firestore Transaction)",
+            "description": "Wallet credit, transaction record, and notification are created in a single Firestore transaction. If any step fails, the entire operation rolls back — no partial credits."
+          },
+          {
+            "measure": "Immediate 200 OK Response",
+            "description": "Returns 200 OK immediately after processing to prevent unnecessary retries from Squad."
+          }
+        ],
+        "flowDiagram": [
+          "1. Squad sends POST to webhook URL with event data",
+          "2. Cloud Function verifies HMAC-SHA256 signature in 'x-squad-signature' header",
+          "3. If signature invalid → 401 Unauthorized (rejected)",
+          "4. If signature valid → parse event type",
+          "5. For 'virtual_account_payment':",
+          "   a. Check if transaction_ref already processed (replay protection)",
+          "   b. Look up virtual account by account_number in Firestore",
+          "   c. Run Firestore transaction:",
+          "      - Create transaction record (type: deposit, status: completed)",
+          "      - Credit user wallet (nairaBalance += amount/100)",
+          "      - Create notification (title: 'Deposit Successful')",
+          "   d. Return 200 OK",
+          "6. For 'charge_successful':",
+          "   a. Look up user by email in Firestore",
+          "   b. Save card token to user's savedCards array",
+          "   c. Return 200 OK"
+        ]
+      }
+    }
+  }
+}

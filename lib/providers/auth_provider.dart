@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 import '../utils/error_handler.dart';
 
 enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
@@ -252,6 +253,11 @@ class AuthProvider extends ChangeNotifier {
 
   /// Sign out the current user.
   Future<void> signOut() async {
+    try {
+      await PushNotificationService.instance.unregisterToken();
+    } catch (e) {
+      debugPrint('[AuthProvider] Error unregistering push token: $e');
+    }
     await _authService.signOut();
     _userModel = null;
     _firebaseUser = null;

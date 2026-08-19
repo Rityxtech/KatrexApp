@@ -931,11 +931,12 @@ async function handleSendPushNotification(adminUid: string, data: Record<string,
   for (let i = 0; i < targetTokens.length; i += 500) {
     const batch = targetTokens.slice(i, i + 500);
     const message = {
-      // `cleanedTitle` / `cleanedBody` have already been run through the
-      // clean-fintech standard, so what the device sees is on-brand by
-      // construction — no need to re-clean inside the loop.
-      notification: {title: cleanedTitle, body: cleanedBody},
+      // Omit root-level notification to prevent Android from displaying
+      // a collapsed notification automatically. Instead, title and body
+      // are passed in data for manual/expandable rendering on Android.
       data: {
+        title: cleanedTitle,
+        body: cleanedBody,
         ctaRoute: ctaRoute ?? "",
         ctaLabel: ctaLabel ?? "",
         source: "admin",
@@ -943,25 +944,15 @@ async function handleSendPushNotification(adminUid: string, data: Record<string,
         brand: "katrex",
       },
       android: {
-        // Brand-consistent push: brand-colour small icon, BigText style for
-        // expandable body, default sound + vibration, and a badge increment
-        // so the launcher icon reflects how many unread pushes the user has.
         priority: "high" as const,
-        notification: {
-          channelId: "katrex_notifications",
-          icon: "@mipmap/ic_launcher",
-          color: "#2563EB",
-          sound: "default",
-          notificationCount: 1,
-        },
-        // FCM `notification` options can be set on `android.notification` for
-        // legacy devices and on `android.config` for newer styling. Keeping
-        // the field here documents intent even though the legacy key above
-        // already drives the basic look.
       },
       apns: {
         payload: {
           aps: {
+            alert: {
+              title: cleanedTitle,
+              body: cleanedBody,
+            },
             sound: "default",
             badge: 1,
             "thread-id": "katrex-notifications",
@@ -978,6 +969,8 @@ async function handleSendPushNotification(adminUid: string, data: Record<string,
       },
       webpush: {
         notification: {
+          title: cleanedTitle,
+          body: cleanedBody,
           icon: "/icons/icon-192.png",
           badge: "/icons/badge-72.png",
         },

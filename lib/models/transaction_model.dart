@@ -105,6 +105,9 @@ class TransactionModel {
   /// For deposits/withdrawals: the payment method used.
   final String? paymentMethod;
 
+  final double? feeAmount;
+  final String? feeSymbol;
+
   TransactionModel({
     required this.id,
     required this.uid,
@@ -121,6 +124,8 @@ class TransactionModel {
     this.networkProvider,
     this.recipient,
     this.paymentMethod,
+    this.feeAmount,
+    this.feeSymbol,
   });
 
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
@@ -142,6 +147,8 @@ class TransactionModel {
       networkProvider: map['networkProvider'] as String?,
       recipient: map['recipient'] as String?,
       paymentMethod: map['paymentMethod'] as String?,
+      feeAmount: (map['feeAmount'] as num?)?.toDouble(),
+      feeSymbol: map['feeSymbol'] as String?,
     );
   }
 
@@ -164,6 +171,8 @@ class TransactionModel {
       'networkProvider': networkProvider,
       'recipient': recipient,
       'paymentMethod': paymentMethod,
+      'feeAmount': feeAmount,
+      'feeSymbol': feeSymbol,
     };
   }
 }

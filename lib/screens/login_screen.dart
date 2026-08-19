@@ -798,7 +798,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _googleIcon() {
-    return const Icon(
+    return const FaIcon(
       FontAwesomeIcons.google,
       size: 16,
       color: Color(0xFFEA4335),

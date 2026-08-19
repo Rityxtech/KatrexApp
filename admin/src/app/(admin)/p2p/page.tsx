@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { useP2PListings, useP2PTrades, useP2PDisputes, useP2PSettings, useWallets } from "@/hooks/useAdminData";
+import {
+  useP2PListings,
+  useP2PTrades,
+  useP2PDisputes,
+  useP2PSettings,
+  useWallets,
+  // New hooks (to be implemented separately)
+  // usePeers, usePeerTransactions
+} from "@/hooks/useAdminData";
 
+// Utility helpers ----------------------------------------------------------
 function formatNaira(n: number) {
   if (n >= 1_000_000_000_000) return `\u20a6${(n / 1_000_000_000_000).toFixed(2)}T`;
   if (n >= 1_000_000_000) return `\u20a6${(n / 1_000_000_000).toFixed(2)}B`;
@@ -22,6 +31,7 @@ function timeAgo(date: any) {
   return `${Math.floor(mins / 60)}h ago`;
 }
 
+// Color Maps --------------------------------------------------------------
 const STATUS_COLORS: Record<string, string> = {
   active: "text-status-success",
   live: "text-status-success",
@@ -45,101 +55,52 @@ const ESCROW_COLORS: Record<string, string> = {
   pending: "bg-surface-container border border-subtle",
 };
 
+// -------------------------------------------------------------------------
 export default function P2PPage() {
+  // ---------------------------------------------------------------------
+  // State shared across tabs (settings, manual actions, etc.)
+  // ---------------------------------------------------------------------
   const { data: listings, loading } = useP2PListings(50);
   const { data: trades } = useP2PTrades(100);
   const { data: disputes } = useP2PDisputes(50);
   const { data: settings } = useP2PSettings();
   const { data: wallets } = useWallets();
 
-  const [processingId, setProcessingId] = useState<string | null>(null);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
-  const [resolvingDisputeId, setResolvingDisputeId] = useState<string | null>(null);
-  const [isResolving, setIsResolving] = useState(false);
-  const [disputeResolution, setDisputeResolution] = useState<"release_to_seller" | "refund_buyer" | "split">("release_to_seller");
-  const [disputeComment, setDisputeComment] = useState("");
-  const [splitRatio, setSplitRatio] = useState("0.5");
-  const [manualTradeId, setManualTradeId] = useState("");
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [escrowFeePercent, setEscrowFeePercent] = useState("");
-
   const functions = getFunctions();
 
-  const pendingListings = listings.filter((l: any) => l.status === "pending");
-  const disputedTrades = trades.filter((t: any) => t.status === "disputed");
-  const openDisputes = disputes.filter((d: any) => d.status === "open");
+  // Settings form state ---------------------------------------------------
+  const [escrowFeePercent, setEscrowFeePercent] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Manual escrow actions -------------------------------------------------
+  const [manualTradeId, setManualTradeId] = useState("");
+
+  // Dispute resolution ----------------------------------------------------
+  const [resolvingDisputeId, setResolvingDisputeId] = useState<string | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
+  const [disputeResolution, setDisputeResolution] = useState<
+    "release_to_seller" | "refund_buyer" | "split"
+  >("release_to_seller");
+  const [disputeComment, setDisputeComment] = useState("");
+  const [splitRatio, setSplitRatio] = useState("0.5");
+
+  // ---------------------------------------------------------------------
+  // Tab handling
+  // ---------------------------------------------------------------------
+  const tabs = ["Peers", "Transactions", "Analytics", "Settings"] as const;
+  type Tab = typeof tabs[number];
+  const [activeTab, setActiveTab] = useState<Tab>("Peers");
+
+  // ---------------------------------------------------------------------
+  // Derived data used in multiple tabs
+  // ---------------------------------------------------------------------
   const escrowBalance = wallets.reduce((s: number, w: any) => s + (w.escrowBalance || 0), 0);
+  const pendingListings = listings.filter((l: any) => l.status === "pending");
+  const openDisputes = disputes.filter((d: any) => d.status === "open");
 
-  const sellerStats = listings.reduce((acc: Record<string, { trades: number; rating: number }>, l: any) => {
-    const seller = l.sellerUid || l.uid || "unknown";
-    if (!acc[seller]) acc[seller] = { trades: 0, rating: l.rating || 0 };
-    acc[seller].trades++;
-    return acc;
-  }, {});
-
-  const topSellers = Object.entries(sellerStats)
-    .sort((a: any, b: any) => b[1].trades - a[1].trades)
-    .slice(0, 5);
-
-  // ─── Handlers ───────────────────────────────────────────────────
-
-  const handleApprove = async (listingId: string) => {
-    setProcessingId(listingId);
-    try {
-      await httpsCallable(functions, "p2pApi")({ action: "approveListing", listingId });
-    } catch (e) {
-      console.error("Failed to approve listing:", e);
-      alert("Failed to approve listing. Check console for details.");
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleReject = async (listingId: string) => {
-    if (!rejectReason.trim()) {
-      alert("Please enter a rejection reason.");
-      return;
-    }
-    setRejectingId(listingId);
-    try {
-      await httpsCallable(functions, "p2pApi")({ action: "rejectListing", listingId, reason: rejectReason.trim() });
-      setRejectReason("");
-    } catch (e) {
-      console.error("Failed to reject listing:", e);
-      alert("Failed to reject listing. Check console for details.");
-    } finally {
-      setRejectingId(null);
-    }
-  };
-
-  const handleResolveDispute = async (disputeId: string) => {
-    setIsResolving(true);
-    try {
-      const payload: any = { action: "resolveDispute", disputeId, resolution: disputeResolution };
-      if (disputeComment.trim()) payload.adminComment = disputeComment.trim();
-      if (disputeResolution === "split") {
-        const ratio = parseFloat(splitRatio);
-        if (isNaN(ratio) || ratio < 0 || ratio > 1) {
-          alert("Split ratio must be between 0 and 1 (e.g. 0.5 for 50/50).");
-          setIsResolving(false);
-          return;
-        }
-        payload.splitRatio = ratio;
-      }
-      await httpsCallable(functions, "p2pApi")(payload);
-      setDisputeComment("");
-      setDisputeResolution("release_to_seller");
-      setSplitRatio("0.5");
-      setResolvingDisputeId(null);
-    } catch (e) {
-      console.error("Failed to resolve dispute:", e);
-      alert("Failed to resolve dispute. Check console for details.");
-    } finally {
-      setIsResolving(false);
-    }
-  };
-
+  // ---------------------------------------------------------------------
+  // Handlers (mostly reused from original implementation)
+  // ---------------------------------------------------------------------
   const handleManualRelease = async () => {
     if (!manualTradeId.trim()) {
       alert("Enter a trade ID first.");
@@ -189,399 +150,290 @@ export default function P2PPage() {
     }
   };
 
-  const handleBanSeller = async (uid: string, banned: boolean) => {
-    if (!confirm(`${banned ? "Unban" : "Ban"} seller ${uid.slice(0, 16)}?`)) return;
+  const handleResolveDispute = async (disputeId: string) => {
+    setIsResolving(true);
     try {
-      await httpsCallable(functions, "p2pApi")({ action: "banSeller", uid, banned: !banned });
+      const payload: any = { action: "resolveDispute", disputeId, resolution: disputeResolution };
+      if (disputeComment.trim()) payload.adminComment = disputeComment.trim();
+      if (disputeResolution === "split") {
+        const ratio = parseFloat(splitRatio);
+        if (isNaN(ratio) || ratio < 0 || ratio > 1) {
+          alert("Split ratio must be between 0 and 1 (e.g. 0.5 for 50/50).");
+          setIsResolving(false);
+          return;
+        }
+        payload.splitRatio = ratio;
+      }
+      await httpsCallable(functions, "p2pApi")(payload);
+      setDisputeComment("");
+      setDisputeResolution("release_to_seller");
+      setSplitRatio("0.5");
+      setResolvingDisputeId(null);
     } catch (e) {
-      console.error("Failed to ban seller:", e);
-      alert("Failed to update seller status. Check console for details.");
+      console.error("Failed to resolve dispute:", e);
+      alert("Failed to resolve dispute. Check console for details.");
+    } finally {
+      setIsResolving(false);
     }
   };
 
-  return (
-    <div className="p-4 w-full">
-      <div className="space-y-5 pb-8">
-        {/* Hero Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-surface-bright border border-subtle p-4 rounded-lg flex flex-col justify-between">
-            <div>
-              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Funds in Escrow</span>
-              <div className="flex items-baseline gap-2 mt-1">
-                <h2 className="font-headline-lg text-headline-lg text-secondary">{formatNaira(escrowBalance)}</h2>
-              </div>
-            </div>
-            <div className="mt-3">
-              <input
-                className="w-full bg-surface-container border border-subtle rounded px-2 py-1 text-body-sm font-data-mono focus:outline-none focus:border-secondary mb-2"
-                placeholder="Trade ID..."
-                type="text"
-                value={manualTradeId}
-                onChange={(e) => setManualTradeId(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <button onClick={handleManualRelease} className="flex-1 bg-secondary text-on-secondary px-3 py-1.5 rounded font-label-caps text-label-caps font-bold hover:opacity-90 transition-opacity">RELEASE MANUAL</button>
-              <button onClick={handleRefundAll} className="flex-1 border border-subtle text-on-surface px-3 py-1.5 rounded font-label-caps text-label-caps font-bold hover:bg-surface-container transition-colors">REFUND ALL</button>
-            </div>
-          </div>
+  // ---------------------------------------------------------------------
+  // Render helpers for each tab
+  // ---------------------------------------------------------------------
+  const renderPeersTab = () => {
+    // Placeholder peer data – replace with real peer hook when available.
+    const peers = pendingListings;
+    const pageSize = 10;
+    const [page, setPage] = useState(1);
+    const totalPages = Math.ceil(peers.length / pageSize);
+    const pagedPeers = useMemo(() => peers.slice((page - 1) * pageSize, page * pageSize), [page, peers]);
 
-          <div className="md:col-span-2 bg-surface-container-high border-l-4 border-l-status-danger border-y border-r border-subtle p-4 rounded-lg relative overflow-hidden">
-            <div className="flex justify-between items-start relative z-10">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-status-danger" style={{ fontVariationSettings: "'FILL' 1" }}>report</span>
-                  <span className="font-headline-md text-headline-md text-on-surface">Open Disputes</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${openDisputes.length > 0 ? "bg-status-danger text-white" : "bg-status-success/10 text-status-success"}`}>
-                    {openDisputes.length > 0 ? `${String(openDisputes.length).padStart(2, "0")} URGENT` : "ALL CLEAR"}
-                  </span>
+    return (
+      <div className="flex gap-4" style={{ height: "calc(100vh - 130px)" }}>
+        {/* Left pane — fixed height, inner content scrolls */}
+        <div className="w-[340px] shrink-0 border border-subtle rounded flex flex-col h-full">
+          {/* Pinned header */}
+          <div className="px-3 py-2 border-b border-subtle bg-surface-container shrink-0">
+            <h3 className="font-headline-sm">Peers ({peers.length})</h3>
+          </div>
+          {/* Scrollable list fills remaining space */}
+          <div className="flex-1 overflow-y-auto divide-y divide-subtle">
+            {pagedPeers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-on-surface-variant text-body-sm p-6 text-center">
+                <span className="material-symbols-outlined text-[40px] mb-2 opacity-30">group</span>
+                No peers found
+              </div>
+            ) : (
+              pagedPeers.map((p: any) => (
+                <div key={p.id} className="px-3 py-2.5 flex justify-between items-center hover:bg-surface-container-high transition-colors cursor-pointer">
+                  <div>
+                    <div className="font-body-sm font-bold text-on-surface">{p.title || p.name || "Peer"}</div>
+                    <div className="text-xs text-on-surface-variant">{p.sellerUid?.slice(0, 12) || p.uid?.slice(0, 12) || "—"}</div>
+                  </div>
+                  <div className="text-xs text-on-surface-variant shrink-0">{timeAgo(p.createdAt)}</div>
                 </div>
-                <p className="font-body-sm text-on-surface-variant mt-1">
-                  {openDisputes[0] ? `ID: #${openDisputes[0].id?.slice(0, 8)} \u2022 ${openDisputes[0].reason?.slice(0, 40) || "Dispute"} \u2022 ${timeAgo(openDisputes[0].createdAt)}` : "No active disputes"}
-                </p>
-              </div>
-              {openDisputes.length > 0 && (
-                <button
-                  onClick={() => setResolvingDisputeId(openDisputes[0].id)}
-                  className="bg-status-danger text-white px-4 py-2 rounded font-headline-md text-headline-md hover:brightness-110 transition-all shadow-lg"
-                >RESOLVE NOW</button>
-              )}
-            </div>
-            <div className="absolute right-0 top-0 opacity-5 pointer-events-none">
-              <span className="material-symbols-outlined text-[120px]" style={{ fontVariationSettings: "'wght' 700" }}>gavel</span>
-            </div>
+              ))
+            )}
           </div>
-
-          <div className="bg-surface-bright border border-subtle p-4 rounded-lg">
-            <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">Market Liquidity</span>
-            <div className="h-16 mt-2 flex items-end gap-1">
-              {Array.from({ length: 7 }).map((_, i) => {
-                const dayListings = listings.filter((l: any) => {
-                  if (!l.createdAt) return false;
-                  const d = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
-                  return Math.floor((Date.now() - d.getTime()) / 86400000) === i;
-                }).length;
-                const maxDay = Math.max(...Array.from({ length: 7 }, (_, j) => listings.filter((l: any) => {
-                  if (!l.createdAt) return false;
-                  const d = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
-                  return Math.floor((Date.now() - d.getTime()) / 86400000) === j;
-                }).length), 1);
-                return <div key={i} className={`flex-1 bg-secondary ${i === 0 ? "" : "opacity-60"} rounded-t-sm`} style={{ height: `${Math.max((dayListings / maxDay) * 100, 10)}%` }}></div>;
-              })}
-            </div>
-            <div className="flex justify-between mt-2 font-data-mono text-[10px] text-on-surface-variant">
-              <span>L-7D</span>
-              <span>{listings.length} LIVE</span>
-            </div>
+          {/* Pinned pagination */}
+          <div className="flex justify-between items-center px-3 py-2 border-t border-subtle bg-surface-container shrink-0 text-sm">
+            <button
+              onClick={() => setPage(p => Math.max(p - 1, 1))}
+              disabled={page === 1}
+              className="px-2 py-1 border border-subtle rounded disabled:opacity-50 hover:bg-surface-container-high transition-colors"
+            >Prev</button>
+            <span className="text-on-surface-variant text-xs">{page} / {totalPages || 1}</span>
+            <button
+              onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+              disabled={page >= totalPages}
+              className="px-2 py-1 border border-subtle rounded disabled:opacity-50 hover:bg-surface-container-high transition-colors"
+            >Next</button>
           </div>
         </div>
 
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-          <div className="xl:col-span-8 space-y-3">
-            {/* Listing Approvals */}
-            <div>
-              <div className="flex justify-between items-center px-1">
-                <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
-                  <span className="material-symbols-outlined">pending_actions</span>
-                  Queue: Listing Approvals
-                </h3>
-                <span className="font-label-caps text-label-caps text-on-surface-variant">{pendingListings.length} PENDING</span>
-              </div>
-              <div className="flex overflow-x-auto gap-3 pb-2">
-                {loading ? (
-                  Array.from({ length: 3 }).map((_, i) => <div key={i} className="min-w-[280px] bg-surface-bright border border-subtle h-40 rounded-lg animate-pulse" />)
-                ) : pendingListings.length === 0 ? (
-                  <div className="p-4 text-on-surface-variant text-body-sm">No pending listings</div>
-                ) : (
-                  pendingListings.slice(0, 10).map((c: any) => (
-                    <div key={c.id} className="min-w-[280px] bg-surface-bright border border-subtle p-3 rounded-lg hover:border-secondary transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-surface-container border border-subtle flex items-center justify-center">
-                          <span className="material-symbols-outlined text-secondary">{c.icon || "inventory_2"}</span>
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-body-md font-bold text-on-surface truncate">{c.title || c.name || "Listing"}</h4>
-                          <div className="flex items-center gap-1 text-on-surface-variant text-[10px] font-data-mono">
-                            <span className="material-symbols-outlined text-[12px]">person</span> {c.sellerUid?.slice(0, 12) || c.uid?.slice(0, 12) || "\u2014"}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2 border-y border-subtle/50 py-2 my-2">
-                        <div>
-                          <span className="block font-label-caps text-on-surface-variant">CATEGORY</span>
-                          <span className="font-body-sm font-medium">{c.category || c.niche || "\u2014"}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="block font-label-caps text-on-surface-variant">PRICE</span>
-                          <span className="font-body-sm font-bold text-secondary">{formatNaira(c.priceNaira || c.price || c.amountNaira || 0)}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprove(c.id)}
-                          disabled={processingId === c.id}
-                          className="flex-1 bg-status-success/10 text-status-success border border-status-success/20 py-1 rounded hover:bg-status-success/20 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">check</span>
-                          <span className="font-label-caps">{processingId === c.id ? "..." : "Approve"}</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (rejectingId === c.id) {
-                              handleReject(c.id);
-                            } else {
-                              setRejectingId(c.id);
-                            }
-                          }}
-                          className="flex-1 bg-status-danger/10 text-status-danger border border-status-danger/20 py-1 rounded hover:bg-status-danger/20 transition-colors flex items-center justify-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">close</span>
-                          <span className="font-label-caps">Reject</span>
-                        </button>
-                      </div>
-                      {rejectingId === c.id && (
-                        <div className="mt-2 space-y-1">
-                          <input
-                            className="w-full bg-surface-container border border-subtle rounded px-2 py-1 text-body-sm focus:outline-none focus:border-status-danger"
-                            placeholder="Rejection reason..."
-                            type="text"
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
-                          />
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => handleReject(c.id)}
-                              disabled={rejectingId === c.id && !rejectReason.trim()}
-                              className="flex-1 bg-status-danger text-white py-1 rounded text-[10px] font-bold disabled:opacity-50"
-                            >CONFIRM REJECT</button>
-                            <button
-                              onClick={() => { setRejectingId(null); setRejectReason(""); }}
-                              className="px-2 border border-subtle text-on-surface-variant py-1 rounded text-[10px] font-bold"
-                            >CANCEL</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* P2P Trade Ledger */}
-            <div className="bg-surface-bright border border-subtle rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-subtle flex justify-between items-center bg-surface-container/30">
-                <h3 className="font-headline-md text-headline-md text-on-surface">P2P Trade Ledger</h3>
-                <div className="flex gap-2">
-                  <input className="bg-surface-container border border-subtle rounded px-3 py-1 text-body-sm focus:outline-none focus:border-secondary w-48" placeholder="Search trades..." type="text" />
-                  <button className="bg-surface-container border border-subtle px-2 rounded hover:bg-surface-container-high transition-colors">
-                    <span className="material-symbols-outlined text-on-surface-variant">filter_list</span>
-                  </button>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                {trades.length === 0 ? (
-                  <div className="p-6 text-center text-on-surface-variant text-body-sm">No P2P trades yet</div>
-                ) : (
-                  <table className="w-full text-left font-body-sm border-collapse">
-                    <thead className="bg-surface-container-low text-on-surface-variant font-label-caps text-[10px] border-b border-subtle">
-                      <tr>
-                        <th className="px-4 py-2 font-bold">TRADE ID</th>
-                        <th className="px-4 py-2 font-bold">BUYER</th>
-                        <th className="px-4 py-2 font-bold">SELLER</th>
-                        <th className="px-4 py-2 font-bold">AMOUNT</th>
-                        <th className="px-4 py-2 font-bold">STATUS</th>
-                        <th className="px-4 py-2 font-bold">ESCROW</th>
-                        <th className="px-4 py-2 font-bold text-right">ACTION</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-subtle">
-                      {trades.slice(0, 20).map((t: any) => {
-                        const openDispute = disputes.find((d: any) => d.tradeId === t.id && d.status === "open");
-                        const closedDispute = disputes.find((d: any) => d.tradeId === t.id && (d.status === "resolved" || d.status === "closed"));
-                        // A trade is completed if: status is released/refunded/cancelled,
-                        // OR it's still "disputed" but the dispute was already resolved/closed
-                        // (happens when the Cloud Function crashed before updating the trade).
-                        const isCompleted = t.status === "released" || t.status === "refunded" || t.status === "cancelled" ||
-                          (t.status === "disputed" && closedDispute);
-                        const displayStatus = isCompleted ? "Completed" : (t.status || "").replace(/_/g, " ");
-                        return (
-                        <tr key={t.id} className={`hover:bg-primary-container/20 transition-colors ${t.status === "disputed" && openDispute ? "bg-status-danger/5" : ""}`}>
-                          <td className="px-4 py-2 font-data-mono text-secondary">#{t.id?.slice(0, 8)}</td>
-                          <td className="px-4 py-2"><span className="text-on-surface font-medium">{t.buyerUid?.slice(0, 12) || "\u2014"}</span></td>
-                          <td className="px-4 py-2"><span className="text-on-surface font-medium">{t.sellerUid?.slice(0, 12) || "\u2014"}</span></td>
-                          <td className="px-4 py-2 font-data-mono">{formatNaira(t.totalNaira || t.priceNaira || 0)}</td>
-                          <td className="px-4 py-2">
-                            <span className={`flex items-center gap-1.5 ${isCompleted ? STATUS_COLORS.completed : (STATUS_COLORS[t.status] || "text-on-surface-variant")}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${t.status === "disputed" && openDispute ? "bg-status-danger animate-pulse" : `bg-current`}`}></span>
-                              <span className="capitalize">{displayStatus}</span>
-                            </span>
-                          </td>
-                          <td className="px-4 py-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] ${ESCROW_COLORS[t.escrowStatus] || ESCROW_COLORS.pending} uppercase`}>{t.escrowStatus || "pending"}</span>
-                          </td>
-                          <td className="px-4 py-2 text-right">
-                            {t.status === "disputed" && openDispute ? (
-                              <button
-                                onClick={() => setResolvingDisputeId(openDispute.id)}
-                                className="bg-status-danger text-white px-2 py-0.5 rounded text-[10px] font-bold"
-                              >RESOLVE</button>
-                            ) : (
-                              <button
-                                onClick={() => setManualTradeId(t.id)}
-                                className="material-symbols-outlined text-on-surface-variant hover:text-secondary"
-                                title="Set as active trade for manual release/refund"
-                              >more_vert</button>
-                            )}
-                          </td>
-                        </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
+        {/* Right pane — fixed height, inner content scrolls */}
+        <div className="flex-1 border border-subtle rounded flex flex-col h-full">
+          {/* Pinned header */}
+          <div className="px-4 py-3 border-b border-subtle bg-surface-container shrink-0">
+            <h3 className="font-headline-sm">Peer Detail</h3>
           </div>
-
-          {/* Right Column */}
-          <div className="xl:col-span-4 space-y-5">
-            {/* Top Sellers */}
-            <div className="bg-surface-bright border border-subtle rounded-lg flex flex-col h-fit">
-              <div className="px-4 py-3 border-b border-subtle bg-surface-container/30 flex justify-between items-center">
-                <h3 className="font-headline-md text-headline-md text-primary">Top Sellers</h3>
-                <button className="text-secondary text-[11px] font-bold hover:underline">VIEW ALL</button>
-              </div>
-              <div className="p-2 space-y-1 overflow-y-auto max-h-[350px]">
-                {topSellers.length === 0 ? (
-                  <div className="p-4 text-center text-on-surface-variant text-body-sm">No seller data</div>
-                ) : (
-                  topSellers.map(([uid, stats]: any) => (
-                    <div key={uid} className="flex items-center justify-between p-2 hover:bg-surface-container-high rounded transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-surface-container border border-subtle flex items-center justify-center text-on-surface-variant text-xs font-bold">
-                          {uid.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1">
-                            <span className="font-body-sm font-bold text-on-surface">{uid.slice(0, 16)}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-[10px] text-on-surface-variant">
-                            <span>({stats.trades} trades)</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleBanSeller(uid, false)}
-                          className="p-1 text-on-surface-variant hover:text-status-danger"
-                          title="Ban Seller"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">block</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Live Marketplace */}
-            <div className="bg-surface-bright border border-subtle rounded-lg flex flex-col">
-              <div className="px-4 py-3 border-b border-subtle bg-surface-container/30">
-                <h3 className="font-headline-md text-headline-md text-primary">Live Marketplace</h3>
-              </div>
-              <div className="p-3 space-y-3">
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-2 top-1.5 text-on-surface-variant text-[18px]">search</span>
-                  <input className="w-full bg-surface-container border border-subtle rounded pl-8 pr-3 py-1.5 text-body-sm focus:outline-none focus:border-secondary" placeholder="Search live listings..." type="text" />
-                </div>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                  {listings.filter((l: any) => l.status === "live").length === 0 ? (
-                    <div className="p-4 text-center text-on-surface-variant text-body-sm">No active listings</div>
-                  ) : (
-                    listings.filter((l: any) => l.status === "live").slice(0, 10).map((l: any) => (
-                      <div key={l.id} className="bg-surface-container/50 border border-subtle p-2 rounded flex justify-between items-center group">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-body-sm font-medium text-on-surface truncate">{l.title || l.name || "Listing"}</span>
-                          </div>
-                          <span className="text-[11px] text-on-surface-variant font-data-mono">Listed by: {l.sellerUid?.slice(0, 12) || l.uid?.slice(0, 12)} \u2022 {formatNaira(l.priceNaira || l.price || l.amountNaira || 0)}</span>
-                        </div>
-                        <div className="flex gap-1 ml-2">
-                          <button className="w-7 h-7 flex items-center justify-center rounded border border-subtle hover:bg-surface-container transition-colors text-on-surface-variant hover:text-secondary">
-                            <span className="material-symbols-outlined text-[16px]">edit</span>
-                          </button>
-                          <button className="w-7 h-7 flex items-center justify-center rounded border border-subtle hover:bg-status-danger/20 transition-colors text-on-surface-variant hover:text-status-danger">
-                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* P2P Settings Panel */}
-        <div className="bg-surface-bright border border-subtle rounded-lg p-4">
-          <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined">settings</span>
-            P2P Settings
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block font-label-caps text-on-surface-variant mb-1">ESCROW FEE %</label>
-              <div className="flex gap-2">
-                <input
-                  className="flex-1 bg-surface-container border border-subtle rounded px-3 py-1.5 text-body-sm focus:outline-none focus:border-secondary"
-                  placeholder={settings?.escrowFeePercent != null ? String(settings.escrowFeePercent) : "0"}
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  max="100"
-                  value={escrowFeePercent}
-                  onChange={(e) => setEscrowFeePercent(e.target.value)}
-                />
-                <button
-                  onClick={handleSaveSettings}
-                  disabled={savingSettings}
-                  className="bg-secondary text-on-secondary px-4 py-1.5 rounded font-label-caps text-label-caps font-bold hover:opacity-90 disabled:opacity-50"
-                >{savingSettings ? "..." : "SAVE"}</button>
-              </div>
-            </div>
-            <div>
-              <label className="block font-label-caps text-on-surface-variant mb-1">AUTO APPROVE</label>
-              <div className="flex items-center gap-2 h-[38px]">
-                <span className={`font-body-sm ${settings?.autoApproveListings ? "text-status-success" : "text-on-surface-variant"}`}>
-                  {settings?.autoApproveListings ? "Enabled" : "Disabled (manual review)"}
-                </span>
-              </div>
-            </div>
-            <div>
-              <label className="block font-label-caps text-on-surface-variant mb-1">MIN FOLLOWERS</label>
-              <div className="flex items-center h-[38px]">
-                <span className="font-body-sm text-on-surface">{settings?.minFollowers ?? 100}</span>
-              </div>
-            </div>
+          {/* Scrollable body fills remaining space */}
+          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center text-center p-6">
+            <span className="material-symbols-outlined text-[48px] text-on-surface-variant/30 mb-2">person_search</span>
+            <p className="font-body-sm font-bold text-on-surface">No peer selected</p>
+            <p className="text-xs text-on-surface-variant/70 mt-1 max-w-[280px]">
+              Select a peer from the list on the left to view their details, recent activity, and available actions.
+            </p>
           </div>
         </div>
       </div>
+    );
+  };
 
-      {/* Dispute Resolution Modal */}
+  const renderTransactionsTab = () => {
+    const pageSize = 20;
+    const [page, setPage] = useState(1);
+    const totalPages = Math.ceil(trades.length / pageSize);
+    const paged = useMemo(() => trades.slice((page - 1) * pageSize, page * pageSize), [page, trades]);
+    return (
+      <div className="space-y-4">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-body-sm border-collapse">
+            <thead className="bg-surface-container-low text-on-surface-variant font-label-caps text-[10px] border-b border-subtle">
+              <tr>
+                <th className="px-4 py-2 font-bold">TRADE ID</th>
+                <th className="px-4 py-2 font-bold">BUYER</th>
+                <th className="px-4 py-2 font-bold">SELLER</th>
+                <th className="px-4 py-2 font-bold">AMOUNT</th>
+                <th className="px-4 py-2 font-bold">STATUS</th>
+                <th className="px-4 py-2 font-bold">ESCROW</th>
+                <th className="px-4 py-2 font-bold text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-subtle">
+              {paged.map((t: any) => {
+                const isDisputed = t.status === "disputed" && disputes.find((d: any) => d.tradeId === t.id && d.status === "open");
+                const isCompleted = ["released", "refunded", "cancelled"].includes(t.status);
+                const displayStatus = isCompleted ? "Completed" : (t.status || "").replace(/_/g, " ");
+                return (
+                  <tr key={t.id} className={`hover:bg-primary-container/20 transition-colors ${isDisputed ? "bg-status-danger/5" : ""}`}>
+                    <td className="px-4 py-2 font-data-mono text-secondary">#{t.id?.slice(0, 8)}</td>
+                    <td className="px-4 py-2"><span className="text-on-surface font-medium">{t.buyerUid?.slice(0, 12) || "—"}</span></td>
+                    <td className="px-4 py-2"><span className="text-on-surface font-medium">{t.sellerUid?.slice(0, 12) || "—"}</span></td>
+                    <td className="px-4 py-2 font-data-mono">{formatNaira(t.totalNaira || t.priceNaira || 0)}</td>
+                    <td className="px-4 py-2">
+                      <span className={`flex items-center gap-1.5 ${isCompleted ? STATUS_COLORS.completed : (STATUS_COLORS[t.status] || "text-on-surface-variant")}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isDisputed ? "bg-status-danger animate-pulse" : "bg-current"}`} />
+                        <span className="capitalize">{displayStatus}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className={`px-2 py-0.5 rounded text-[10px] ${ESCROW_COLORS[t.escrowStatus] || ESCROW_COLORS.pending} uppercase`}>{t.escrowStatus || "pending"}</span>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {isDisputed ? (
+                        <button
+                          onClick={() => setResolvingDisputeId(isDisputed.id)}
+                          className="bg-status-danger text-white px-2 py-0.5 rounded text-[10px] font-bold"
+                        >
+                          RESOLVE
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setManualTradeId(t.id)}
+                          className="material-symbols-outlined text-on-surface-variant hover:text-secondary"
+                          title="Set as active trade for manual release/refund"
+                        >
+                          more_vert
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-between text-sm">
+          <button
+            onClick={() => setPage(p => Math.max(p - 1, 1))}
+            disabled={page === 1}
+            className="px-2 py-1 border rounded disabled:opacity-50"
+          >Prev</button>
+          <span>{page}/{totalPages}</span>
+          <button
+            onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+            disabled={page === totalPages}
+            className="px-2 py-1 border rounded disabled:opacity-50"
+          >Next</button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAnalyticsTab = () => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-surface-bright border border-subtle p-4 rounded-lg">
+          <span className="font-label-caps text-on-surface-variant uppercase">Total Funds in Escrow</span>
+          <h2 className="font-headline-lg text-secondary mt-1">{formatNaira(escrowBalance)}</h2>
+        </div>
+        <div className="bg-surface-bright border border-subtle p-4 rounded-lg">
+          <span className="font-label-caps text-on-surface-variant uppercase">Pending Listings</span>
+          <h2 className="font-headline-lg text-primary mt-1">{pendingListings.length}</h2>
+        </div>
+        <div className="bg-surface-bright border border-subtle p-4 rounded-lg">
+          <span className="font-label-caps text-on-surface-variant uppercase">Open Disputes</span>
+          <h2 className="font-headline-lg text-status-danger mt-1">{openDisputes.length}</h2>
+        </div>
+        <div className="bg-surface-bright border border-subtle p-4 rounded-lg">
+          <span className="font-label-caps text-on-surface-variant uppercase">Live Listings</span>
+          <h2 className="font-headline-lg text-primary mt-1">{listings.filter((l: any) => l.status === "live").length}</h2>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSettingsTab = () => (
+    <div className="space-y-4">
+      <div className="flex gap-2 items-center">
+        <input
+          className="flex-1 bg-surface-container border border-subtle rounded px-2 py-1 text-body-sm focus:outline-none focus:border-secondary"
+          placeholder="Trade ID..."
+          value={manualTradeId}
+          onChange={e => setManualTradeId(e.target.value)}
+        />
+        <button
+          onClick={handleManualRelease}
+          className="bg-secondary text-on-secondary px-3 py-1.5 rounded font-label-caps font-bold hover:opacity-90"
+        >RELEASE MANUAL</button>
+        <button
+          onClick={handleRefundAll}
+          className="border border-subtle text-on-surface px-3 py-1.5 rounded font-label-caps font-bold hover:bg-surface-container"
+        >REFUND ALL</button>
+      </div>
+      <div>
+        <label className="block font-label-caps text-on-surface-variant mb-1">ESCROW FEE %</label>
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-surface-container border border-subtle rounded px-3 py-1.5 text-body-sm focus:outline-none focus:border-secondary"
+            placeholder={settings?.escrowFeePercent != null ? String(settings.escrowFeePercent) : "0"}
+            type="number"
+            step="0.5"
+            min="0"
+            max="100"
+            value={escrowFeePercent}
+            onChange={e => setEscrowFeePercent(e.target.value)}
+          />
+          <button
+            onClick={handleSaveSettings}
+            disabled={savingSettings}
+            className="bg-secondary text-on-secondary px-4 py-1.5 rounded font-label-caps font-bold hover:opacity-90 disabled:opacity-50"
+          >{savingSettings ? "..." : "SAVE"}</button>
+        </div>
+      </div>
+      <div>
+        <label className="block font-label-caps text-on-surface-variant mb-1">AUTO APPROVE</label>
+        <span className={`font-body-sm ${settings?.autoApproveListings ? "text-status-success" : "text-on-surface-variant"}`}>
+          {settings?.autoApproveListings ? "Enabled" : "Disabled (manual review)"}
+        </span>
+      </div>
+    </div>
+  );
+
+  // ---------------------------------------------------------------------
+  // Main render
+  // ---------------------------------------------------------------------
+  return (
+    <div className="p-4 w-full space-y-5">
+      <div className="flex border-b border-subtle mb-4">
+        {tabs.map(t => (
+          <button
+            key={t}
+            onClick={() => setActiveTab(t)}
+            className={`px-4 py-2 -mb-px border-b-2 ${activeTab === t ? "border-primary text-primary" : "border-transparent text-on-surface-variant"}`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      <div>
+        {activeTab === "Peers" && renderPeersTab()}
+        {activeTab === "Transactions" && renderTransactionsTab()}
+        {activeTab === "Analytics" && renderAnalyticsTab()}
+        {activeTab === "Settings" && renderSettingsTab()}
+      </div>
       {resolvingDisputeId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setResolvingDisputeId(null)}>
-          <div className="bg-surface-bright border border-subtle rounded-lg p-5 max-w-md w-full space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface-bright border border-subtle rounded-lg p-5 max-w-md w-full space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center">
-              <h3 className="font-headline-md text-headline-md text-status-danger">Resolve Dispute</h3>
+              <h3 className="font-headline-md text-status-danger">Resolve Dispute</h3>
               <button onClick={() => setResolvingDisputeId(null)} className="text-on-surface-variant hover:text-on-surface">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             {(() => {
-              const d = disputes.find((dd: any) => dd.id === resolvingDisputeId);
+              const d = disputes.find(dd => dd.id === resolvingDisputeId);
               if (!d) return <p className="text-on-surface-variant">Dispute not found.</p>;
               return (
                 <>
@@ -589,14 +441,14 @@ export default function P2PPage() {
                     <div className="font-data-mono text-[10px] text-on-surface-variant">DISPUTE #{d.id?.slice(0, 8)}</div>
                     <div className="font-body-sm font-bold text-on-surface">{d.reason}</div>
                     {d.details && <div className="font-body-sm text-on-surface-variant">{d.details}</div>}
-                    <div className="font-data-mono text-[10px] text-on-surface-variant">Opened by: {d.openedBy} \u2022 {timeAgo(d.createdAt)}</div>
+                    <div className="font-data-mono text-[10px] text-on-surface-variant">Opened by: {d.openedBy} • {timeAgo(d.createdAt)}</div>
                   </div>
                   <div>
                     <label className="block font-label-caps text-on-surface-variant mb-1">RESOLUTION</label>
                     <select
                       className="w-full bg-surface-container border border-subtle rounded px-3 py-2 text-body-sm focus:outline-none focus:border-secondary"
                       value={disputeResolution}
-                      onChange={(e) => setDisputeResolution(e.target.value as any)}
+                      onChange={e => setDisputeResolution(e.target.value as any)}
                     >
                       <option value="release_to_seller">Release funds to seller</option>
                       <option value="refund_buyer">Refund buyer (full)</option>
@@ -605,7 +457,7 @@ export default function P2PPage() {
                   </div>
                   {disputeResolution === "split" && (
                     <div>
-                      <label className="block font-label-caps text-on-surface-variant mb-1">BUYER REFUND RATIO (0\u20131)</label>
+                      <label className="block font-label-caps text-on-surface-variant mb-1">BUYER REFUND RATIO (0‑1)</label>
                       <input
                         className="w-full bg-surface-container border border-subtle rounded px-3 py-2 text-body-sm focus:outline-none focus:border-secondary"
                         placeholder="0.5"
@@ -614,7 +466,7 @@ export default function P2PPage() {
                         min="0"
                         max="1"
                         value={splitRatio}
-                        onChange={(e) => setSplitRatio(e.target.value)}
+                        onChange={e => setSplitRatio(e.target.value)}
                       />
                     </div>
                   )}
@@ -624,7 +476,7 @@ export default function P2PPage() {
                       className="w-full bg-surface-container border border-subtle rounded px-3 py-2 text-body-sm focus:outline-none focus:border-secondary min-h-[60px]"
                       placeholder="Reason for decision..."
                       value={disputeComment}
-                      onChange={(e) => setDisputeComment(e.target.value)}
+                      onChange={e => setDisputeComment(e.target.value)}
                     />
                   </div>
                   <div className="flex gap-2">
@@ -638,7 +490,9 @@ export default function P2PPage() {
                     <button
                       onClick={() => setResolvingDisputeId(null)}
                       className="px-4 border border-subtle text-on-surface py-2 rounded font-label-caps font-bold"
-                    >CANCEL</button>
+                    >
+                      CANCEL
+                    </button>
                   </div>
                 </>
               );

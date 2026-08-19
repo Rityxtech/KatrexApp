@@ -9,6 +9,7 @@ import '../screens/login_screen.dart';
 import '../screens/main_shell.dart';
 import '../screens/otp_verification_screen.dart';
 import '../screens/splash_screen.dart';
+import '../services/push_notification_service.dart';
 
 /// Root widget that routes users based on authentication state.
 /// Shows SplashScreen while auth status is being determined.
@@ -56,5 +57,8 @@ class AuthGate extends StatelessWidget {
     context.read<WalletProvider>().init(uid);
     context.read<TransactionProvider>().init(uid);
     context.read<NotificationProvider>().init(uid);
+
+    // Register or update the FCM token to Firestore
+    PushNotificationService.instance.registerToken();
   }
 }

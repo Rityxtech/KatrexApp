@@ -98,7 +98,7 @@ class _LiveRatesScreenState extends State<LiveRatesScreen> {
                           Padding(padding: const EdgeInsets.symmetric(vertical: 40), child: Center(child: CircularProgressIndicator(color: Colors.white.withOpacity(0.3))))
                         else
                           ..._liveCoins.map((c) {
-                            final meta = _coinMeta[c.symbol.toUpperCase()] ?? {'name': c.name, 'network': c.symbol, 'icon': Icons.token_rounded, 'iconColor': const Color(0xFF9CA3AF)};
+                            final meta = _cryptoMeta[c.symbol.toUpperCase()] ?? {'name': c.name, 'network': c.symbol, 'iconUrl': '', 'iconColor': const Color(0xFF9CA3AF)};
                             return _buildCryptoRateCardFromLive(c, meta);
                           }),
                       ] else ...[
@@ -215,7 +215,7 @@ class _LiveRatesScreenState extends State<LiveRatesScreen> {
     );
   }
 
-  Widget _buildTabButton(String label, IconData icon, bool isActive, VoidCallback onTap) {
+  Widget _buildTabButton(String label, dynamic icon, bool isActive, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -228,7 +228,9 @@ class _LiveRatesScreenState extends State<LiveRatesScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 11, color: isActive ? Colors.white : const Color(0xFF9CA3AF)),
+            icon is FaIconData
+                ? FaIcon(icon, size: 11, color: isActive ? Colors.white : const Color(0xFF9CA3AF))
+                : Icon(icon as IconData, size: 11, color: isActive ? Colors.white : const Color(0xFF9CA3AF)),
             const SizedBox(width: 6),
             Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: isActive ? Colors.white : const Color(0xFF9CA3AF))),
           ],

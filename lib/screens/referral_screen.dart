@@ -254,9 +254,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
           child: Column(children: [
             _buildStepRow(1, 'Share Your Link', 'Friend signs up using your invite code.', true, false),
             const SizedBox(height: 16),
-            _buildStepRow(2, 'Complete KYC & Deposit', 'Friend verifies ID and deposits min ₦5,000.', false, true),
+            _buildStepRow(2, 'Friend Makes A Qualifying Transaction', 'Friend must complete KYC and make a single transaction of \$5 or more to unlock your reward.', false, true),
             const SizedBox(height: 16),
-            _buildStepRow(3, 'First Trade Executed', 'Reward unlocks once they buy/sell crypto or swap.', false, false),
+            _buildStepRow(3, 'Claim Your Bonus', 'Tap claim to credit the bonus to your wallet.', false, false),
           ]),
         ),
       ],

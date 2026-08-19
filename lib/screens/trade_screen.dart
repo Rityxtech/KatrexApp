@@ -38,7 +38,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   List<CoinMarketData> _marketDataList = [];
   StreamSubscription<List<CoinMarketData>>? _marketSub;
 
-  final _coinIcons = <String, IconData>{
+  final _coinIcons = <String, dynamic>{
     'BTC': FontAwesomeIcons.bitcoin,
     'ETH': FontAwesomeIcons.ethereum,
     'USDT': FontAwesomeIcons.dollarSign,
@@ -107,7 +107,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     return null;
   }
 
-  IconData _getIcon(String coin) => _coinIcons[coin] ?? FontAwesomeIcons.coins;
+  dynamic _getIcon(String coin) => _coinIcons[coin] ?? FontAwesomeIcons.coins;
   Color _getColor(String coin) => _coinColors[coin] ?? const Color(0xFF9CA3AF);
 
   String _fmtNaira(double v) {
@@ -913,7 +913,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   Widget _portfolioItem({required String name, required String ticker, required String value, required String price, required String change, required Color changeColor, required Color iconColor, required Color iconBg, required Color chartColor, required List<double> chartPoints, IconData? iconData, VoidCallback? onTap}) {
     return GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: Row(children: [
       Expanded(flex: 35, child: Row(children: [
-        Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg), child: Center(child: iconData != null ? FaIcon(iconData, size: 16, color: iconColor) : Text(ticker[0], style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: iconColor)))),
+        Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg), child: Center(child: iconData != null ? Icon(iconData, size: 16, color: iconColor) : Text(ticker[0], style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: iconColor)))),
         const SizedBox(width: 8),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
