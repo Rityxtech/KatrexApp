@@ -413,7 +413,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
               _buildReceiptRow(
                 label: 'Exchange Rate',
                 child: Text(
-                  '₦${NumberFormat('#,##0').format(rate)} / $sym1',
+                  '₦${NumberFormat('#,##0').format(rate)} / ${sym}1',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
