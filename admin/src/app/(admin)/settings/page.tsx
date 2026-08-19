@@ -319,7 +319,7 @@ export default function SettingsPage() {
       {/* ── Toast ───────────────────────────────────────────────── */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-[100] px-4 py-2.5 rounded-lg shadow-xl text-body-sm font-medium flex items-center gap-2 animate-fadeIn ${
+          className={`fixed top-4 right-4 z-[100] px-4 py-2.5 rounded-lg shadow-xl text-body-sm font-medium flex items-center gap-[8px] animate-fadeIn ${
             toast.type === "success" ? "bg-status-success text-white" : "bg-status-danger text-white"
           }`}
         >
@@ -331,25 +331,25 @@ export default function SettingsPage() {
       )}
 
       <div className="px-container-padding pt-5 w-full">
-        <div className="max-w-6xl mx-auto space-y-6 pb-12">
+        <div className="max-w-6xl mx-auto flex flex-col gap-[24px] pb-12">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 border-b border-outline-variant pb-4">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-[16px] border-b border-outline-variant pb-4">
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-[12px]">
                 <span className="material-symbols-outlined text-3xl text-primary">settings_applications</span>
                 <h1 className="font-headline-lg text-headline-lg text-primary">App &amp; System Settings</h1>
               </div>
-              <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-2 mt-1">
+              <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-[8px] mt-1">
                 Centralized configuration for Katrex Mobile Ecosystem
-                <span className="inline-flex items-center gap-1 bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[11px] font-bold">
+                <span className="inline-flex items-center gap-[4px] bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[11px] font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE CLOUD CONFIG
                 </span>
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-[12px]">
               <button
                 onClick={() => window.location.reload()}
-                className="px-3.5 py-2 rounded-lg border border-outline-variant bg-surface-container hover:bg-surface-container-high text-on-surface font-label-caps text-xs flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-2 rounded-lg border border-outline-variant bg-surface-container hover:bg-surface-container-high text-on-surface font-label-caps text-xs flex items-center gap-[6px] transition-colors"
                 title="Reload current settings from server"
               >
                 <span className="material-symbols-outlined text-[16px]">refresh</span>
@@ -358,7 +358,7 @@ export default function SettingsPage() {
               <button
                 onClick={publishChanges}
                 disabled={saving}
-                className="bg-secondary text-on-secondary px-5 py-2 rounded-lg font-label-caps font-bold flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md"
+                className="bg-secondary text-on-secondary px-5 py-2 rounded-lg font-label-caps font-bold flex items-center gap-[8px] hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md"
               >
                 <span className="material-symbols-outlined text-[18px]">save</span>
                 {saving ? "SAVING..." : "SAVE & PUBLISH"}
@@ -369,7 +369,7 @@ export default function SettingsPage() {
           {/* Quick Info Bar */}
           {maintenanceMode && (
             <div className="bg-status-danger/10 border border-status-danger/30 rounded-lg p-3.5 flex items-center justify-between text-status-danger animate-fadeIn">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-[10px]">
                 <span className="material-symbols-outlined text-[24px]">warning</span>
                 <div>
                   <span className="font-bold text-body-md">MAINTENANCE MODE IS CURRENTLY ACTIVE</span>
@@ -388,14 +388,14 @@ export default function SettingsPage() {
           )}
 
           {/* Top Switchable Tabs */}
-          <div className="flex overflow-x-auto border-b border-outline-variant gap-2 pb-px scrollbar-none">
+          <div className="flex overflow-x-auto border-b border-outline-variant gap-[8px] pb-px scrollbar-none">
             {TAB_CONFIG.map((t) => {
               const isActive = activeTab === t.id;
               return (
                 <button
                   key={t.id}
                   onClick={() => setActiveTab(t.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-label-caps text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
+                  className={`flex items-center gap-[8px] px-4 py-2.5 rounded-t-lg font-label-caps text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
                     isActive
                       ? "border-secondary bg-surface-container text-secondary"
                       : "border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low"
@@ -422,13 +422,13 @@ export default function SettingsPage() {
               TAB 1: GENERAL & SYSTEM
           ───────────────────────────────────────────────────────────── */}
           {activeTab === "general" && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col gap-[24px] animate-fadeIn">
               {/* Row 1: Maintenance & Base Currency */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
                 {/* System Maintenance & Kill Switch */}
                 <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-[8px] mb-3">
                       <span className="material-symbols-outlined text-secondary">power_settings_new</span>
                       <h2 className="font-headline-md text-headline-md text-on-surface">Ecosystem Maintenance</h2>
                     </div>
@@ -466,7 +466,7 @@ export default function SettingsPage() {
                 {/* Global Default Currency */}
                 <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-[8px] mb-3">
                       <span className="material-symbols-outlined text-secondary">monetization_on</span>
                       <h2 className="font-headline-md text-headline-md text-on-surface">Base Currency</h2>
                     </div>
@@ -475,7 +475,7 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="flex flex-col gap-[6px]">
                     <label className="font-label-caps text-[11px] text-on-surface-variant uppercase">
                       Primary Display Currency
                     </label>
@@ -494,19 +494,21 @@ export default function SettingsPage() {
               </div>
 
               {/* Row 2: Version Management (Full Width Card) */}
-              <div className="w-full bg-surface-container p-5 rounded-xl border border-outline-variant space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-secondary">system_update</span>
-                  <h2 className="font-headline-md text-headline-md text-on-surface">Mobile Client Version Enforcement</h2>
+              <div className="w-full bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col gap-[16px]">
+                <div>
+                  <div className="flex items-center gap-[8px] mb-1">
+                    <span className="material-symbols-outlined text-secondary">system_update</span>
+                    <h2 className="font-headline-md text-headline-md text-on-surface">Mobile Client Version Enforcement</h2>
+                  </div>
+                  <p className="font-body-sm text-on-surface-variant">
+                    Control the minimum required version numbers. Users running versions lower than specified will be
+                    prompted to upgrade via their platform store.
+                  </p>
                 </div>
-                <p className="font-body-sm text-on-surface-variant">
-                  Control the minimum required version numbers. Users running versions lower than specified will be
-                  prompted to upgrade via their platform store.
-                </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px] pt-1">
                   <div className="bg-surface-container-low p-4 rounded-lg border border-outline-variant">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-[8px] mb-2">
                       <span className="material-symbols-outlined text-status-success">android</span>
                       <span className="font-label-caps font-bold text-on-surface">ANDROID OS VERSION</span>
                     </div>
@@ -523,7 +525,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="bg-surface-container-low p-4 rounded-lg border border-outline-variant">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-[8px] mb-2">
                       <span className="material-symbols-outlined text-status-info">phone_iphone</span>
                       <span className="font-label-caps font-bold text-on-surface">APPLE IOS VERSION</span>
                     </div>
@@ -545,9 +547,9 @@ export default function SettingsPage() {
               TAB 2: SERVICE MODULES
           ───────────────────────────────────────────────────────────── */}
           {activeTab === "modules" && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="flex flex-col gap-[16px] animate-fadeIn">
               <div className="bg-surface-container p-4 rounded-xl border border-outline-variant">
-                <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2 mb-1">
+                <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-[8px] mb-1">
                   <span className="material-symbols-outlined text-secondary">tune</span>
                   Feature Flags &amp; Service Toggles
                 </h2>
@@ -557,7 +559,7 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
                 {moduleList.map((m) => {
                   const enabled = moduleState[m.key] !== false;
                   return (
@@ -567,8 +569,8 @@ export default function SettingsPage() {
                         enabled ? "border-outline-variant hover:border-secondary" : "border-outline-variant/40 opacity-75"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3 mb-4">
-                        <div className="flex items-center gap-3">
+                      <div className="flex items-start justify-between gap-[12px] mb-4">
+                        <div className="flex items-center gap-[12px]">
                           <div
                             className={`w-12 h-12 rounded-xl bg-surface-container-low border border-outline-variant flex items-center justify-center ${m.color}`}
                           >
@@ -616,10 +618,10 @@ export default function SettingsPage() {
               TAB 3: BANNERS & PROMOS
           ───────────────────────────────────────────────────────────── */}
           {activeTab === "banners" && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="flex flex-col gap-[16px] animate-fadeIn">
               <div className="flex justify-between items-center bg-surface-container p-4 rounded-xl border border-outline-variant">
                 <div>
-                  <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+                  <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-[8px]">
                     <span className="material-symbols-outlined text-secondary">view_carousel</span>
                     Home Banners &amp; Campaigns
                   </h2>
@@ -629,14 +631,14 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => openBannerModal()}
-                  className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-caps text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow"
+                  className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-caps text-xs font-bold flex items-center gap-[6px] hover:opacity-90 transition-opacity shadow"
                 >
                   <span className="material-symbols-outlined text-[18px]">add</span> ADD NEW BANNER
                 </button>
               </div>
 
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-[20px]">
                   {Array.from({ length: 2 }).map((_, i) => (
                     <div key={i} className="h-44 bg-surface-container rounded-xl animate-pulse" />
                   ))}
@@ -656,7 +658,7 @@ export default function SettingsPage() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-[20px]">
                   {banners.map((b: any) => (
                     <div
                       key={b.id}
@@ -687,7 +689,7 @@ export default function SettingsPage() {
                         {/* Banner Details */}
                         <div className="p-4">
                           <h3 className="font-body-md font-bold text-on-surface truncate text-base">{b.title}</h3>
-                          <p className="text-xs text-on-surface-variant font-data-mono truncate mt-1 flex items-center gap-1">
+                          <p className="text-xs text-on-surface-variant font-data-mono truncate mt-1 flex items-center gap-[4px]">
                             <span className="material-symbols-outlined text-[14px]">link</span>
                             {b.link || b.url || "No link destination"}
                           </p>
@@ -697,16 +699,16 @@ export default function SettingsPage() {
                       {/* Card Actions */}
                       <div className="px-4 py-2.5 bg-surface-container-low border-t border-outline-variant flex justify-between items-center">
                         <span className="font-data-mono text-[10px] text-on-surface-variant">ID: #{b.id?.slice(0, 10)}</span>
-                        <div className="flex gap-2">
+                        <div className="flex gap-[8px]">
                           <button
                             onClick={() => openBannerModal(b)}
-                            className="px-2.5 py-1 rounded bg-surface-container border border-outline-variant text-xs text-on-surface hover:text-secondary flex items-center gap-1 font-label-caps"
+                            className="px-2.5 py-1 rounded bg-surface-container border border-outline-variant text-xs text-on-surface hover:text-secondary flex items-center gap-[4px] font-label-caps"
                           >
                             <span className="material-symbols-outlined text-[14px]">edit</span> EDIT
                           </button>
                           <button
                             onClick={() => deleteBanner(b.id)}
-                            className="px-2.5 py-1 rounded bg-surface-container border border-outline-variant text-xs text-status-danger hover:bg-status-danger/10 flex items-center gap-1 font-label-caps"
+                            className="px-2.5 py-1 rounded bg-surface-container border border-outline-variant text-xs text-status-danger hover:bg-status-danger/10 flex items-center gap-[4px] font-label-caps"
                           >
                             <span className="material-symbols-outlined text-[14px]">delete</span> DELETE
                           </button>
@@ -723,10 +725,10 @@ export default function SettingsPage() {
               TAB 4: ONBOARDING FLOW
           ───────────────────────────────────────────────────────────── */}
           {activeTab === "onboarding" && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="flex flex-col gap-[16px] animate-fadeIn">
               <div className="flex justify-between items-center bg-surface-container p-4 rounded-xl border border-outline-variant">
                 <div>
-                  <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+                  <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-[8px]">
                     <span className="material-symbols-outlined text-secondary">flight_takeoff</span>
                     First-time Onboarding Sequence
                   </h2>
@@ -736,7 +738,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => openOnboardingModal()}
-                  className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-caps text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow"
+                  className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-caps text-xs font-bold flex items-center gap-[6px] hover:opacity-90 transition-opacity shadow"
                 >
                   <span className="material-symbols-outlined text-[18px]">add</span> ADD ONBOARDING STEP
                 </button>
@@ -757,7 +759,7 @@ export default function SettingsPage() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-[20px]">
                   {onboarding.map((s: any, idx: number) => (
                     <div
                       key={s.id}
@@ -768,7 +770,7 @@ export default function SettingsPage() {
                           <span className="bg-secondary/15 text-secondary px-2.5 py-0.5 rounded-full font-label-caps text-xs font-bold">
                             STEP {idx + 1}
                           </span>
-                          <div className="flex gap-1">
+                          <div className="flex gap-[4px]">
                             <button
                               onClick={() => openOnboardingModal(s)}
                               className="p-1 text-on-surface-variant hover:text-secondary rounded"
@@ -809,11 +811,11 @@ export default function SettingsPage() {
               TAB 5: FAQ & HELP
           ───────────────────────────────────────────────────────────── */}
           {activeTab === "faqs" && (
-            <div className="space-y-4 animate-fadeIn">
-              <div className="bg-surface-container p-4 rounded-xl border border-outline-variant space-y-3">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+            <div className="flex flex-col gap-[16px] animate-fadeIn">
+              <div className="bg-surface-container p-4 rounded-xl border border-outline-variant flex flex-col gap-[12px]">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-[12px]">
                   <div>
-                    <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+                    <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-[8px]">
                       <span className="material-symbols-outlined text-secondary">help_center</span>
                       Frequently Asked Questions
                     </h2>
@@ -823,14 +825,14 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => openFaqModal()}
-                    className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-caps text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow self-start md:self-auto"
+                    className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-caps text-xs font-bold flex items-center gap-[6px] hover:opacity-90 transition-opacity shadow self-start md:self-auto"
                   >
                     <span className="material-symbols-outlined text-[18px]">add</span> NEW FAQ ITEM
                   </button>
                 </div>
 
                 {/* Filter & Search Bar */}
-                <div className="flex flex-col md:flex-row gap-3 pt-2 border-t border-outline-variant/40">
+                <div className="flex flex-col md:flex-row gap-[12px] pt-2 border-t border-outline-variant/40">
                   <div className="relative flex-1">
                     <span className="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">
                       search
@@ -844,7 +846,7 @@ export default function SettingsPage() {
                     />
                   </div>
 
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-[8px] shrink-0">
                     {["all", "general", "transactions", "security"].map((cat) => (
                       <button
                         key={cat}
@@ -879,15 +881,15 @@ export default function SettingsPage() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="flex flex-col gap-[12px]">
                   {filteredFaqs.map((f: any) => (
                     <div
                       key={f.id}
                       className="bg-surface-container border border-outline-variant rounded-xl p-4.5 hover:border-secondary transition-colors shadow-sm"
                     >
-                      <div className="flex justify-between items-start gap-4">
+                      <div className="flex justify-between items-start gap-[16px]">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-[8px] mb-1">
                             <span className="px-2 py-0.2 rounded text-[10px] font-label-caps font-bold uppercase bg-surface-container-highest text-secondary">
                               {f.category || "general"}
                             </span>
@@ -901,7 +903,7 @@ export default function SettingsPage() {
                           </p>
                         </div>
 
-                        <div className="flex gap-1 shrink-0">
+                        <div className="flex gap-[4px] shrink-0">
                           <button
                             onClick={() => openFaqModal(f)}
                             className="p-1.5 text-on-surface-variant hover:text-secondary rounded bg-surface-container-low border border-outline-variant hover:border-secondary"
@@ -929,15 +931,15 @@ export default function SettingsPage() {
               TAB 6: DIAGNOSTICS & SYSTEM
           ───────────────────────────────────────────────────────────── */}
           {activeTab === "diagnostics" && (
-            <div className="space-y-6 animate-fadeIn">
-              <div className="bg-surface-container p-5 rounded-xl border border-outline-variant space-y-4">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-[20px] animate-fadeIn">
+              <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col gap-[16px]">
+                <div className="flex items-center gap-[8px]">
                   <span className="material-symbols-outlined text-secondary">terminal</span>
                   <h2 className="font-headline-md text-headline-md text-on-surface">Runtime Telemetry &amp; Endpoints</h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant space-y-2 font-data-mono text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
+                  <div className="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant flex flex-col gap-[8px] font-data-mono text-xs">
                     <div className="flex justify-between border-b border-outline-variant/30 pb-1.5">
                       <span className="text-on-surface-variant">FIREBASE_ENV:</span>
                       <span className="text-primary font-bold">{advanced.firebaseEnv || "production-k-01"}</span>
@@ -954,13 +956,13 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-on-surface-variant">FIRESTORE SYNC:</span>
-                      <span className="text-status-success flex items-center gap-1 font-bold">
+                      <span className="text-status-success flex items-center gap-[4px] font-bold">
                         <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> REAL-TIME ACTIVE
                       </span>
                     </div>
                   </div>
 
-                  <div className="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant space-y-2 font-data-mono text-xs">
+                  <div className="bg-surface-container-lowest p-4 rounded-lg border border-outline-variant flex flex-col gap-[8px] font-data-mono text-xs">
                     <div className="flex justify-between border-b border-outline-variant/30 pb-1.5">
                       <span className="text-on-surface-variant">NODE_RUNTIME:</span>
                       <span className="text-on-surface">Node.js 20.x (Cloud Functions)</span>
@@ -981,14 +983,14 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Operations */}
-                <div className="pt-2 flex flex-wrap gap-3">
+                <div className="pt-2 flex flex-wrap gap-[12px]">
                   <button
                     onClick={() => {
                       if (confirm("Purge system cache? This will force live reload on next client fetch.")) {
                         flash("success", "System cache purged successfully");
                       }
                     }}
-                    className="bg-surface-container-high border border-outline-variant px-4 py-2.5 rounded-lg font-label-caps text-xs font-bold hover:bg-status-danger/15 hover:text-status-danger transition-colors flex items-center gap-1.5"
+                    className="bg-surface-container-high border border-outline-variant px-4 py-2.5 rounded-lg font-label-caps text-xs font-bold hover:bg-status-danger/15 hover:text-status-danger transition-colors flex items-center gap-[6px]"
                   >
                     <span className="material-symbols-outlined text-[16px]">cached</span>
                     PURGE SYSTEM CACHE
@@ -997,7 +999,7 @@ export default function SettingsPage() {
                     onClick={() => {
                       flash("success", "Client configuration synchronized");
                     }}
-                    className="bg-surface-container-high border border-outline-variant px-4 py-2.5 rounded-lg font-label-caps text-xs font-bold hover:bg-secondary/15 hover:text-secondary transition-colors flex items-center gap-1.5"
+                    className="bg-surface-container-high border border-outline-variant px-4 py-2.5 rounded-lg font-label-caps text-xs font-bold hover:bg-secondary/15 hover:text-secondary transition-colors flex items-center gap-[6px]"
                   >
                     <span className="material-symbols-outlined text-[16px]">sync</span>
                     FORCE SYNC CONFIG
@@ -1016,7 +1018,7 @@ export default function SettingsPage() {
           onClick={() => setShowBannerModal(false)}
         >
           <div
-            className="bg-surface-bright border border-subtle rounded-xl p-5 max-w-md w-full space-y-4 shadow-2xl"
+            className="bg-surface-bright border border-subtle rounded-xl p-5 max-w-md w-full flex flex-col gap-[16px] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center border-b border-outline-variant/30 pb-3">
@@ -1027,7 +1029,7 @@ export default function SettingsPage() {
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="space-y-3 font-body-sm">
+            <div className="flex flex-col gap-[12px] font-body-sm">
               <div>
                 <label className="block text-body-sm text-on-surface-variant mb-1 font-bold">Banner Title *</label>
                 <input
@@ -1067,7 +1069,7 @@ export default function SettingsPage() {
                 </select>
               </div>
             </div>
-            <div className="flex gap-2 pt-2 border-t border-outline-variant/30">
+            <div className="flex gap-[8px] pt-2 border-t border-outline-variant/30">
               <button
                 onClick={() => setShowBannerModal(false)}
                 className="flex-1 py-2.5 bg-surface-container-high text-on-surface rounded-lg text-body-sm font-bold hover:bg-surface-container-highest transition-colors font-label-caps"
@@ -1092,7 +1094,7 @@ export default function SettingsPage() {
           onClick={() => setShowOnboardingModal(false)}
         >
           <div
-            className="bg-surface-bright border border-subtle rounded-xl p-5 max-w-md w-full space-y-4 shadow-2xl"
+            className="bg-surface-bright border border-subtle rounded-xl p-5 max-w-md w-full flex flex-col gap-[16px] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center border-b border-outline-variant/30 pb-3">
@@ -1103,7 +1105,7 @@ export default function SettingsPage() {
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="space-y-3 font-body-sm">
+            <div className="flex flex-col gap-[12px] font-body-sm">
               <div>
                 <label className="block text-body-sm text-on-surface-variant mb-1 font-bold">Screen Title *</label>
                 <input
@@ -1123,7 +1125,7 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2 pt-2 border-t border-outline-variant/30">
+            <div className="flex gap-[8px] pt-2 border-t border-outline-variant/30">
               <button
                 onClick={() => setShowOnboardingModal(false)}
                 className="flex-1 py-2.5 bg-surface-container-high text-on-surface rounded-lg text-body-sm font-bold hover:bg-surface-container-highest transition-colors font-label-caps"
@@ -1148,7 +1150,7 @@ export default function SettingsPage() {
           onClick={() => setShowFaqModal(false)}
         >
           <div
-            className="bg-surface-bright border border-subtle rounded-xl p-5 max-w-lg w-full space-y-4 shadow-2xl"
+            className="bg-surface-bright border border-subtle rounded-xl p-5 max-w-lg w-full flex flex-col gap-[16px] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center border-b border-outline-variant/30 pb-3">
@@ -1159,7 +1161,7 @@ export default function SettingsPage() {
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="space-y-3 font-body-sm">
+            <div className="flex flex-col gap-[12px] font-body-sm">
               <div>
                 <label className="block text-body-sm text-on-surface-variant mb-1 font-bold">Category</label>
                 <select
@@ -1191,7 +1193,7 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2 pt-2 border-t border-outline-variant/30">
+            <div className="flex gap-[8px] pt-2 border-t border-outline-variant/30">
               <button
                 onClick={() => setShowFaqModal(false)}
                 className="flex-1 py-2.5 bg-surface-container-high text-on-surface rounded-lg text-body-sm font-bold hover:bg-surface-container-highest transition-colors font-label-caps"
