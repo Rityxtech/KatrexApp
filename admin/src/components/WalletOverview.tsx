@@ -79,82 +79,82 @@ export default function WalletOverview() {
           {toast}
         </div>
       )}
-      <div className="py-4 border-b border-outline-variant/30 flex justify-between items-end mb-4">
+      <div className="bg-surface-bright rounded-xl border border-subtle p-5 md:p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="font-headline-lg text-headline-lg text-primary">
-            Wallet Command Center <span className="text-on-surface-variant font-normal">v3.0.4</span>
-          </h2>
-          <p className="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-widest mt-1 flex items-center gap-2">
+          <h1 className="font-headline-lg text-headline-lg text-primary font-bold">
+            Wallet Command Center <span className="text-on-surface-variant text-base font-normal">v3.0.4</span>
+          </h1>
+          <p className="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-wider mt-1 flex items-center gap-2">
             Real-time Liquidity &amp; Balance Control
-            <span className="flex items-center gap-1 normal-case">
-              <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE
+            <span className="flex items-center gap-1 normal-case font-semibold">
+              <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> LIVE
             </span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             disabled={syncing}
             onClick={handleSyncAll}
-            className="px-3 py-1.5 bg-surface-container-high border border-subtle font-label-caps text-label-caps hover:bg-surface-bright transition-colors flex items-center gap-2 disabled:opacity-40"
+            className="px-4 py-2 bg-surface-container-high border border-subtle rounded-lg font-label-caps text-xs font-bold hover:bg-surface-bright transition-colors flex items-center gap-2 disabled:opacity-40"
           >
-            <span className={`material-symbols-outlined text-[14px] ${syncing ? "animate-spin" : ""}`}>refresh</span> {syncing ? "SYNCING..." : "SYNC ALL"}
+            <span className={`material-symbols-outlined text-[16px] ${syncing ? "animate-spin" : ""}`}>refresh</span> {syncing ? "SYNCING..." : "SYNC ALL"}
           </button>
           <button
             onClick={() => setShowDisbursement(true)}
-            className="px-3 py-1.5 bg-secondary text-on-secondary font-label-caps text-label-caps hover:opacity-90 transition-opacity flex items-center gap-2"
+            className="px-4 py-2 bg-secondary text-on-secondary rounded-lg font-label-caps text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm"
           >
-            <span className="material-symbols-outlined text-[14px]">add</span> NEW DISBURSEMENT
+            <span className="material-symbols-outlined text-[16px]">add</span> NEW DISBURSEMENT
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        <div className="bg-surface-bright border border-subtle p-3 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-            <span className="material-symbols-outlined text-6xl">account_balance</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+            <span className="material-symbols-outlined text-7xl">account_balance</span>
           </div>
           <div className="relative z-10">
-            <p className="font-label-caps text-label-caps text-on-surface-variant mb-2">PLATFORM MAIN WALLET</p>
-            <h3 className="font-data-mono text-2xl text-secondary">{formatNaira(totalNaira)}</h3>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="bg-surface-deep/50 p-2 border border-outline-variant/20">
-                <p className="font-label-caps text-[9px] text-on-tertiary-container">BTC RESERVE</p>
-                <p className="font-data-mono text-body-sm">{btcReserve.toFixed(4)} BTC</p>
+            <p className="font-label-caps text-label-caps text-on-surface-variant font-bold mb-2">PLATFORM MAIN WALLET</p>
+            <h3 className="font-data-mono text-3xl font-bold text-secondary">{formatNaira(totalNaira)}</h3>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="bg-surface-container-low p-3 rounded-lg border border-subtle">
+                <p className="font-label-caps text-[10px] text-on-tertiary-container font-bold">BTC RESERVE</p>
+                <p className="font-data-mono text-body-sm font-semibold mt-0.5">{btcReserve.toFixed(4)} BTC</p>
               </div>
-              <div className="bg-surface-deep/50 p-2 border border-outline-variant/20">
-                <p className="font-label-caps text-[9px] text-on-tertiary-container">ETH RESERVE</p>
-                <p className="font-data-mono text-body-sm">{ethReserve.toFixed(3)} ETH</p>
+              <div className="bg-surface-container-low p-3 rounded-lg border border-subtle">
+                <p className="font-label-caps text-[10px] text-on-tertiary-container font-bold">ETH RESERVE</p>
+                <p className="font-data-mono text-body-sm font-semibold mt-0.5">{ethReserve.toFixed(3)} ETH</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface-bright border border-subtle p-3 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-10">
-            <span className="material-symbols-outlined text-6xl">trending_up</span>
+        <div className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-3 opacity-10">
+            <span className="material-symbols-outlined text-7xl">trending_up</span>
           </div>
-          <p className="font-label-caps text-label-caps text-on-surface-variant mb-2">TOTAL REVENUE (NET)</p>
-          <h3 className="font-data-mono text-2xl text-status-success">{formatNaira(totalRevenue)}</h3>
-          <div className="mt-4 flex items-center gap-2">
-            <div className="h-1 flex-1 bg-surface-deep rounded-full overflow-hidden">
+          <p className="font-label-caps text-label-caps text-on-surface-variant font-bold mb-2">TOTAL REVENUE (NET)</p>
+          <h3 className="font-data-mono text-3xl font-bold text-status-success">{formatNaira(totalRevenue)}</h3>
+          <div className="mt-5 flex items-center gap-2">
+            <div className="h-1.5 flex-1 bg-surface-container-highest rounded-full overflow-hidden">
               <div className="h-full bg-status-success" style={{ width: `${Math.min((totalRevenue / (totalNaira || 1)) * 100, 100)}%` }}></div>
             </div>
-            <span className="font-label-caps text-[9px] text-status-success">{wallets.length} WALLETS</span>
+            <span className="font-label-caps text-[10px] font-bold text-status-success">{wallets.length} WALLETS</span>
           </div>
-          <p className="mt-2 font-body-sm text-body-sm text-on-surface-variant italic">Tracking {wallets.length} active wallets</p>
+          <p className="mt-3 font-body-sm text-body-sm text-on-surface-variant">Tracking {wallets.length} active user wallets</p>
         </div>
 
-        <div className="bg-surface-bright border border-subtle p-3 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-10">
-            <span className="material-symbols-outlined text-6xl">security</span>
+        <div className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-3 opacity-10">
+            <span className="material-symbols-outlined text-7xl">security</span>
           </div>
-          <p className="font-label-caps text-label-caps text-on-surface-variant mb-2">CRYPTO RESERVES</p>
-          <h3 className="font-data-mono text-2xl text-primary">{Object.keys(cryptoBalances).length} ASSETS</h3>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {usdtReserve > 0 && <span className="px-2 py-0.5 border border-primary/30 text-primary font-data-mono text-[10px]">USDT: {usdtReserve.toFixed(0)}</span>}
-            {solReserve > 0 && <span className="px-2 py-0.5 border border-primary/30 text-primary font-data-mono text-[10px]">SOL: {solReserve.toFixed(0)}</span>}
-            {btcReserve > 0 && <span className="px-2 py-0.5 border border-primary/30 text-primary font-data-mono text-[10px]">BTC: {btcReserve.toFixed(2)}</span>}
-            {ethReserve > 0 && <span className="px-2 py-0.5 border border-primary/30 text-primary font-data-mono text-[10px]">ETH: {ethReserve.toFixed(1)}</span>}
+          <p className="font-label-caps text-label-caps text-on-surface-variant font-bold mb-2">CRYPTO RESERVES</p>
+          <h3 className="font-data-mono text-3xl font-bold text-primary">{Object.keys(cryptoBalances).length} ASSETS</h3>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {usdtReserve > 0 && <span className="px-2.5 py-1 bg-surface-container-low rounded-lg border border-subtle text-primary font-data-mono text-xs font-semibold">USDT: {usdtReserve.toFixed(0)}</span>}
+            {solReserve > 0 && <span className="px-2.5 py-1 bg-surface-container-low rounded-lg border border-subtle text-primary font-data-mono text-xs font-semibold">SOL: {solReserve.toFixed(0)}</span>}
+            {btcReserve > 0 && <span className="px-2.5 py-1 bg-surface-container-low rounded-lg border border-subtle text-primary font-data-mono text-xs font-semibold">BTC: {btcReserve.toFixed(2)}</span>}
+            {ethReserve > 0 && <span className="px-2.5 py-1 bg-surface-container-low rounded-lg border border-subtle text-primary font-data-mono text-xs font-semibold">ETH: {ethReserve.toFixed(1)}</span>}
           </div>
         </div>
       </div>

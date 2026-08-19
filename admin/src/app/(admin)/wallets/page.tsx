@@ -5,7 +5,7 @@ import WalletDetails from "@/components/WalletDetails";
 
 export default function WalletsPage() {
   return (
-    <div className="px-4 w-full">
+    <div className="w-full flex flex-col gap-6">
       <WalletOverview />
       <WalletDetails />
     </div>

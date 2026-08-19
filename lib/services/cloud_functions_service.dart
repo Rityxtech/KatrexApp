@@ -344,7 +344,11 @@ class CloudFunctionsService {
     final data = await _call('getDataPlans', {
       'network': network,
     });
-    return (data['plans'] as List).cast<Map<String, dynamic>>();
+    final rawPlans = data['plans'] as List? ?? [];
+    return rawPlans
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   /// Purchase airtime. Returns {success, refunded, message}.

@@ -258,116 +258,119 @@ export default function UsersPage() {
   };
 
   return (
-    <>
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="p-container-padding flex flex-col md:flex-row md:items-center justify-between gap-stack-base bg-surface-dim border-b border-subtle">
-        <div>
-          <h1 className="font-headline-lg text-headline-lg text-on-surface">User Management</h1>
-          <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
-            Manage total {loading ? "..." : filtered.length.toLocaleString()} platform users
-            {!loading && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE</span>}
-          </p>
+    <div className="w-full flex flex-col gap-6">
+      {/* ── Main User Workspace Card ── */}
+      <div className="w-full bg-surface-bright rounded-xl border border-subtle overflow-hidden shadow-sm flex flex-col">
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-dim border-b border-subtle">
+          <div>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">User Management</h1>
+            <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2 mt-1">
+              Manage total {loading ? "..." : filtered.length.toLocaleString()} platform users
+              {!loading && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> LIVE</span>}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
+            <button
+              onClick={exportCsv}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-medium"
+            >
+              <span className="material-symbols-outlined text-[18px]">upload</span> CSV
+            </button>
+            <button
+              onClick={exportPdf}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-medium"
+            >
+              <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-on-secondary-container rounded-lg hover:opacity-90 transition-all text-body-sm font-bold shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[18px]">person_add</span> Add User
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-stack-base overflow-x-auto pb-1 md:pb-0">
-          <button
-            onClick={exportCsv}
-            className="flex items-center gap-1 px-3 py-1.5 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-medium"
-          >
-            <span className="material-symbols-outlined">upload</span> CSV
-          </button>
-          <button
-            onClick={exportPdf}
-            className="flex items-center gap-1 px-3 py-1.5 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-medium"
-          >
-            <span className="material-symbols-outlined">picture_as_pdf</span> PDF
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1 px-4 py-1.5 bg-secondary text-on-secondary-container rounded-lg hover:opacity-90 transition-all text-body-sm font-bold ml-2"
-          >
-            <span className="material-symbols-outlined">person_add</span> Add User
-          </button>
+
+        {/* ── Filters ─────────────────────────────────────────────── */}
+        <div className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-12 gap-3 bg-surface-container-low border-b border-subtle items-center">
+          <div className="md:col-span-5 relative group">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
+            <input
+              className="w-full h-10 pl-10 pr-4 bg-surface-deep border border-subtle rounded-lg text-body-sm focus:border-secondary focus:ring-0 text-on-surface placeholder:text-outline-variant outline-none"
+              placeholder="Search name, email, or UID..."
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <select
+              className="w-full h-10 bg-surface-deep border border-subtle rounded-lg text-body-sm px-3 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
+              value={kycFilter}
+              onChange={(e) => { setKycFilter(e.target.value); setPage(0); }}
+            >
+              <option value="all">KYC Tier: All</option>
+              <option value="tier0">Tier 0</option>
+              <option value="tier1">Tier 1</option>
+              <option value="tier2">Tier 2</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <select
+              className="w-full h-10 bg-surface-deep border border-subtle rounded-lg text-body-sm px-3 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+            >
+              <option value="all">Status: All</option>
+              <option value="verified">Verified</option>
+              <option value="pending">Pending</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+          <div className="md:col-span-3 flex justify-end gap-2">
+            <button
+              onClick={clearFilters}
+              className="h-10 px-4 text-secondary hover:bg-secondary/10 transition-colors rounded-lg text-body-sm font-bold border border-secondary/20"
+            >
+              Clear Filters
+            </button>
+          </div>
         </div>
+
+        {/* ── Table ───────────────────────────────────────────────── */}
+        <UserTable
+          users={paged}
+          loading={loading}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          onSelectAll={toggleSelectAll}
+          onViewUser={(u) => setEditingUser(u)}
+          onMessageUser={(u) => setMessagingUser(u)}
+          onSuspendUser={handleSuspendUser}
+          menuUserId={menuUserId}
+          onToggleMenu={(id) => setMenuUserId(menuUserId === id ? null : id)}
+        />
+
+        {/* ── Footer ──────────────────────────────────────────────── */}
+        <TableFooter
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          currentPage={safePage}
+          onPageChange={setPage}
+          selectedCount={selectedIds.size}
+          onBulkBlock={handleBulkBlock}
+          onBulkDelete={handleBulkDelete}
+          bulkLoading={bulkActionLoading}
+        />
       </div>
-
-      {/* ── Filters ─────────────────────────────────────────────── */}
-      <div className="p-container-padding grid grid-cols-1 md:grid-cols-12 gap-unit bg-surface border-b border-subtle items-center">
-        <div className="md:col-span-5 relative group">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
-          <input
-            className="w-full h-8 pl-9 pr-4 bg-surface-container-low border border-subtle rounded-md text-body-sm focus:border-secondary focus:ring-0 text-on-surface placeholder:text-outline-variant"
-            placeholder="Search name, email, or UID..."
-            type="text"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          />
-        </div>
-        <div className="md:col-span-2">
-          <select
-            className="w-full h-8 bg-surface-container-low border border-subtle rounded-md text-body-sm px-2 focus:border-secondary focus:ring-0 text-on-surface"
-            value={kycFilter}
-            onChange={(e) => { setKycFilter(e.target.value); setPage(0); }}
-          >
-            <option value="all">KYC Tier: All</option>
-            <option value="tier0">Tier 0</option>
-            <option value="tier1">Tier 1</option>
-            <option value="tier2">Tier 2</option>
-          </select>
-        </div>
-        <div className="md:col-span-2">
-          <select
-            className="w-full h-8 bg-surface-container-low border border-subtle rounded-md text-body-sm px-2 focus:border-secondary focus:ring-0 text-on-surface"
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-          >
-            <option value="all">Status: All</option>
-            <option value="verified">Verified</option>
-            <option value="pending">Pending</option>
-            <option value="suspended">Suspended</option>
-          </select>
-        </div>
-        <div className="md:col-span-3 flex justify-end gap-stack-tight">
-          <button
-            onClick={clearFilters}
-            className="h-8 px-3 text-secondary hover:bg-secondary/10 transition-colors rounded-md text-body-sm font-bold"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-
-      {/* ── Table ───────────────────────────────────────────────── */}
-      <UserTable
-        users={paged}
-        loading={loading}
-        selectedIds={selectedIds}
-        onToggleSelect={toggleSelect}
-        onSelectAll={toggleSelectAll}
-        onViewUser={(u) => setEditingUser(u)}
-        onMessageUser={(u) => setMessagingUser(u)}
-        onSuspendUser={handleSuspendUser}
-        menuUserId={menuUserId}
-        onToggleMenu={(id) => setMenuUserId(menuUserId === id ? null : id)}
-      />
-
-      {/* ── Footer ──────────────────────────────────────────────── */}
-      <TableFooter
-        totalItems={filtered.length}
-        pageSize={PAGE_SIZE}
-        currentPage={safePage}
-        onPageChange={setPage}
-        selectedCount={selectedIds.size}
-        onBulkBlock={handleBulkBlock}
-        onBulkDelete={handleBulkDelete}
-        bulkLoading={bulkActionLoading}
-      />
 
       {/* ── Floating Add User ───────────────────────────────────── */}
       <button
         onClick={() => setShowAddModal(true)}
-        className="fixed right-6 bottom-20 md:bottom-8 w-12 h-12 bg-secondary text-on-secondary-container rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-50"
+        className="fixed right-8 bottom-8 w-14 h-14 bg-secondary text-on-secondary-container rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-50"
       >
-        <span className="material-symbols-outlined">person_add</span>
+        <span className="material-symbols-outlined text-[24px]">person_add</span>
       </button>
 
       {/* ── Edit Drawer ─────────────────────────────────────────── */}
@@ -453,6 +456,6 @@ export default function UsersPage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

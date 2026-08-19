@@ -34,11 +34,11 @@ export default function ExchangeRatesTable() {
 
   return (
     <div className="col-span-12 lg:col-span-8">
-      <div className="bg-surface-container border border-subtle rounded h-full flex flex-col">
-        <div className="bg-surface-container-high px-3 py-2 border-b border-subtle flex justify-between items-center">
-          <div className="flex items-center gap-stack-base">
-            <span className="font-label-caps text-label-caps text-secondary">NGN Exchange Rates</span>
-            <span className="bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+      <div className="bg-surface-bright border border-subtle rounded-xl h-full flex flex-col overflow-hidden shadow-sm">
+        <div className="bg-surface-container-low px-5 py-3.5 border-b border-subtle flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="font-label-caps text-label-caps text-secondary font-bold">NGN Exchange Rates</span>
+            <span className="bg-status-success/10 text-status-success px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> AUTO-UPDATE ON
             </span>
           </div>

@@ -185,191 +185,205 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="px-container-padding py-max-gap flex flex-col gap-max-gap w-full">
+    <div className="w-full flex flex-col gap-6">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded-xl shadow-lg font-body-sm text-body-sm text-on-surface">
           {toast}
         </div>
       )}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* Header */}
+      <div className="bg-surface-bright rounded-xl border border-subtle p-5 md:p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="font-headline-lg text-headline-lg text-on-surface">Reports &amp; Analytics</h1>
-          <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
+          <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold">Reports &amp; Analytics</h1>
+          <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2 mt-1">
             System performance metrics and transactional telemetry
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> LIVE</span>
           </p>
         </div>
-        <div className="flex items-center gap-stack-base flex-wrap">
-          <div className="flex bg-surface-container border border-outline-variant rounded overflow-hidden">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex bg-surface-container-low border border-subtle rounded-lg overflow-hidden p-1">
             <input
-              className="bg-transparent border-none text-on-surface font-data-mono text-xs focus:ring-0 px-2 py-1"
+              className="bg-transparent border-none text-on-surface font-data-mono text-xs focus:ring-0 px-2 py-1 outline-none"
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
             />
             <span className="px-2 self-center text-outline text-xs">to</span>
             <input
-              className="bg-transparent border-none text-on-surface font-data-mono text-xs focus:ring-0 px-2 py-1"
+              className="bg-transparent border-none text-on-surface font-data-mono text-xs focus:ring-0 px-2 py-1 outline-none"
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
             />
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-2">
             <button
               onClick={exportCSV}
-              className="bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-caps text-label-caps px-3 py-2 rounded flex items-center gap-1 transition-colors"
+              className="bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-caps text-xs font-bold px-3.5 py-2 rounded-lg border border-subtle flex items-center gap-1.5 transition-colors"
             >
-              <span className="material-symbols-outlined text-[14px]">download</span> CSV
+              <span className="material-symbols-outlined text-[16px]">download</span> CSV
             </button>
             <button
               onClick={exportPDF}
-              className="bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-caps text-label-caps px-3 py-2 rounded flex items-center gap-1 transition-colors"
+              className="bg-secondary text-on-secondary font-label-caps text-xs font-bold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-opacity hover:opacity-90 shadow-sm"
             >
-              <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span> PDF
+              <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span> PDF
             </button>
           </div>
         </div>
       </div>
 
       {/* Operational Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
-        <div className="bg-surface-container p-3 rounded border border-outline-variant flex flex-col justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-surface-bright p-5 md:p-6 rounded-xl border border-subtle shadow-sm flex flex-col justify-between">
           <div>
-            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-unit">Total Volume</p>
-            <div className="flex items-baseline gap-2">
-              <span className="font-data-mono text-xl text-primary">{formatNaira(totalVol)}</span>
-              <span className="text-status-success text-[10px] font-bold">{filteredTxns.filter((t: any) => t.status === "completed").length} txns</span>
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase font-bold mb-1">Total Volume</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="font-data-mono text-2xl font-bold text-primary">{formatNaira(totalVol)}</span>
+              <span className="text-status-success text-xs font-bold">{filteredTxns.filter((t: any) => t.status === "completed").length} txns</span>
             </div>
           </div>
-          <div className="h-8 mt-2 w-full flex items-end gap-[1px]">
+          <div className="h-8 mt-4 w-full flex items-end gap-[2px]">
             {hourlyData.map((h, i) => (
-              <div key={i} className="bg-primary/20 hover:bg-primary w-full transition-all" style={{ height: `${Math.max((h / maxHourly) * 100, 5)}%` }}></div>
+              <div key={i} className="bg-primary/20 hover:bg-primary w-full rounded-t-sm transition-all" style={{ height: `${Math.max((h / maxHourly) * 100, 8)}%` }}></div>
             ))}
           </div>
         </div>
 
-        <div className="bg-surface-container p-3 rounded border border-outline-variant">
-          <p className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-unit">Success Rate</p>
-          <div className="flex items-baseline gap-2 mb-2">
-            <span className="font-data-mono text-xl text-secondary">
-              {filteredTxns.length > 0
-                ? ((filteredTxns.filter((t: any) => t.status === "completed").length / filteredTxns.length) * 100).toFixed(1)
-                : "100"}%
-            </span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex justify-between text-[10px] font-data-mono">
-              <span className="text-on-secondary-fixed">CRYPTO</span>
-              <span className="text-on-surface">{cryptoRate}%</span>
-            </div>
-            <div className="w-full bg-surface-container-low h-1 rounded-full overflow-hidden">
-              <div className="bg-secondary h-full" style={{ width: `${cryptoRate}%` }}></div>
-            </div>
-            <div className="flex justify-between text-[10px] font-data-mono mt-1">
-              <span className="text-on-secondary-fixed">FIAT</span>
-              <span className="text-on-surface">{fiatRate}%</span>
-            </div>
-            <div className="w-full bg-surface-container-low h-1 rounded-full overflow-hidden">
-              <div className="bg-secondary h-full" style={{ width: `${fiatRate}%` }}></div>
+        <div className="bg-surface-bright p-5 md:p-6 rounded-xl border border-subtle shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase font-bold mb-1">Success Rate</p>
+            <div className="flex items-baseline gap-2 mb-3 mt-1">
+              <span className="font-data-mono text-2xl font-bold text-secondary">
+                {filteredTxns.length > 0
+                  ? ((filteredTxns.filter((t: any) => t.status === "completed").length / filteredTxns.length) * 100).toFixed(1)
+                  : "100"}%
+              </span>
             </div>
           </div>
-        </div>
-
-        <div className="bg-surface-container p-3 rounded border border-outline-variant">
-          <p className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-unit">Revenue (Fees)</p>
-          <div className="flex flex-col">
-            <span className="font-data-mono text-xl text-tertiary">{formatNaira(totalFees)}</span>
-            <div className="flex gap-3 mt-2">
-              <div>
-                <p className="text-[9px] text-on-surface-variant font-label-caps">VOLUME</p>
-                <p className="font-data-mono text-xs text-on-surface">{formatNaira(totalVol)}</p>
+          <div className="flex flex-col gap-2">
+            <div>
+              <div className="flex justify-between text-xs font-data-mono mb-1">
+                <span className="text-on-surface-variant font-medium">CRYPTO</span>
+                <span className="text-on-surface font-bold">{cryptoRate}%</span>
               </div>
-              <div className="border-l border-outline-variant pl-3">
-                <p className="text-[9px] text-on-surface-variant font-label-caps">PENDING</p>
-                <p className="font-data-mono text-xs text-on-surface">{stats.pendingTxns}</p>
+              <div className="w-full bg-surface-container-low h-1.5 rounded-full overflow-hidden">
+                <div className="bg-secondary h-full" style={{ width: `${cryptoRate}%` }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs font-data-mono mb-1">
+                <span className="text-on-surface-variant font-medium">FIAT</span>
+                <span className="text-on-surface font-bold">{fiatRate}%</span>
+              </div>
+              <div className="w-full bg-surface-container-low h-1.5 rounded-full overflow-hidden">
+                <div className="bg-secondary h-full" style={{ width: `${fiatRate}%` }}></div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface-container p-3 rounded border border-outline-variant relative overflow-hidden">
-          <p className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-unit">Active Users (Live)</p>
-          <div className="flex items-center gap-2">
-            <span className="font-data-mono text-3xl text-on-surface tracking-tighter">{stats.totalUsers.toLocaleString()}</span>
+        <div className="bg-surface-bright p-5 md:p-6 rounded-xl border border-subtle shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase font-bold mb-1">Revenue (Fees)</p>
+            <div className="flex flex-col mt-1">
+              <span className="font-data-mono text-2xl font-bold text-tertiary">{formatNaira(totalFees)}</span>
+            </div>
           </div>
-          <p className="font-data-mono text-[10px] text-status-success mt-2">&#9679; {stats.verifiedUsers} VERIFIED</p>
+          <div className="flex gap-4 mt-4 pt-3 border-t border-subtle">
+            <div>
+              <p className="text-[10px] text-on-surface-variant font-label-caps font-bold">TOTAL VOL</p>
+              <p className="font-data-mono text-xs font-semibold text-on-surface mt-0.5">{formatNaira(totalVol)}</p>
+            </div>
+            <div className="border-l border-subtle pl-4">
+              <p className="text-[10px] text-on-surface-variant font-label-caps font-bold">PENDING</p>
+              <p className="font-data-mono text-xs font-semibold text-on-surface mt-0.5">{stats.pendingTxns}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-surface-bright p-5 md:p-6 rounded-xl border border-subtle shadow-sm flex flex-col justify-between">
+          <div>
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase font-bold mb-1">Active Users (Live)</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="font-data-mono text-3xl font-bold text-on-surface tracking-tight">{stats.totalUsers.toLocaleString()}</span>
+            </div>
+          </div>
+          <p className="font-data-mono text-xs font-bold text-status-success mt-4 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-status-success animate-pulse"></span>
+            {stats.verifiedUsers} VERIFIED USERS
+          </p>
         </div>
       </div>
 
       {/* Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
-        <div className="lg:col-span-2 bg-surface-container border border-outline-variant rounded flex flex-col">
-          <div className="p-3 border-b border-outline-variant flex justify-between items-center">
-            <h2 className="font-headline-md text-headline-md">Transaction Volume</h2>
-            <div className="flex bg-surface-container-low rounded p-1 gap-1">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="p-4 md:p-5 border-b border-subtle bg-surface-container-low flex justify-between items-center">
+            <h2 className="font-headline-md text-headline-md font-bold">Transaction Volume</h2>
+            <div className="flex bg-surface-deep rounded-lg p-1 gap-1 border border-subtle">
               {(["1H", "24H", "7D", "1M"] as Period[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => { setPeriod(p); setDateFrom(""); setDateTo(""); }}
-                  className={`px-2 py-0.5 text-[10px] font-label-caps rounded transition-colors ${period === p && !dateFrom ? "bg-primary-container text-on-primary-container" : "text-on-surface-variant hover:text-on-surface"}`}
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${period === p && !dateFrom ? "bg-primary text-on-primary" : "text-on-surface-variant hover:text-on-surface"}`}
                 >
                   {p}
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex-grow h-64 p-4 relative">
-            <div className="absolute inset-0 m-4 flex flex-col justify-between opacity-10">
+          <div className="flex-grow h-64 p-6 relative">
+            <div className="absolute inset-0 m-6 flex flex-col justify-between opacity-10">
               {[0,1,2,3].map((i) => <div key={i} className="border-b border-dashed border-outline w-full h-0"></div>)}
             </div>
             <div className="relative w-full h-full flex items-end justify-between px-2 gap-2">
               {hourlyData.map((h, i) => (
-                <div key={i} className={`w-full ${i % 2 === 0 ? "bg-primary/40" : "bg-secondary/40"} rounded-t-sm`} style={{ height: `${Math.max((h / maxHourly) * 100, 5)}%` }}></div>
+                <div key={i} className={`w-full ${i % 2 === 0 ? "bg-primary/40" : "bg-secondary/40"} rounded-t-md`} style={{ height: `${Math.max((h / maxHourly) * 100, 8)}%` }}></div>
               ))}
             </div>
           </div>
-          <div className="p-3 bg-surface-container-low flex gap-4">
+          <div className="p-4 bg-surface-container-low border-t border-subtle flex gap-6">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary"></span>
-              <span className="font-body-sm text-body-sm">Buy Orders</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
+              <span className="font-body-sm text-body-sm font-semibold">Buy Orders</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-secondary"></span>
-              <span className="font-body-sm text-body-sm">Sell Orders</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+              <span className="font-body-sm text-body-sm font-semibold">Sell Orders</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface-container border border-outline-variant rounded flex flex-col">
-          <div className="p-3 border-b border-outline-variant">
-            <h2 className="font-headline-md text-headline-md">Liquidity Split</h2>
+        <div className="bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="p-4 md:p-5 border-b border-subtle bg-surface-container-low">
+            <h2 className="font-headline-md text-headline-md font-bold">Liquidity Split</h2>
           </div>
-          <div className="p-4 flex flex-col gap-4 flex-grow">
-            <div className="flex flex-col gap-1">
-              <div className="h-6 w-full flex rounded overflow-hidden">
+          <div className="p-5 flex flex-col gap-4 flex-grow justify-between">
+            <div className="flex flex-col gap-2">
+              <div className="h-6 w-full flex rounded-lg overflow-hidden">
                 <div className="bg-primary hover:opacity-80 transition-opacity cursor-help" style={{ width: `${mainPct}%` }} title={`Main: ${formatNaira(totalNaira)}`}></div>
                 <div className="bg-secondary hover:opacity-80 transition-opacity cursor-help" style={{ width: `${reservePct}%` }} title={`Revenue: ${formatNaira(totalRevenue)}`}></div>
               </div>
-              <div className="flex justify-between font-data-mono text-[10px]">
+              <div className="flex justify-between font-data-mono text-xs text-on-surface-variant font-bold">
                 <span>TOTAL: {formatNaira(totalValue)}</span>
-                <span className="text-status-success">LIVE</span>
+                <span className="text-status-success font-bold">LIVE</span>
               </div>
             </div>
-            <div className="flex flex-col gap-stack-base mt-2">
-              <div className="flex items-center justify-between p-2 bg-surface-container-low rounded border border-outline-variant">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary"></span>
-                  <span className="font-body-sm text-body-sm">Main Wallets</span>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-lg border border-subtle">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
+                  <span className="font-body-sm text-body-sm font-semibold">Main Wallets</span>
                 </div>
-                <span className="font-data-mono text-xs">{mainPct.toFixed(0)}%</span>
+                <span className="font-data-mono text-sm font-bold">{mainPct.toFixed(0)}%</span>
               </div>
-              <div className="flex items-center justify-between p-2 bg-surface-container-low rounded border border-outline-variant">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                  <span className="font-body-sm text-body-sm">Revenue Vault</span>
+              <div className="flex items-center justify-between p-3 bg-surface-container-low rounded-lg border border-subtle">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+                  <span className="font-body-sm text-body-sm font-semibold">Revenue Vault</span>
                 </div>
-                <span className="font-data-mono text-xs">{reservePct.toFixed(0)}%</span>
+                <span className="font-data-mono text-sm font-bold">{reservePct.toFixed(0)}%</span>
               </div>
             </div>
           </div>
@@ -377,33 +391,33 @@ export default function ReportsPage() {
       </div>
 
       {/* Bottom Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
-        <div className="bg-surface-container border border-outline-variant rounded flex flex-col">
-          <div className="p-3 border-b border-outline-variant flex justify-between items-center">
-            <h2 className="font-headline-md text-headline-md">Market Performance</h2>
-            <span className="font-label-caps text-label-caps text-on-surface-variant">COIN-SPECIFIC DATA</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="p-4 md:p-5 border-b border-subtle bg-surface-container-low flex justify-between items-center">
+            <h2 className="font-headline-md text-headline-md font-bold">Market Performance</h2>
+            <span className="font-label-caps text-xs font-bold text-on-surface-variant">COIN-SPECIFIC DATA</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left font-body-sm">
-              <thead>
-                <tr className="bg-surface-container-low border-b border-outline-variant">
-                  <th className="px-3 py-2 font-label-caps text-label-caps text-on-surface-variant">ASSET</th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps text-on-surface-variant text-right">PRICE (NGN)</th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps text-on-surface-variant text-right">24H CHANGE</th>
-                  <th className="px-3 py-2 font-label-caps text-label-caps text-on-surface-variant text-right">VOLUME</th>
+              <thead className="bg-surface-container-low border-b border-subtle">
+                <tr>
+                  <th className="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant">ASSET</th>
+                  <th className="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">PRICE (NGN)</th>
+                  <th className="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">24H CHANGE</th>
+                  <th className="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">VOLUME</th>
                 </tr>
               </thead>
-              <tbody className="font-data-mono divide-y divide-outline-variant">
+              <tbody className="font-data-mono divide-y divide-subtle">
                 {coins.slice(0, 6).map((coin: any) => (
-                  <tr key={coin.id} className="hover:bg-surface-container-high transition-colors">
-                    <td className="px-3 py-2 text-primary font-bold uppercase">{coin.symbol}</td>
-                    <td className="px-3 py-2 text-right">{formatNaira(coin.priceNaira || 0)}</td>
-                    <td className="px-3 py-2 text-right">
+                  <tr key={coin.id} className="hover:bg-primary/5 transition-colors">
+                    <td className="px-4 py-3 text-primary font-bold uppercase">{coin.symbol}</td>
+                    <td className="px-4 py-3 text-right">{formatNaira(coin.priceNaira || 0)}</td>
+                    <td className="px-4 py-3 text-right font-bold">
                       <span className={coin.change24h >= 0 ? "text-status-success" : "text-status-danger"}>
                         {coin.change24h >= 0 ? "+" : ""}{(coin.change24h || 0).toFixed(2)}%
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right text-on-surface-variant">{formatUsd(coin.volume24h || 0)}</td>
+                    <td className="px-4 py-3 text-right text-on-surface-variant">{formatUsd(coin.volume24h || 0)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -411,27 +425,27 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="bg-surface-container border border-outline-variant rounded flex flex-col">
-          <div className="p-3 border-b border-outline-variant flex justify-between items-center">
-            <h2 className="font-headline-md text-headline-md">High-Value Entities</h2>
-            <span className="font-label-caps text-label-caps text-on-surface-variant">USER VOLUME RANKING</span>
+        <div className="bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="p-4 md:p-5 border-b border-subtle bg-surface-container-low flex justify-between items-center">
+            <h2 className="font-headline-md text-headline-md font-bold">High-Value Entities</h2>
+            <span className="font-label-caps text-xs font-bold text-on-surface-variant">USER VOLUME RANKING</span>
           </div>
-          <div className="flex flex-col divide-y divide-outline-variant">
+          <div className="flex flex-col divide-y divide-subtle">
             {userVolumes.length === 0 ? (
-              <div className="p-6 text-center text-on-surface-variant text-body-sm">No data available</div>
+              <div className="p-8 text-center text-on-surface-variant text-body-sm">No data available</div>
             ) : (
               userVolumes.map((e: any, i: number) => (
-                <div key={e.id} className="p-3 flex items-center justify-between hover:bg-surface-container-high transition-colors">
+                <div key={e.id} className="p-4 flex items-center justify-between hover:bg-primary/5 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded border border-outline-variant bg-surface-container-low flex items-center justify-center font-data-mono text-xs">{String(i + 1).padStart(2, "0")}</div>
+                    <div className="w-9 h-9 rounded-lg border border-subtle bg-surface-container-low flex items-center justify-center font-data-mono text-xs font-bold">{String(i + 1).padStart(2, "0")}</div>
                     <div>
-                      <p className="font-body-md text-body-md text-on-surface">{e.name}</p>
-                      <p className="text-[10px] font-data-mono text-on-surface-variant uppercase">ID: {e.id?.slice(0, 12)}</p>
+                      <p className="font-body-md text-body-md font-bold text-on-surface">{e.name}</p>
+                      <p className="text-xs font-data-mono text-on-surface-variant uppercase">ID: {e.id?.slice(0, 12)}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-data-mono text-sm text-primary">{formatNaira(e.vol)}</p>
-                    <p className="text-[10px] font-label-caps text-on-surface-variant uppercase">{e.txns} TRANSACTIONS</p>
+                    <p className="font-data-mono text-sm font-bold text-primary">{formatNaira(e.vol)}</p>
+                    <p className="text-[10px] font-label-caps text-on-surface-variant uppercase font-bold">{e.txns} TRANSACTIONS</p>
                   </div>
                 </div>
               ))

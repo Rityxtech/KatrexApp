@@ -94,13 +94,13 @@
 }
 
 :root {
-  /* Custom spacing aliases */
-  --spacing-gutter: 8px;
-  --spacing-container-padding: 12px;
-  --spacing-stack-tight: 4px;
-  --spacing-unit: 4px;
-  --spacing-max-gap: 20px;
-  --spacing-stack-base: 8px;
+  /* Generous, modern spacing scale */
+  --spacing-gutter: 24px;
+  --spacing-container-padding: 24px;
+  --spacing-stack-tight: 8px;
+  --spacing-unit: 16px;
+  --spacing-max-gap: 24px;
+  --spacing-stack-base: 16px;
 }
 
 html,

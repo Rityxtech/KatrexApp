@@ -108,166 +108,169 @@ export default function TransactionsPage() {
   };
 
   return (
-    <>
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="p-container-padding flex flex-col md:flex-row md:items-center justify-between gap-stack-base bg-surface-dim border-b border-subtle">
-        <div>
-          <h1 className="font-headline-lg text-headline-lg text-on-surface">Transaction Ledger</h1>
-          <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2">
-            Real-time monitoring &mdash; {loading ? "..." : filtered.length.toLocaleString()} transactions
-            {!loading && (
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-stack-base overflow-x-auto pb-1 md:pb-0">
-          <button
-            onClick={exportCsv}
-            className="flex items-center gap-1 px-3 py-1.5 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-medium"
-          >
-            <span className="material-symbols-outlined">download</span> EXPORT CSV
-          </button>
-        </div>
-      </div>
-
-      {/* ── Stats Row ───────────────────────────────────────────── */}
-      <div className="p-container-padding grid grid-cols-1 md:grid-cols-3 gap-max-gap bg-surface border-b border-subtle">
-        <div className="bg-surface-container border border-subtle p-3 rounded-lg flex flex-col justify-between h-24">
+    <div className="w-full flex flex-col gap-6">
+      {/* ── Main Ledger Card ── */}
+      <div className="w-full bg-surface-bright rounded-xl border border-subtle overflow-hidden shadow-sm flex flex-col">
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-dim border-b border-subtle">
           <div>
-            <span className="font-label-caps text-label-caps text-on-primary-container">TOTAL FEES COLLECTED</span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-headline-lg text-headline-lg font-data-mono">{formatNaira(totalFees)}</span>
-              <span className="text-status-success text-[10px] font-bold">
-                {filtered.filter((t: any) => t.status === "completed").length} txns
-              </span>
-            </div>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold">Transaction Ledger</h1>
+            <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2 mt-1">
+              Real-time monitoring &mdash; {loading ? "..." : filtered.length.toLocaleString()} transactions
+              {!loading && (
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> LIVE
+                </span>
+              )}
+            </p>
           </div>
-          <div className="h-4 w-full bg-surface-container-low rounded-full overflow-hidden flex gap-[2px]">
-            <div className="h-full bg-secondary" style={{ width: `${(cryptoVol / maxVol) * 100}%` }}></div>
-            <div className="h-full bg-tertiary" style={{ width: `${(airtimeVol / maxVol) * 100}%` }}></div>
-            <div className="h-full bg-primary" style={{ width: `${(giftcardVol / maxVol) * 100}%` }}></div>
+          <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
+            <button
+              onClick={exportCsv}
+              className="flex items-center gap-1.5 px-4 py-2 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-bold"
+            >
+              <span className="material-symbols-outlined text-[18px]">download</span> EXPORT CSV
+            </button>
           </div>
         </div>
 
-        <div className="md:col-span-2 bg-surface-container border border-subtle p-3 rounded-lg flex flex-col h-24 relative overflow-hidden">
-          <div className="flex justify-between items-start z-10">
-            <span className="font-label-caps text-label-caps text-on-primary-container">VOLUME BREAKDOWN</span>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                <span className="text-[9px] font-bold">CRYPTO</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-tertiary"></span>
-                <span className="text-[9px] font-bold">AIRTIME</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                <span className="text-[9px] font-bold">GIFTCARD</span>
+        {/* ── Stats Row ───────────────────────────────────────────── */}
+        <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-5 bg-surface border-b border-subtle">
+          <div className="bg-surface-container-low border border-subtle p-4 rounded-xl flex flex-col justify-between h-28">
+            <div>
+              <span className="font-label-caps text-label-caps text-on-primary-container font-bold">TOTAL FEES COLLECTED</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="font-headline-lg text-headline-lg font-data-mono font-bold">{formatNaira(totalFees)}</span>
+                <span className="text-status-success text-xs font-bold">
+                  {filtered.filter((t: any) => t.status === "completed").length} completed
+                </span>
               </div>
             </div>
+            <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex gap-[2px]">
+              <div className="h-full bg-secondary" style={{ width: `${(cryptoVol / maxVol) * 100}%` }}></div>
+              <div className="h-full bg-tertiary" style={{ width: `${(airtimeVol / maxVol) * 100}%` }}></div>
+              <div className="h-full bg-primary" style={{ width: `${(giftcardVol / maxVol) * 100}%` }}></div>
+            </div>
           </div>
-          <div className="flex items-end gap-1 h-full pt-2">
-            {loading ? (
-              Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="flex-1 bg-surface-container-high animate-pulse" style={{ height: "50%" }}></div>
-              ))
-            ) : (
-              Array.from({ length: 12 }).map((_, i) => {
-                const chunkSize = Math.max(Math.floor(filtered.length / 12), 1);
-                const slice = filtered.slice(i * chunkSize, (i + 1) * chunkSize);
-                const vol = slice.reduce((s: number, t: any) => s + (t.amountNaira || 0), 0);
-                const maxSliceVol = Math.max(
-                  ...Array.from({ length: 12 }, (_, j) => {
-                    const s = filtered.slice(j * chunkSize, (j + 1) * chunkSize);
-                    return s.reduce((s2: number, t: any) => s2 + (t.amountNaira || 0), 0);
-                  }),
-                  1
-                );
-                const h = `${Math.max((vol / maxSliceVol) * 100, 5)}%`;
-                const colors = ["bg-secondary", "bg-tertiary", "bg-primary"];
-                return <div key={i} className={`flex-1 ${colors[i % 3]}`} style={{ height: h }}></div>;
-              })
-            )}
+
+          <div className="md:col-span-2 bg-surface-container-low border border-subtle p-4 rounded-xl flex flex-col justify-between h-28 relative overflow-hidden">
+            <div className="flex justify-between items-start z-10">
+              <span className="font-label-caps text-label-caps text-on-primary-container font-bold">VOLUME BREAKDOWN</span>
+              <div className="flex gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-secondary"></span>
+                  <span className="text-[10px] font-bold">CRYPTO</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-tertiary"></span>
+                  <span className="text-[10px] font-bold">AIRTIME</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  <span className="text-[10px] font-bold">GIFTCARD</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-end gap-1.5 h-12 pt-2">
+              {loading ? (
+                Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="flex-1 bg-surface-container-high rounded animate-pulse" style={{ height: "50%" }}></div>
+                ))
+              ) : (
+                Array.from({ length: 12 }).map((_, i) => {
+                  const chunkSize = Math.max(Math.floor(filtered.length / 12), 1);
+                  const slice = filtered.slice(i * chunkSize, (i + 1) * chunkSize);
+                  const vol = slice.reduce((s: number, t: any) => s + (t.amountNaira || 0), 0);
+                  const maxSliceVol = Math.max(
+                    ...Array.from({ length: 12 }, (_, j) => {
+                      const s = filtered.slice(j * chunkSize, (j + 1) * chunkSize);
+                      return s.reduce((s2: number, t: any) => s2 + (t.amountNaira || 0), 0);
+                    }),
+                    1
+                  );
+                  const h = `${Math.max((vol / maxSliceVol) * 100, 8)}%`;
+                  const colors = ["bg-secondary", "bg-tertiary", "bg-primary"];
+                  return <div key={i} className={`flex-1 rounded-t-sm ${colors[i % 3]}`} style={{ height: h }}></div>;
+                })
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Filters ─────────────────────────────────────────────── */}
-      <div className="p-container-padding grid grid-cols-1 md:grid-cols-12 gap-unit bg-surface border-b border-subtle items-center">
-        <div className="md:col-span-5 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
-          <input
-            className="w-full h-8 pl-9 pr-4 bg-surface-container-low border border-subtle rounded-md text-body-sm focus:border-secondary focus:ring-0 text-on-surface placeholder:text-outline-variant"
-            placeholder="Search by TX ID, reference, user UID, or hash..."
-            type="text"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+        {/* ── Filters ─────────────────────────────────────────────── */}
+        <div className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-12 gap-3 bg-surface-container-low border-b border-subtle items-center">
+          <div className="md:col-span-5 relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
+            <input
+              className="w-full h-10 pl-10 pr-4 bg-surface-deep border border-subtle rounded-lg text-body-sm focus:border-secondary focus:ring-0 text-on-surface placeholder:text-outline-variant outline-none"
+              placeholder="Search by TX ID, reference, user UID, or hash..."
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            />
+          </div>
+          <div className="md:col-span-3">
+            <select
+              className="w-full h-10 bg-surface-deep border border-subtle rounded-lg text-body-sm px-3 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
+              value={typeFilter}
+              onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
+            >
+              <option value="all">Type: All</option>
+              <option value="deposit">Deposit</option>
+              <option value="withdrawal">Withdrawal</option>
+              <option value="send">Crypto Send</option>
+              <option value="airtime">Airtime</option>
+              <option value="data">Data</option>
+              <option value="giftcard">Gift Card</option>
+              <option value="p2p">P2P</option>
+              <option value="swap">Swap</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <select
+              className="w-full h-10 bg-surface-deep border border-subtle rounded-lg text-body-sm px-3 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+            >
+              <option value="all">Status: All</option>
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="failed">Failed</option>
+              <option value="flagged">Flagged</option>
+            </select>
+          </div>
+          <div className="md:col-span-2 flex justify-end">
+            <button
+              onClick={clearFilters}
+              className="h-10 px-4 text-secondary hover:bg-secondary/10 transition-colors rounded-lg text-body-sm font-bold border border-secondary/20"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
+        {/* ── Table ───────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-hidden p-4 md:p-5 flex flex-col gap-4 bg-surface-bright">
+          <TransactionTable
+            transactions={paged}
+            loading={loading}
+            onViewTransaction={(tx) => setViewingTx(tx)}
           />
         </div>
-        <div className="md:col-span-3">
-          <select
-            className="w-full h-8 bg-surface-container-low border border-subtle rounded-md text-body-sm px-2 focus:border-secondary focus:ring-0 text-on-surface"
-            value={typeFilter}
-            onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
-          >
-            <option value="all">Type: All</option>
-            <option value="deposit">Deposit</option>
-            <option value="withdrawal">Withdrawal</option>
-            <option value="send">Crypto Send</option>
-            <option value="airtime">Airtime</option>
-            <option value="data">Data</option>
-            <option value="giftcard">Gift Card</option>
-            <option value="p2p">P2P</option>
-            <option value="swap">Swap</option>
-          </select>
-        </div>
-        <div className="md:col-span-2">
-          <select
-            className="w-full h-8 bg-surface-container-low border border-subtle rounded-md text-body-sm px-2 focus:border-secondary focus:ring-0 text-on-surface"
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-          >
-            <option value="all">Status: All</option>
-            <option value="completed">Completed</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="failed">Failed</option>
-            <option value="flagged">Flagged</option>
-          </select>
-        </div>
-        <div className="md:col-span-2 flex justify-end">
-          <button
-            onClick={clearFilters}
-            className="h-8 px-3 text-secondary hover:bg-secondary/10 transition-colors rounded-md text-body-sm font-bold"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
 
-      {/* ── Table ───────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-hidden p-container-padding flex flex-col gap-4 bg-surface-deep">
-        <TransactionTable
-          transactions={paged}
-          loading={loading}
-          onViewTransaction={(tx) => setViewingTx(tx)}
+        {/* ── Footer ──────────────────────────────────────────────── */}
+        <TableFooter
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          currentPage={safePage}
+          onPageChange={setPage}
+          selectedCount={0}
+          onBulkBlock={() => {}}
+          onBulkDelete={() => {}}
+          bulkLoading={false}
         />
       </div>
-
-      {/* ── Footer ──────────────────────────────────────────────── */}
-      <TableFooter
-        totalItems={filtered.length}
-        pageSize={PAGE_SIZE}
-        currentPage={safePage}
-        onPageChange={setPage}
-        selectedCount={0}
-        onBulkBlock={() => {}}
-        onBulkDelete={() => {}}
-        bulkLoading={false}
-      />
 
       {/* ── Detail Overlay ──────────────────────────────────────── */}
       {viewingTx && (
@@ -276,6 +279,6 @@ export default function TransactionsPage() {
           onClose={() => setViewingTx(null)}
         />
       )}
-    </>
+    </div>
   );
 }

@@ -330,104 +330,102 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="px-container-padding pt-5 w-full">
-        <div className="max-w-6xl mx-auto flex flex-col gap-[24px] pb-4">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-[16px] border-b border-outline-variant pb-4">
-            <div>
-              <div className="flex items-center gap-[12px]">
-                <span className="material-symbols-outlined text-3xl text-primary">settings_applications</span>
-                <h1 className="font-headline-lg text-headline-lg text-primary">App &amp; System Settings</h1>
-              </div>
-              <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-[8px] mt-1">
-                Centralized configuration for Katrex Mobile Ecosystem
-                <span className="inline-flex items-center gap-[4px] bg-status-success/10 text-status-success px-2 py-0.5 rounded text-[11px] font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE CLOUD CONFIG
-                </span>
-              </p>
+      <div className="w-full flex flex-col gap-6">
+        {/* Header */}
+        <div className="bg-surface-bright rounded-xl border border-subtle p-5 md:p-6 shadow-sm flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-3xl text-primary">settings_applications</span>
+              <h1 className="font-headline-lg text-headline-lg text-primary font-bold">App &amp; System Settings</h1>
             </div>
-            <div className="flex items-center gap-[12px]">
-              <button
-                onClick={() => window.location.reload()}
-                className="px-3.5 py-2 rounded-lg border border-outline-variant bg-surface-container hover:bg-surface-container-high text-on-surface font-label-caps text-xs flex items-center gap-[6px] transition-colors"
-                title="Reload current settings from server"
-              >
-                <span className="material-symbols-outlined text-[16px]">refresh</span>
-                REFRESH
-              </button>
-              <button
-                onClick={publishChanges}
-                disabled={saving}
-                className="bg-secondary text-on-secondary px-5 py-2 rounded-lg font-label-caps font-bold flex items-center gap-[8px] hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md"
-              >
-                <span className="material-symbols-outlined text-[18px]">save</span>
-                {saving ? "SAVING..." : "SAVE & PUBLISH"}
-              </button>
-            </div>
+            <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-2 mt-1">
+              Centralized configuration for Katrex Mobile Ecosystem
+              <span className="inline-flex items-center gap-1 bg-status-success/10 text-status-success px-2.5 py-0.5 rounded-full text-xs font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE CLOUD CONFIG
+              </span>
+            </p>
           </div>
-
-          {/* Quick Info Bar */}
-          {maintenanceMode && (
-            <div className="bg-status-danger/10 border border-status-danger/30 rounded-lg p-3.5 flex items-center justify-between text-status-danger animate-fadeIn">
-              <div className="flex items-center gap-[10px]">
-                <span className="material-symbols-outlined text-[24px]">warning</span>
-                <div>
-                  <span className="font-bold text-body-md">MAINTENANCE MODE IS CURRENTLY ACTIVE</span>
-                  <p className="text-xs text-on-surface-variant">
-                    All standard user mobile interactions are suspended until disabled.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={toggleMaintenance}
-                className="bg-status-danger text-white px-3 py-1 rounded text-xs font-bold font-label-caps hover:brightness-110"
-              >
-                DISABLE NOW
-              </button>
-            </div>
-          )}
-
-          {/* Top Switchable Tabs */}
-          <div className="flex overflow-x-auto border-b border-outline-variant gap-[8px] pb-px scrollbar-none" style={{ display: "flex", gap: "8px" }}>
-            {TAB_CONFIG.map((t) => {
-              const isActive = activeTab === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTab(t.id)}
-                  style={{ padding: "10px 16px", display: "inline-flex", alignItems: "center", gap: "8px" }}
-                  className={`flex items-center gap-[8px] px-4 py-2.5 rounded-t-lg font-label-caps text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
-                    isActive
-                      ? "border-secondary bg-surface-container text-secondary"
-                      : "border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
-                  <span>{t.label}</span>
-                  {t.id === "banners" && (
-                    <span className="ml-1 bg-surface-container-highest px-1.5 py-0.2 rounded-full text-[10px] text-on-surface-variant">
-                      {banners.length}
-                    </span>
-                  )}
-                  {t.id === "faqs" && (
-                    <span className="ml-1 bg-surface-container-highest px-1.5 py-0.2 rounded-full text-[10px] text-on-surface-variant">
-                      {faqs.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg border border-subtle bg-surface-container hover:bg-surface-container-high text-on-surface font-label-caps text-xs font-bold flex items-center gap-1.5 transition-colors"
+              title="Reload current settings from server"
+            >
+              <span className="material-symbols-outlined text-[16px]">refresh</span>
+              REFRESH
+            </button>
+            <button
+              onClick={publishChanges}
+              disabled={saving}
+              className="bg-primary text-on-primary px-5 py-2 rounded-lg font-label-caps text-xs font-bold flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              {saving ? "SAVING..." : "SAVE & PUBLISH"}
+            </button>
           </div>
+        </div>
 
-          {/* ─────────────────────────────────────────────────────────────
-              TAB 1: GENERAL & SYSTEM
-          ───────────────────────────────────────────────────────────── */}
-          {activeTab === "general" && (
-            <div className="flex flex-col gap-[20px] animate-fadeIn" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              {/* Row 1: Maintenance & Base Currency */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-[20px]" style={{ display: "grid", gap: "20px" }}>
-                {/* System Maintenance & Kill Switch */}
-                <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between" style={{ padding: "20px" }}>
+        {/* Quick Info Bar */}
+        {maintenanceMode && (
+          <div className="bg-status-danger/10 border border-status-danger/30 rounded-xl p-4 flex items-center justify-between text-status-danger animate-fadeIn shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-[28px]">warning</span>
+              <div>
+                <span className="font-bold text-body-md">MAINTENANCE MODE IS CURRENTLY ACTIVE</span>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  All standard user mobile interactions are suspended until disabled.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleMaintenance}
+              className="bg-status-danger text-white px-4 py-1.5 rounded-lg text-xs font-bold font-label-caps hover:brightness-110 shadow-sm"
+            >
+              DISABLE NOW
+            </button>
+          </div>
+        )}
+
+        {/* Top Switchable Tabs */}
+        <div className="flex bg-surface-bright border border-subtle p-1.5 rounded-xl shadow-sm gap-1.5 w-fit overflow-x-auto">
+          {TAB_CONFIG.map((t) => {
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-label-caps text-xs font-bold transition-all whitespace-nowrap ${
+                  isActive
+                    ? "bg-primary text-on-primary shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
+                <span>{t.label}</span>
+                {t.id === "banners" && (
+                  <span className="ml-1 bg-surface-container px-2 py-0.5 rounded-full text-[10px] text-on-surface font-bold">
+                    {banners.length}
+                  </span>
+                )}
+                {t.id === "faqs" && (
+                  <span className="ml-1 bg-surface-container px-2 py-0.5 rounded-full text-[10px] text-on-surface font-bold">
+                    {faqs.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────
+            TAB 1: GENERAL & SYSTEM
+        ───────────────────────────────────────────────────────────── */}
+        {activeTab === "general" && (
+          <div className="flex flex-col gap-6 animate-fadeIn">
+            {/* Row 1: Maintenance & Base Currency */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* System Maintenance & Kill Switch */}
+              <div className="bg-surface-bright p-5 md:p-6 rounded-xl border border-subtle shadow-sm flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-[8px] mb-3">
                       <span className="material-symbols-outlined text-secondary">power_settings_new</span>
@@ -1013,7 +1011,6 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
-      </div>
 
       {/* ── Banner Modal ────────────────────────────────────────── */}
       {showBannerModal && (

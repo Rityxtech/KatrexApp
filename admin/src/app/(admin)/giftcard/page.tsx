@@ -302,93 +302,120 @@ export default function GiftcardPage() {
   }
 
   return (
-    <div className="p-max-gap w-full">
-      {actionError && <div className="mb-4 flex justify-between rounded border border-status-danger/40 bg-status-danger/10 p-3 text-body-sm text-status-danger"><span>{actionError}</span><button onClick={() => setActionError(null)}>Dismiss</button></div>}
-      <div className="grid grid-cols-12 gap-gutter">
-        <section className="col-span-12 lg:col-span-3 flex flex-col gap-gutter">
-          <div className="bg-surface-bright border border-subtle rounded-xl p-container-padding">
-            <div className="flex justify-between items-center mb-stack-base">
-              <h2 className="font-headline-md text-headline-md text-primary">Brand Management</h2>
-              <button onClick={() => setBrandModal("new")} className="bg-primary text-on-primary-fixed px-2 py-1 rounded text-[10px] font-bold uppercase hover:bg-white transition-colors">Add Brand</button>
+    <div className="w-full flex flex-col gap-6">
+      {actionError && (
+        <div className="flex justify-between items-center rounded-xl border border-status-danger/40 bg-status-danger/10 p-4 text-body-sm text-status-danger">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="font-bold underline">Dismiss</button>
+        </div>
+      )}
+      <div className="grid grid-cols-12 gap-6">
+        <section className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+          <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h2 className="font-headline-md text-headline-md text-primary font-bold">Brand Management</h2>
+              <button onClick={() => setBrandModal("new")} className="bg-primary text-on-primary-fixed px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:opacity-90 transition-opacity">Add Brand</button>
             </div>
             <SectionState loading={brandsState.loading} error={brandsState.error} empty={!brandsState.data.length} emptyText="No gift-card brands configured." />
-            {!brandsState.loading && !brandsState.error && <div className="flex flex-col gap-unit">{brandsState.data.map((brand) => (
-              <div key={brand.id} className={`brand-card flex items-center justify-between p-2 bg-surface-container-low border border-subtle rounded hover:border-primary transition-all ${!brand.isActive ? "opacity-50" : ""}`}>
-                <button type="button" onClick={() => setBrandModal(brand)} className="flex min-w-0 items-center gap-3 text-left" title="Edit brand">
-                  <span className="material-symbols-outlined text-on-surface-variant text-sm">edit</span>
-                  <div className="w-8 h-8 shrink-0 rounded bg-surface-container-high flex items-center justify-center border border-outline-variant" style={{ borderColor: brand.colorHex || undefined }}>
-                    {brand.imageUrl && safeImageUrl(brand.imageUrl) ? <img src={safeImageUrl(brand.imageUrl)!} alt="" className="h-full w-full rounded object-cover" referrerPolicy="no-referrer" /> : <span className="material-symbols-outlined text-secondary">{brand.iconName || "redeem"}</span>}
+            {!brandsState.loading && !brandsState.error && (
+              <div className="flex flex-col gap-2.5">
+                {brandsState.data.map((brand) => (
+                  <div key={brand.id} className={`brand-card flex items-center justify-between p-3 bg-surface-container-low border border-subtle rounded-lg hover:border-primary transition-all ${!brand.isActive ? "opacity-50" : ""}`}>
+                    <button type="button" onClick={() => setBrandModal(brand)} className="flex min-w-0 items-center gap-3 text-left" title="Edit brand">
+                      <span className="material-symbols-outlined text-on-surface-variant text-[18px]">edit</span>
+                      <div className="w-9 h-9 shrink-0 rounded-lg bg-surface-container-high flex items-center justify-center border border-outline-variant" style={{ borderColor: brand.colorHex || undefined }}>
+                        {brand.imageUrl && safeImageUrl(brand.imageUrl) ? (
+                          <img src={safeImageUrl(brand.imageUrl)!} alt="" className="h-full w-full rounded-lg object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span className="material-symbols-outlined text-secondary">{brand.iconName || "redeem"}</span>
+                        )}
+                      </div>
+                      <span className="truncate font-body-sm text-body-sm font-semibold">{brand.name}</span>
+                    </button>
+                    <label className="relative inline-flex items-center cursor-pointer ml-2">
+                      <input checked={brand.isActive} disabled={togglingBrand === brand.id} onChange={() => toggleBrand(brand)} className="sr-only peer" type="checkbox" />
+                      <div className="w-8 h-4.5 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-status-success"></div>
+                    </label>
                   </div>
-                  <span className="truncate font-body-sm text-body-sm font-semibold">{brand.name}</span>
-                </button>
-                <label className="relative inline-flex items-center cursor-pointer ml-2">
-                  <input checked={brand.isActive} disabled={togglingBrand === brand.id} onChange={() => toggleBrand(brand)} className="sr-only peer" type="checkbox" />
-                  <div className="w-7 h-4 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-status-success"></div>
-                </label>
+                ))}
               </div>
-            ))}</div>}
+            )}
           </div>
 
-          <div className="bg-surface-bright border border-subtle rounded-xl p-container-padding">
-            <h2 className="font-headline-md text-headline-md text-primary mb-stack-base">Payout Control</h2>
+          <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
+            <h2 className="font-headline-md text-headline-md text-primary font-bold">Payout Control</h2>
             <SectionState loading={settingsState.loading} error={settingsState.error} empty={!settingsState.data} emptyText="No payout settings saved yet. Configure them below." />
-            {!settingsState.loading && !settingsState.error && <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center p-3 bg-surface-container-low rounded border border-subtle">
-                <div><p className="font-body-sm font-bold">Payout Mode</p><p className="text-[10px] text-on-surface-variant">Switch between manual &amp; instant</p></div>
-                <div className="flex bg-surface-deep p-1 rounded-lg border border-outline-variant">
-                  {(["auto", "manual"] as const).map((mode) => <button key={mode} type="button" onClick={() => setPayoutMode(mode)} className={`px-3 py-1 text-[10px] rounded font-bold uppercase ${payoutMode === mode ? "bg-secondary text-on-secondary" : "text-on-surface-variant"}`}>{mode}</button>)}
+            {!settingsState.loading && !settingsState.error && (
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center p-3.5 bg-surface-container-low rounded-lg border border-subtle">
+                  <div>
+                    <p className="font-body-sm font-bold">Payout Mode</p>
+                    <p className="text-[10px] text-on-surface-variant">Switch between manual &amp; instant</p>
+                  </div>
+                  <div className="flex bg-surface-deep p-1 rounded-lg border border-outline-variant">
+                    {(["auto", "manual"] as const).map((mode) => (
+                      <button key={mode} type="button" onClick={() => setPayoutMode(mode)} className={`px-3 py-1 text-[11px] rounded font-bold uppercase transition-colors ${payoutMode === mode ? "bg-secondary text-on-secondary" : "text-on-surface-variant"}`}>
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                <label className="flex flex-col gap-2 font-label-caps text-label-caps text-on-surface-variant font-bold">
+                  PAYOUT DESTINATION
+                  <input className="w-full rounded-lg border border-outline-variant bg-surface-container-high px-3 py-2 text-body-sm outline-none focus:border-primary" value={payoutDestination} onChange={(event) => setPayoutDestination(event.target.value)} placeholder="Destination identifier" />
+                </label>
+                <button type="button" disabled={savingSettings || !payoutMode || !payoutDestination.trim()} onClick={saveSettings} className="w-full py-2.5 rounded-lg font-bold bg-primary text-on-primary hover:opacity-90 transition-opacity disabled:opacity-50 text-body-sm">
+                  {savingSettings ? "Saving…" : "Save Payout Settings"}
+                </button>
               </div>
-              <label className="flex flex-col gap-2 font-label-caps text-label-caps text-on-surface-variant">PAYOUT DESTINATION<input className={inputClass} value={payoutDestination} onChange={(event) => setPayoutDestination(event.target.value)} placeholder="Destination identifier" /></label>
-              <button type="button" disabled={savingSettings || !payoutMode || !payoutDestination.trim()} onClick={saveSettings} className={`${buttonClass} bg-primary text-on-primary`}>{savingSettings ? "Saving…" : "Save payout settings"}</button>
-            </div>}
+            )}
           </div>
         </section>
 
-        <section className="col-span-12 lg:col-span-9 flex flex-col gap-gutter">
-          <div className="bg-surface-bright border border-subtle rounded-xl p-container-padding">
-            <div className="flex justify-between items-end mb-4">
+        <section className="col-span-12 lg:col-span-8 flex flex-col gap-6">
+          <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
+            <div className="flex justify-between items-center">
               <div>
-                <h2 className="font-headline-md text-headline-md text-primary">Rate Management</h2>
-                <p className="text-body-sm text-on-surface-variant">Live gift-card exchange rates</p>
+                <h2 className="font-headline-md text-headline-md text-primary font-bold">Rate Management</h2>
+                <p className="text-body-sm text-on-surface-variant mt-0.5">Live gift-card exchange rates</p>
               </div>
-              <button disabled={!brandsState.data.length} onClick={() => setRateModal("new")} className={`${buttonClass} bg-secondary text-on-secondary`}>Add Rate</button>
+              <button disabled={!brandsState.data.length} onClick={() => setRateModal("new")} className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-bold text-body-sm hover:opacity-90 transition-opacity">Add Rate</button>
             </div>
 
             {/* Scrollable filter tabs */}
-            <div className="mb-4 flex gap-1 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
               {(["all", "physical", "ecode", "USD", "GBP", "EUR"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setRateTab(tab)}
-                  className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide transition-colors ${rateTab === tab ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
+                  className={`shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${rateTab === tab ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
                 >
-                  {tab === "all" ? "All" : tab === "physical" || tab === "ecode" ? tab : tab}
+                  {tab === "all" ? "All" : tab}
                 </button>
               ))}
             </div>
 
             <SectionState loading={ratesState.loading} error={ratesState.error} empty={!filteredRates.length} emptyText="No gift-card rates match this filter." />
             {!ratesState.loading && !ratesState.error && pagedRates.length > 0 && (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg border border-subtle">
                 <table className="w-full text-left border-collapse">
-                  <thead>
+                  <thead className="bg-surface-container-low">
                     <tr className="border-b border-subtle">
-                      <th className="py-2 px-3 font-label-caps text-label-caps text-on-surface-variant">BRAND/CURRENCY</th>
-                      <th className="py-2 px-3 font-label-caps text-label-caps text-on-surface-variant">TYPE</th>
-                      <th className="py-2 px-3 font-label-caps text-label-caps text-on-surface-variant">RANGE</th>
-                      <th className="py-2 px-3 font-label-caps text-label-caps text-on-surface-variant">CURRENT RATE</th>
-                      <th className="py-2 px-3 font-label-caps text-label-caps text-on-surface-variant text-right">ACTION</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant">BRAND/CURRENCY</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant">TYPE</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant">RANGE</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant">CURRENT RATE</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-right">ACTION</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-subtle">
                     {pagedRates.map((rate) => (
-                      <tr key={rate.id} className={`border-b border-subtle/50 hover:bg-primary/5 transition-colors ${!rate.isActive ? "opacity-50" : ""}`}>
-                        <td className="py-2 px-3 font-body-sm"><div className="flex items-center gap-2"><span className="bg-white/10 px-1 rounded-sm text-[8px] font-bold">{rate.currency}</span>{rate.brandName}</div></td>
-                        <td className="py-2 px-3"><span className="px-2 py-0.5 rounded-full bg-surface-container text-[10px] uppercase font-bold text-secondary">{rate.cardType}</span></td>
-                        <td className="py-2 px-3 font-data-mono text-data-mono">{formatMoney(rate.minValue, rate.currency)} – {rate.maxValue == null ? "No maximum" : formatMoney(rate.maxValue, rate.currency)}</td>
-                        <td className="py-2 px-3 font-data-mono text-data-mono text-status-success">{formatMoney(rate.ratePerUnit)} / unit</td>
-                        <td className="py-2 px-3 text-right"><button type="button" onClick={() => setRateModal(rate)} aria-label={`Edit ${rate.brandName} rate`}><span className="material-symbols-outlined text-sm text-on-surface-variant hover:text-primary">edit</span></button></td>
+                      <tr key={rate.id} className={`hover:bg-primary/5 transition-colors ${!rate.isActive ? "opacity-50" : ""}`}>
+                        <td className="py-3 px-4 font-body-sm"><div className="flex items-center gap-2"><span className="bg-white/10 px-1.5 py-0.5 rounded text-[9px] font-bold">{rate.currency}</span>{rate.brandName}</div></td>
+                        <td className="py-3 px-4"><span className="px-2.5 py-1 rounded-full bg-surface-container text-[10px] uppercase font-bold text-secondary">{rate.cardType}</span></td>
+                        <td className="py-3 px-4 font-data-mono text-data-mono">{formatMoney(rate.minValue, rate.currency)} – {rate.maxValue == null ? "No maximum" : formatMoney(rate.maxValue, rate.currency)}</td>
+                        <td className="py-3 px-4 font-data-mono text-data-mono text-status-success font-bold">{formatMoney(rate.ratePerUnit)} / unit</td>
+                        <td className="py-3 px-4 text-right"><button type="button" onClick={() => setRateModal(rate)} aria-label={`Edit ${rate.brandName} rate`} className="p-1.5 rounded hover:bg-surface-container"><span className="material-symbols-outlined text-sm text-on-surface-variant hover:text-primary">edit</span></button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -398,15 +425,15 @@ export default function GiftcardPage() {
 
             {/* Pagination */}
             {!ratesState.loading && !ratesState.error && ratePageCount > 1 && (
-              <div className="mt-4 flex items-center justify-between border-t border-subtle pt-3">
-                <span className="text-[11px] text-on-surface-variant">
+              <div className="mt-2 flex items-center justify-between border-t border-subtle pt-3">
+                <span className="text-xs text-on-surface-variant">
                   Showing {safeRatePage * RATES_PER_PAGE + 1}–{Math.min((safeRatePage + 1) * RATES_PER_PAGE, filteredRates.length)} of {filteredRates.length}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setRatePage((p) => Math.max(0, p - 1))}
                     disabled={safeRatePage === 0}
-                    className={`rounded px-2 py-1 text-[11px] font-bold transition-colors ${safeRatePage === 0 ? "cursor-not-allowed opacity-40" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${safeRatePage === 0 ? "cursor-not-allowed opacity-40" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
                     aria-label="Previous page"
                   >
                     <span className="material-symbols-outlined text-sm">chevron_left</span>
@@ -415,7 +442,7 @@ export default function GiftcardPage() {
                     <button
                       key={i}
                       onClick={() => setRatePage(i)}
-                      className={`h-7 w-7 rounded text-[11px] font-bold transition-colors ${i === safeRatePage ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
+                      className={`h-8 w-8 rounded-lg text-xs font-bold transition-colors ${i === safeRatePage ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
                     >
                       {i + 1}
                     </button>
@@ -423,7 +450,7 @@ export default function GiftcardPage() {
                   <button
                     onClick={() => setRatePage((p) => Math.min(ratePageCount - 1, p + 1))}
                     disabled={safeRatePage === ratePageCount - 1}
-                    className={`rounded px-2 py-1 text-[11px] font-bold transition-colors ${safeRatePage === ratePageCount - 1 ? "cursor-not-allowed opacity-40" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${safeRatePage === ratePageCount - 1 ? "cursor-not-allowed opacity-40" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
                     aria-label="Next page"
                   >
                     <span className="material-symbols-outlined text-sm">chevron_right</span>
@@ -433,25 +460,97 @@ export default function GiftcardPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-stack-base">
-            <h2 className="font-headline-md text-headline-md text-primary">Active Trade Queue <span className="bg-status-danger text-white px-2 py-0.5 rounded text-[10px] ml-2">{pendingTrades.length} Pending</span></h2>
+          <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
+            <h2 className="font-headline-md text-headline-md text-primary font-bold">Active Trade Queue <span className="bg-status-danger text-white px-2.5 py-0.5 rounded-full text-xs ml-2 font-bold">{pendingTrades.length} Pending</span></h2>
             <SectionState loading={tradesState.loading} error={tradesState.error} empty={!pendingTrades.length} emptyText="No pending gift-card trades." />
-            {!tradesState.loading && !tradesState.error && <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">{pendingTrades.map((trade) => {
-              const images = (trade.cardImageUrls || []).map(safeImageUrl).filter((url): url is string => Boolean(url));
-              return <article key={trade.id} className="bg-surface-container-high border-l-4 border-l-status-warning rounded-lg p-container-padding flex flex-col gap-3 hover:shadow-xl transition-all border-y border-r border-subtle">
-                <div className="flex gap-4"><div className="flex w-24 shrink-0 gap-1 overflow-x-auto">{images.length ? images.map((url, index) => <a key={`${trade.id}-${index}`} href={url} target="_blank" rel="noopener noreferrer" className="h-16 w-24 shrink-0"><img src={url} alt={`${trade.brandName} card ${index + 1}`} className="h-full w-full rounded border border-outline-variant object-cover" loading="lazy" referrerPolicy="no-referrer" /></a>) : <div className="w-24 h-16 bg-surface-deep rounded border border-outline-variant flex items-center justify-center"><span className="material-symbols-outlined text-on-surface-variant">image_not_supported</span></div>}</div>
-                  <div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><div><p className="font-body-sm font-bold">{trade.brandName} · {trade.cardType}</p><p className="text-data-mono text-primary">{formatMoney(trade.cardValue, trade.currency)} <span className="text-on-surface-variant text-[10px]">({formatMoney(trade.payoutAmount)})</span></p></div><span className="h-fit shrink-0 text-[10px] font-label-caps text-status-warning px-1.5 py-0.5 bg-status-warning/10 rounded">Pending</span></div>
-                    <p className="mt-2 break-all text-[10px] text-on-surface-variant">{trade.userName || "Unnamed user"} · {trade.userEmail || trade.uid}</p><p className="break-all font-data-mono text-[9px] text-on-surface-variant">Trade {trade.id}</p><p className="text-[10px] text-on-surface-variant">Rate {formatMoney(trade.rateApplied)} · {formatDate(trade.createdAt)}</p></div></div>
-                {(trade.ecode || trade.comment) && <div className="rounded border border-outline-variant bg-surface-deep p-2 text-[11px]">{trade.ecode && <p className="break-all"><strong>E-code:</strong> {trade.ecode}</p>}{trade.comment && <p><strong>User comment:</strong> {trade.comment}</p>}</div>}
-                <div className="flex justify-end gap-2"><button disabled={processingTrade === trade.id} onClick={() => setTradeModal({ trade, action: "approve" })} className={`${buttonClass} bg-status-success/20 text-status-success`}>Approve</button><button disabled={processingTrade === trade.id} onClick={() => setTradeModal({ trade, action: "reject" })} className={`${buttonClass} bg-status-danger/20 text-status-danger`}>Reject</button></div>
-              </article>;
-            })}</div>}
+            {!tradesState.loading && !tradesState.error && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingTrades.map((trade) => {
+                  const images = (trade.cardImageUrls || []).map(safeImageUrl).filter((url): url is string => Boolean(url));
+                  return (
+                    <article key={trade.id} className="bg-surface-container-high border-l-4 border-l-status-warning rounded-xl p-4 flex flex-col gap-3 hover:shadow-xl transition-all border-y border-r border-subtle">
+                      <div className="flex gap-4">
+                        <div className="flex w-24 shrink-0 gap-1 overflow-x-auto">
+                          {images.length ? (
+                            images.map((url, index) => (
+                              <a key={`${trade.id}-${index}`} href={url} target="_blank" rel="noopener noreferrer" className="h-16 w-24 shrink-0">
+                                <img src={url} alt={`${trade.brandName} card ${index + 1}`} className="h-full w-full rounded-lg border border-outline-variant object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                              </a>
+                            ))
+                          ) : (
+                            <div className="w-24 h-16 bg-surface-deep rounded-lg border border-outline-variant flex items-center justify-center">
+                              <span className="material-symbols-outlined text-on-surface-variant">image_not_supported</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex justify-between gap-2">
+                            <div>
+                              <p className="font-body-sm font-bold">{trade.brandName} · {trade.cardType}</p>
+                              <p className="text-data-mono text-primary font-bold">{formatMoney(trade.cardValue, trade.currency)} <span className="text-on-surface-variant text-[10px]">({formatMoney(trade.payoutAmount)})</span></p>
+                            </div>
+                            <span className="h-fit shrink-0 text-[10px] font-label-caps text-status-warning px-2 py-0.5 bg-status-warning/10 rounded font-bold">Pending</span>
+                          </div>
+                          <p className="mt-2 break-all text-[11px] text-on-surface-variant">{trade.userName || "Unnamed user"} · {trade.userEmail || trade.uid}</p>
+                          <p className="break-all font-data-mono text-[10px] text-on-surface-variant">Trade {trade.id}</p>
+                          <p className="text-[10px] text-on-surface-variant">Rate {formatMoney(trade.rateApplied)} · {formatDate(trade.createdAt)}</p>
+                        </div>
+                      </div>
+                      {(trade.ecode || trade.comment) && (
+                        <div className="rounded-lg border border-outline-variant bg-surface-deep p-3 text-xs">
+                          {trade.ecode && <p className="break-all"><strong>E-code:</strong> {trade.ecode}</p>}
+                          {trade.comment && <p><strong>User comment:</strong> {trade.comment}</p>}
+                        </div>
+                      )}
+                      <div className="flex justify-end gap-2 pt-2 border-t border-subtle">
+                        <button disabled={processingTrade === trade.id} onClick={() => setTradeModal({ trade, action: "approve" })} className="px-4 py-2 rounded-lg text-xs font-bold bg-status-success/20 text-status-success hover:bg-status-success/30 transition-colors">Approve</button>
+                        <button disabled={processingTrade === trade.id} onClick={() => setTradeModal({ trade, action: "reject" })} className="px-4 py-2 rounded-lg text-xs font-bold bg-status-danger/20 text-status-danger hover:bg-status-danger/30 transition-colors">Reject</button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          <div className="bg-surface-bright border border-subtle rounded-xl p-container-padding">
-            <div className="flex justify-between items-center mb-stack-base"><h2 className="font-headline-md text-headline-md text-primary">Trade History</h2><button disabled={!history.length} onClick={exportCsv} className="flex items-center gap-2 text-secondary text-body-sm hover:underline disabled:opacity-50"><span className="material-symbols-outlined text-sm">download</span> Export CSV</button></div>
+          <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h2 className="font-headline-md text-headline-md text-primary font-bold">Trade History</h2>
+              <button disabled={!history.length} onClick={exportCsv} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-subtle bg-surface-container text-secondary text-body-sm hover:bg-surface-container-high transition-colors font-bold disabled:opacity-50">
+                <span className="material-symbols-outlined text-sm">download</span> Export CSV
+              </button>
+            </div>
             <SectionState loading={tradesState.loading} error={tradesState.error} empty={!history.length} emptyText="No reviewed gift-card trades." />
-            {!tradesState.loading && !tradesState.error && history.length > 0 && <div className="overflow-x-auto border border-outline-variant rounded"><table className="w-full text-left text-body-sm"><thead className="bg-surface-container-high"><tr className="border-b border-subtle"><th className="p-2 font-label-caps text-label-caps">DATE</th><th className="p-2 font-label-caps text-label-caps">TRADE ID</th><th className="p-2 font-label-caps text-label-caps">USER</th><th className="p-2 font-label-caps text-label-caps">ASSET</th><th className="p-2 font-label-caps text-label-caps">VALUE</th><th className="p-2 font-label-caps text-label-caps">PAYOUT</th><th className="p-2 font-label-caps text-label-caps">STATUS</th></tr></thead><tbody className="divide-y divide-outline-variant">{history.map((trade) => <tr key={trade.id} className="hover:bg-surface-container"><td className="p-2 text-on-surface-variant">{formatDate(trade.reviewedAt || trade.createdAt)}</td><td className="p-2 font-data-mono text-[10px]">{trade.id}</td><td className="p-2"><span className="block">{trade.userName || "—"}</span><span className="text-[10px] text-on-surface-variant">{trade.userEmail || trade.uid}</span></td><td className="p-2">{trade.brandName} ({trade.cardType})</td><td className="p-2">{formatMoney(trade.cardValue, trade.currency)}</td><td className="p-2 text-secondary">{formatMoney(trade.payoutAmount)}</td><td className="p-2"><span className={`${trade.status === "approved" ? "text-status-success" : "text-status-danger"} font-bold text-[10px] uppercase`}>{trade.status}</span>{(trade.rejectionReason || trade.adminComment) && <span className="block max-w-48 truncate text-[9px] text-on-surface-variant" title={trade.rejectionReason || trade.adminComment || ""}>{trade.rejectionReason || trade.adminComment}</span>}</td></tr>)}</tbody></table></div>}
+            {!tradesState.loading && !tradesState.error && history.length > 0 && (
+              <div className="overflow-x-auto border border-subtle rounded-lg">
+                <table className="w-full text-left text-body-sm">
+                  <thead className="bg-surface-container-low">
+                    <tr className="border-b border-subtle">
+                      <th className="py-3 px-4 font-label-caps text-label-caps">DATE</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps">TRADE ID</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps">USER</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps">ASSET</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps">VALUE</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps">PAYOUT</th>
+                      <th className="py-3 px-4 font-label-caps text-label-caps">STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-subtle">
+                    {history.map((trade) => (
+                      <tr key={trade.id} className="hover:bg-surface-container transition-colors">
+                        <td className="py-3 px-4 text-on-surface-variant">{formatDate(trade.reviewedAt || trade.createdAt)}</td>
+                        <td className="py-3 px-4 font-data-mono text-[11px]">{trade.id}</td>
+                        <td className="py-3 px-4"><span className="block font-medium">{trade.userName || "—"}</span><span className="text-[10px] text-on-surface-variant">{trade.userEmail || trade.uid}</span></td>
+                        <td className="py-3 px-4 font-medium">{trade.brandName} ({trade.cardType})</td>
+                        <td className="py-3 px-4">{formatMoney(trade.cardValue, trade.currency)}</td>
+                        <td className="py-3 px-4 text-secondary font-bold">{formatMoney(trade.payoutAmount)}</td>
+                        <td className="py-3 px-4"><span className={`${trade.status === "approved" ? "text-status-success" : "text-status-danger"} font-bold text-xs uppercase`}>{trade.status}</span>{(trade.rejectionReason || trade.adminComment) && <span className="block max-w-48 truncate text-[10px] text-on-surface-variant mt-0.5" title={trade.rejectionReason || trade.adminComment || ""}>{trade.rejectionReason || trade.adminComment}</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </section>
       </div>

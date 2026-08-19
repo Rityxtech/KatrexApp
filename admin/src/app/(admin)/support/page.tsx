@@ -188,51 +188,51 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="px-container-padding flex flex-col gap-4 w-full">
+    <div className="w-full flex flex-col gap-6">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded-xl shadow-lg font-body-sm text-body-sm text-on-surface">
           {toast}
         </div>
       )}
 
       {/* Tabs Switcher at top */}
-      <div className="flex border-b border-border-subtle bg-surface-container p-1 rounded-lg gap-1 self-start">
+      <div className="flex bg-surface-bright border border-subtle p-1.5 rounded-xl shadow-sm gap-1.5 w-fit">
         <button
           onClick={() => setActiveTab("tickets")}
-          className={`px-4 py-1.5 rounded-md font-label-caps text-label-caps transition-all ${
+          className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
             activeTab === "tickets"
               ? "bg-primary text-on-primary shadow-sm"
-              : "text-on-surface-variant hover:bg-surface-container-high"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
           }`}
         >
           Tickets &amp; Live Chat
         </button>
         <button
           onClick={() => setActiveTab("emails")}
-          className={`px-4 py-1.5 rounded-md font-label-caps text-label-caps transition-all ${
+          className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
             activeTab === "emails"
               ? "bg-primary text-on-primary shadow-sm"
-              : "text-on-surface-variant hover:bg-surface-container-high"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
           }`}
         >
           Verification Emails
         </button>
         <button
           onClick={() => setActiveTab("metrics")}
-          className={`px-4 py-1.5 rounded-md font-label-caps text-label-caps transition-all ${
+          className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
             activeTab === "metrics"
               ? "bg-primary text-on-primary shadow-sm"
-              : "text-on-surface-variant hover:bg-surface-container-high"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
           }`}
         >
           SLA &amp; Performance
         </button>
         <button
           onClick={() => setActiveTab("templates")}
-          className={`px-4 py-1.5 rounded-md font-label-caps text-label-caps transition-all ${
+          className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
             activeTab === "templates"
               ? "bg-primary text-on-primary shadow-sm"
-              : "text-on-surface-variant hover:bg-surface-container-high"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
           }`}
         >
           Canned Templates
@@ -241,42 +241,42 @@ export default function SupportPage() {
 
       {/* TAB 1: TICKETS & LIVE CHAT (Split screen) */}
       {activeTab === "tickets" && (
-        <div className="flex flex-col gap-4 w-full">
+        <div className="flex flex-col gap-6 w-full">
           {/* Quick Stats Header */}
-          <div className="flex flex-wrap gap-4 items-center justify-between bg-surface-container border border-border-subtle p-3 rounded-lg">
-            <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4 items-center justify-between bg-surface-bright border border-subtle p-4 md:p-5 rounded-xl shadow-sm">
+            <div className="flex gap-6 items-center">
               <div>
-                <span className="text-[10px] font-label-caps text-on-surface-variant block">TOTAL QUEUED</span>
-                <span className="text-body-sm font-bold text-on-surface">{filteredTickets.length} tickets</span>
+                <span className="text-[10px] font-label-caps text-on-surface-variant block font-bold">TOTAL QUEUED</span>
+                <span className="text-base font-bold font-data-mono text-on-surface">{filteredTickets.length} tickets</span>
               </div>
-              <div className="border-r border-border-subtle h-8 self-center" />
+              <div className="border-r border-subtle h-8 self-center" />
               <div>
-                <span className="text-[10px] font-label-caps text-on-surface-variant block">SELECTED</span>
-                <span className="text-body-sm font-bold text-primary">{selectedIds.size} tickets</span>
+                <span className="text-[10px] font-label-caps text-on-surface-variant block font-bold">SELECTED</span>
+                <span className="text-base font-bold font-data-mono text-primary">{selectedIds.size} tickets</span>
               </div>
             </div>
             {/* Quick Bulk Actions */}
             {selectedIds.size > 0 && (
-              <div className="flex gap-2 items-center bg-surface-deep px-3 py-1.5 rounded-md border border-border-subtle animate-fadeIn">
-                <span className="font-label-caps text-[10px] text-on-surface-variant">BULK ACTIONS:</span>
+              <div className="flex gap-2 items-center bg-surface-deep px-3.5 py-2 rounded-lg border border-subtle animate-fadeIn">
+                <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">BULK ACTIONS:</span>
                 <button
                   disabled={bulkLoading}
                   onClick={() => handleBulkAction("close")}
-                  className="bg-status-danger/10 hover:bg-status-danger/20 text-status-danger px-2.5 py-0.5 rounded text-[10px] font-label-caps transition-all"
+                  className="bg-status-danger/10 hover:bg-status-danger/20 text-status-danger px-3 py-1 rounded-md text-xs font-bold transition-all"
                 >
                   CLOSE
                 </button>
                 <button
                   disabled={bulkLoading}
                   onClick={() => handleBulkAction("merge")}
-                  className="bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-0.5 rounded text-[10px] font-label-caps transition-all"
+                  className="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-md text-xs font-bold transition-all"
                 >
                   MERGE
                 </button>
                 <button
                   disabled={bulkLoading}
                   onClick={() => handleBulkAction("reassign")}
-                  className="bg-status-warning/10 hover:bg-status-warning/20 text-status-warning px-2.5 py-0.5 rounded text-[10px] font-label-caps transition-all"
+                  className="bg-status-warning/10 hover:bg-status-warning/20 text-status-warning px-3 py-1 rounded-md text-xs font-bold transition-all"
                 >
                   REASSIGN
                 </button>
@@ -285,7 +285,7 @@ export default function SupportPage() {
           </div>
 
           {/* Redesigned 2-Column Messaging Workspace Container */}
-          <div className="w-full flex rounded-xl border border-border-subtle overflow-hidden bg-surface-bright" style={{ height: "calc(100vh - 185px)" }}>
+          <div className="w-full flex rounded-xl border border-subtle overflow-hidden bg-surface-bright shadow-sm" style={{ height: "calc(100vh - 200px)", minHeight: "560px" }}>
             {/* LEFT SIDEBAR: Ticket Lists (35% width / Min-width 360px) */}
             <div className="w-[380px] border-r border-border-subtle flex flex-col bg-surface-deep">
               {/* Filter Sub-header */}

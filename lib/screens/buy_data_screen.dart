@@ -302,6 +302,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
         final result = await VtuProviderService.purchaseData(
           networkIndex: _selectedNetwork,
           planId: planId,
+          amount: _amount,
           phone: phone,
           customerReference: reference,
         );
@@ -367,6 +368,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
         final result = await VtuProviderService.purchaseData(
           networkIndex: _selectedNetwork,
           planId: planId,
+          amount: _amount,
           phone: phone,
           customerReference: reference,
         );

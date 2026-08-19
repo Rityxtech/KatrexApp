@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'smeplug_service.dart';
-import 'smeapi_service.dart';
+import 'cloud_functions_service.dart';
 
 /// Enum of available VTU providers.
 enum VtuProvider { smeplug, smeapi }
@@ -60,11 +59,10 @@ class VtuResult {
   });
 }
 
-/// Unified VTU service that delegates to the active provider.
+/// Unified VTU service that delegates to secure Cloud Functions.
 ///
-/// The active provider is stored in Firestore under `config/vtu_provider`.
-/// Admins can switch providers from the admin dashboard by updating this document.
-/// If Firestore is unreachable, defaults to [VtuProvider.smeapi].
+/// The backend manages API keys, active provider selection from `config/vtu_provider`,
+/// custom pricing markups, and plan visibility.
 class VtuProviderService {
   static VtuProvider? _cachedProvider;
   static DateTime? _cachedProviderTime;
@@ -113,40 +111,36 @@ class VtuProviderService {
     _cachedProviderTime = DateTime.now();
   }
 
-  /// Fetch data plans for a given network.
+  /// Fetch data plans for a given network via secure Cloud Functions backend.
   ///
   /// [networkIndex] is the app's internal index: 0=MTN, 1=Airtel, 2=Glo, 3=9Mobile.
   static Future<List<VtuDataPlan>> getDataPlans(int networkIndex) async {
-    final provider = await getActiveProvider();
     final networkName = _networkName(networkIndex);
 
-    switch (provider) {
-      case VtuProvider.smeplug:
-        final networkId = _smeplugNetworkId(networkIndex);
-        final plans = await SmePlugService.getDataPlans(networkId);
-        return plans
-            .map((p) => VtuDataPlan(
-                  id: p.id,
-                  name: p.name,
-                  price: p.price,
-                ))
-            .toList();
-
-      case VtuProvider.smeapi:
-        final plans = await SmeApiService.getDataPlans(networkName);
-        return plans
-            .map((p) => VtuDataPlan(
-                  id: p.id,
-                  name: '${p.name} (${p.type} ${p.days})',
-                  price: p.price,
-                  type: p.type,
-                  days: p.days,
-                ))
-            .toList();
+    try {
+      final plans = await CloudFunctionsService.getDataPlans(network: networkName);
+      return plans.map((p) {
+        final idVal = p['id'];
+        final int id = idVal is int ? idVal : (int.tryParse(idVal?.toString() ?? '') ?? 0);
+        final double price = (p['price'] as num?)?.toDouble() ?? 0.0;
+        final name = p['name']?.toString() ?? '';
+        final type = p['type']?.toString();
+        final days = p['days']?.toString();
+        return VtuDataPlan(
+          id: id,
+          name: name,
+          price: price,
+          type: type,
+          days: days,
+        );
+      }).where((p) => p.price > 0).toList();
+    } catch (e) {
+      debugPrint('VtuProviderService getDataPlans error: $e');
+      return [];
     }
   }
 
-  /// Purchase data for a given network.
+  /// Purchase data for a given network via secure Cloud Functions backend.
   ///
   /// [networkIndex] is the app's internal index: 0=MTN, 1=Airtel, 2=Glo, 3=9Mobile.
   /// [planId] is the plan ID from getDataPlans().
@@ -154,42 +148,36 @@ class VtuProviderService {
     required int networkIndex,
     required int planId,
     required String phone,
+    double? amount,
     String? customerReference,
   }) async {
-    final provider = await getActiveProvider();
+    final networkName = _networkName(networkIndex);
 
-    switch (provider) {
-      case VtuProvider.smeplug:
-        final networkId = _smeplugNetworkId(networkIndex);
-        final result = await SmePlugService.purchaseData(
-          networkId: networkId,
-          planId: planId.toString(),
-          phone: phone,
-          customerReference: customerReference,
-        );
-        return VtuResult(
-          success: result.success,
-          message: result.message,
-          reference: result.reference,
-        );
-
-      case VtuProvider.smeapi:
-        final networkId = _smeapiDataNetworkId(networkIndex);
-        final result = await SmeApiService.purchaseData(
-          networkId: networkId,
-          planId: planId,
-          phone: phone,
-          ref: customerReference,
-        );
-        return VtuResult(
-          success: result.success,
-          message: result.message,
-          reference: result.reference,
-        );
+    try {
+      final res = await CloudFunctionsService.purchaseData(
+        phone: phone,
+        planId: planId.toString(),
+        amount: amount ?? 0,
+        network: networkName,
+      );
+      final success = res['success'] == true;
+      final message = res['message']?.toString() ?? (success ? 'Data purchase successful' : 'Data purchase failed');
+      return VtuResult(
+        success: success,
+        message: message,
+        reference: customerReference,
+      );
+    } catch (e) {
+      debugPrint('VtuProviderService purchaseData error: $e');
+      return VtuResult(
+        success: false,
+        message: e.toString().replaceFirst(RegExp(r'^\[.*?\]\s*'), ''),
+        reference: customerReference,
+      );
     }
   }
 
-  /// Purchase airtime for a given network.
+  /// Purchase airtime for a given network via secure Cloud Functions backend.
   ///
   /// [networkIndex] is the app's internal index: 0=MTN, 1=Airtel, 2=Glo, 3=9Mobile.
   static Future<VtuResult> purchaseAirtime({
@@ -198,36 +186,28 @@ class VtuProviderService {
     required String phone,
     String? customerReference,
   }) async {
-    final provider = await getActiveProvider();
+    final networkName = _networkName(networkIndex);
 
-    switch (provider) {
-      case VtuProvider.smeplug:
-        final networkId = _smeplugNetworkId(networkIndex);
-        final result = await SmePlugService.purchaseAirtime(
-          networkId: networkId,
-          amount: amount,
-          phone: phone,
-          customerReference: customerReference,
-        );
-        return VtuResult(
-          success: result.success,
-          message: result.message,
-          reference: result.reference,
-        );
-
-      case VtuProvider.smeapi:
-        final networkId = _smeapiNetworkId(networkIndex);
-        final result = await SmeApiService.purchaseAirtime(
-          networkId: networkId,
-          amount: amount,
-          phone: phone,
-          ref: customerReference,
-        );
-        return VtuResult(
-          success: result.success,
-          message: result.message,
-          reference: result.reference,
-        );
+    try {
+      final res = await CloudFunctionsService.purchaseAirtime(
+        phone: phone,
+        amount: amount,
+        network: networkName,
+      );
+      final success = res['success'] == true;
+      final message = res['message']?.toString() ?? (success ? 'Airtime purchase successful' : 'Airtime purchase failed');
+      return VtuResult(
+        success: success,
+        message: message,
+        reference: customerReference,
+      );
+    } catch (e) {
+      debugPrint('VtuProviderService purchaseAirtime error: $e');
+      return VtuResult(
+        success: false,
+        message: e.toString().replaceFirst(RegExp(r'^\[.*?\]\s*'), ''),
+        reference: customerReference,
+      );
     }
   }
 

@@ -119,82 +119,82 @@ export default function AirtimeDataPage() {
   }
 
   return (
-    <div className="p-container-padding w-full space-y-max-gap py-stack-base">
+    <div className="w-full flex flex-col gap-6">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded-xl shadow-lg font-body-sm text-body-sm text-on-surface">
           {toast}
         </div>
       )}
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface-bright rounded-xl border border-subtle p-5 md:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-headline-lg text-headline-lg text-on-surface">Airtime &amp; Data Management</h1>
-          <p className="text-body-sm text-on-surface-variant flex items-center gap-2">
+          <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold">Airtime &amp; Data Management</h1>
+          <p className="text-body-sm text-on-surface-variant flex items-center gap-2 mt-1">
             Configure provider settings, API rates, and custom markups.
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> LIVE</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             disabled={syncing}
             onClick={handleSync}
-            className="bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-subtle px-4 py-1.5 rounded text-body-sm flex items-center gap-2 transition-colors disabled:opacity-40"
+            className="bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-subtle px-4 py-2 rounded-lg text-body-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-40"
           >
             <span className={`material-symbols-outlined text-[18px] ${syncing ? "animate-spin" : ""}`}>sync</span> {syncing ? "Syncing..." : "Force Sync API"}
           </button>
           <button
             disabled={saving}
             onClick={handleSave}
-            className="bg-secondary text-on-secondary-fixed px-4 py-1.5 rounded text-body-sm font-bold flex items-center gap-2 active:scale-95 transition-transform disabled:opacity-40"
+            className="bg-secondary text-on-secondary-fixed px-5 py-2 rounded-lg text-body-sm font-bold flex items-center gap-2 active:scale-95 transition-transform disabled:opacity-40 shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">save</span> {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column */}
-        <div className="md:col-span-8 space-y-gutter">
+        <div className="lg:col-span-8 flex flex-col gap-6">
           {/* Provider Settings */}
-          <section className="bg-surface-bright border border-subtle p-stack-base rounded-lg">
-            <div className="flex items-center gap-2 mb-stack-base px-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">hub</span>
-              <h2 className="font-headline-md text-headline-md">Provider Settings</h2>
+          <section className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm flex flex-col gap-4">
+            <div className="flex items-center gap-2.5">
+              <span className="material-symbols-outlined text-primary text-[22px]">hub</span>
+              <h2 className="font-headline-md text-headline-md font-bold">Provider Settings</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-label-caps text-on-surface-variant block">Active VTU Provider</label>
-                <div className="flex bg-surface-deep p-1 border border-subtle rounded w-fit">
+                <label className="text-label-caps text-on-surface-variant font-bold block">Active VTU Provider</label>
+                <div className="flex bg-surface-deep p-1 border border-subtle rounded-lg w-fit">
                   <button
                     onClick={() => setActiveProvider("SMEPlug")}
-                    className={`px-4 py-1 text-body-sm rounded transition-colors ${activeProvider === "SMEPlug" ? "bg-primary-container text-primary font-bold" : "text-on-surface-variant hover:text-on-surface"}`}
+                    className={`px-4 py-1.5 text-body-sm rounded-md transition-colors ${activeProvider === "SMEPlug" ? "bg-primary-container text-primary font-bold" : "text-on-surface-variant hover:text-on-surface"}`}
                   >
                     SMEPlug
                   </button>
                   <button
                     onClick={() => setActiveProvider("SMEAPI")}
-                    className={`px-4 py-1 text-body-sm rounded transition-colors ${activeProvider === "SMEAPI" ? "bg-primary-container text-primary font-bold" : "text-on-surface-variant hover:text-on-surface"}`}
+                    className={`px-4 py-1.5 text-body-sm rounded-md transition-colors ${activeProvider === "SMEAPI" ? "bg-primary-container text-primary font-bold" : "text-on-surface-variant hover:text-on-surface"}`}
                   >
                     SMEAPI
                   </button>
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-label-caps text-on-surface-variant block">API Key ({activeProvider})</label>
+                <label className="text-label-caps text-on-surface-variant font-bold block">API Key ({activeProvider})</label>
                 <div className="relative">
-                  <input className="w-full bg-surface-deep border border-subtle rounded px-3 py-1.5 text-data-mono text-primary focus:outline-none focus:border-secondary transition-colors" type="password" defaultValue="••••••••••••••••••••••••••••••" />
-                  <span className="material-symbols-outlined absolute right-2 top-1.5 text-on-surface-variant cursor-pointer text-[18px]">visibility</span>
+                  <input className="w-full bg-surface-deep border border-subtle rounded-lg px-3 py-2 text-data-mono text-primary focus:outline-none focus:border-secondary transition-colors" type="password" defaultValue="••••••••••••••••••••••••••••••" />
+                  <span className="material-symbols-outlined absolute right-2 top-2 text-on-surface-variant cursor-pointer text-[18px]">visibility</span>
                 </div>
               </div>
             </div>
           </section>
 
           {/* Real API Rates */}
-          <section className="bg-surface-bright border border-subtle rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between p-stack-base border-b border-subtle bg-surface-container">
+          <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between p-4 md:p-5 border-b border-subtle bg-surface-container">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-secondary text-[20px]">monitoring</span>
-                <h2 className="font-headline-md text-headline-md">Real API Rates</h2>
+                <h2 className="font-headline-md text-headline-md font-bold">Real API Rates</h2>
               </div>
               <div className="flex gap-2 no-scrollbar overflow-x-auto">
                 {[
@@ -252,11 +252,11 @@ export default function AirtimeDataPage() {
           </section>
 
           {/* Recent Transactions */}
-          <section className="bg-surface-bright border border-subtle rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between p-stack-base border-b border-subtle">
+          <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between p-4 md:p-5 border-b border-subtle">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-[20px]">history</span>
-                <h2 className="font-headline-md text-headline-md">Recent Transactions</h2>
+                <h2 className="font-headline-md text-headline-md font-bold">Recent Transactions</h2>
               </div>
               <button
                 onClick={exportCSV}
@@ -304,12 +304,12 @@ export default function AirtimeDataPage() {
         </div>
 
         {/* Right Column */}
-        <div className="md:col-span-4 space-y-gutter">
+        <div className="lg:col-span-4 flex flex-col gap-6">
           {/* Global Markups */}
-          <section className="bg-surface-bright border border-subtle p-stack-base rounded-lg">
-            <div className="flex items-center gap-2 mb-stack-base px-2">
-              <span className="material-symbols-outlined text-tertiary text-[20px]">percent</span>
-              <h2 className="font-headline-md text-headline-md">Global Markups</h2>
+          <section className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 mb-stack-base">
+              <span className="material-symbols-outlined text-tertiary text-[22px]">percent</span>
+              <h2 className="font-headline-md text-headline-md font-bold">Global Markups</h2>
             </div>
             <div className="space-y-3 px-2">
               <div className="flex items-center justify-between">
@@ -349,16 +349,16 @@ export default function AirtimeDataPage() {
           </section>
 
           {/* Network Display */}
-          <section className="bg-surface-bright border border-subtle p-stack-base rounded-lg">
-            <div className="flex items-center gap-2 mb-stack-base px-2">
-              <span className="material-symbols-outlined text-secondary text-[20px]">sort</span>
-              <h2 className="font-headline-md text-headline-md">Network Display</h2>
+          <section className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-secondary text-[22px]">sort</span>
+              <h2 className="font-headline-md text-headline-md font-bold">Network Display</h2>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               {["MTN", "Airtel", "Glo", "9Mobile"].map((name) => {
                 const planExists = plans.some((p: any) => (p.network || p.provider || "").toLowerCase().includes(name.toLowerCase()));
                 return (
-                  <div key={name} className={`flex items-center justify-between p-2 bg-surface-deep border border-subtle rounded ${!planExists ? "opacity-50" : ""}`}>
+                  <div key={name} className={`flex items-center justify-between p-3 bg-surface-container-low border border-subtle rounded-lg ${!planExists ? "opacity-50" : ""}`}>
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-on-surface-variant text-[18px]">drag_indicator</span>
                       <span className="text-body-sm font-bold">{name}</span>
@@ -373,34 +373,34 @@ export default function AirtimeDataPage() {
           </section>
 
           {/* Plan Control */}
-          <section className="bg-surface-bright border border-subtle p-stack-base rounded-lg">
-            <div className="flex items-center gap-2 mb-stack-base px-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">lists</span>
-              <h2 className="font-headline-md text-headline-md">Plan Control</h2>
+          <section className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[22px]">lists</span>
+              <h2 className="font-headline-md text-headline-md font-bold">Plan Control</h2>
             </div>
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1 no-scrollbar">
               {pl ? (
-                Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 bg-surface-deep rounded animate-pulse" />)
+                Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 bg-surface-container-low rounded-lg animate-pulse" />)
               ) : plans.length === 0 ? (
                 <div className="p-4 text-center text-on-surface-variant text-body-sm">No plans</div>
               ) : (
                 plans.slice(0, 10).map((p: any) => {
                   const isVisible = getPlanVisibility(p.id, p.visible);
                   return (
-                    <div key={p.id} className="p-2 border border-subtle rounded bg-surface-deep space-y-2">
+                    <div key={p.id} className="p-3 border border-subtle rounded-lg bg-surface-container-low space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-body-sm font-bold">{p.name || p.planName || "Plan"}</span>
                         <span className="material-symbols-outlined text-on-surface-variant text-[18px]">edit</span>
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-on-surface-variant uppercase tracking-wider">
+                      <div className="flex items-center justify-between text-[11px] text-on-surface-variant uppercase tracking-wider">
                         <span>ID: {p.planId || p.id?.slice(0, 8)}</span>
                         <div className="flex items-center gap-2">
-                          <span className={isVisible ? "text-status-success" : "text-on-surface-variant"}>{isVisible ? "Visible" : "Hidden"}</span>
+                          <span className={isVisible ? "text-status-success font-bold" : "text-on-surface-variant"}>{isVisible ? "Visible" : "Hidden"}</span>
                           <div
                             onClick={() => togglePlanVisibility(p.id, isVisible)}
-                            className={`w-6 h-3 ${isVisible ? "bg-secondary" : "bg-surface-variant"} rounded-full relative cursor-pointer`}
+                            className={`w-7 h-4 ${isVisible ? "bg-secondary" : "bg-surface-variant"} rounded-full relative cursor-pointer`}
                           >
-                            <div className={`absolute ${isVisible ? "right-0.5" : "left-0.5"} top-0.5 w-2 h-2 bg-white rounded-full`}></div>
+                            <div className={`absolute ${isVisible ? "right-0.5" : "left-0.5"} top-0.5 w-3 h-3 bg-white rounded-full transition-all`}></div>
                           </div>
                         </div>
                       </div>

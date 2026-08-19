@@ -114,50 +114,50 @@ export default function CryptoPage() {
   };
 
   return (
-    <div className="p-container-padding w-full">
-      <section className="flex flex-col md:flex-row justify-between items-start md:items-center mb-max-gap gap-stack-base">
+    <div className="w-full flex flex-col gap-6">
+      <section className="bg-surface-bright rounded-xl border border-subtle p-5 md:p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="font-headline-md text-headline-md text-primary">Crypto Asset Management</h2>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">Configure liquidity, rates, and operational visibility for supported assets.</p>
+          <h1 className="font-headline-lg text-headline-lg text-primary font-bold">Crypto Asset Management</h1>
+          <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">Configure liquidity, rates, and operational visibility for supported crypto assets.</p>
         </div>
-        <div className="flex items-center gap-stack-base bg-surface-container p-2 border border-subtle rounded">
-          <div className="flex items-center gap-2 px-2 border-r border-subtle mr-2">
-            <span className={`w-2 h-2 rounded-full ${loading ? "bg-status-warning" : "bg-status-success"} animate-pulse`}></span>
-            <span className="font-label-caps text-label-caps text-on-surface">
-              {loading ? "Connecting..." : "Live Market Data: Connected"}
+        <div className="flex items-center gap-3 bg-surface-container-low p-2.5 border border-subtle rounded-xl">
+          <div className="flex items-center gap-2 px-2.5 border-r border-subtle">
+            <span className={`w-2.5 h-2.5 rounded-full ${loading ? "bg-status-warning" : "bg-status-success"} animate-pulse`}></span>
+            <span className="font-label-caps text-label-caps text-on-surface font-bold">
+              {loading ? "Connecting..." : "Live Market Feed: Connected"}
             </span>
           </div>
-          <div className="flex items-center gap-2 px-2 border-r border-subtle mr-2">
-            <span className="font-label-caps text-label-caps text-status-success">{visibleCount}</span>
-            <span className="font-label-caps text-label-caps text-on-surface-variant">Visible</span>
+          <div className="flex items-center gap-1.5 px-2.5 border-r border-subtle">
+            <span className="font-label-caps text-label-caps text-status-success font-bold">{visibleCount}</span>
+            <span className="font-label-caps text-label-caps text-on-surface-variant font-medium">Visible</span>
           </div>
-          <div className="flex items-center gap-2 px-2">
-            <span className="font-label-caps text-label-caps text-on-surface-variant">{hiddenCount}</span>
-            <span className="font-label-caps text-label-caps text-on-surface-variant">Hidden</span>
+          <div className="flex items-center gap-1.5 px-2.5">
+            <span className="font-label-caps text-label-caps text-on-surface-variant font-bold">{hiddenCount}</span>
+            <span className="font-label-caps text-label-caps text-on-surface-variant font-medium">Hidden</span>
           </div>
         </div>
       </section>
 
-      <div className="grid grid-cols-12 gap-unit gap-y-max-gap md:gap-stack-base">
+      <div className="grid grid-cols-12 gap-6">
         {/* Coin List */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-stack-base">
-          <div className="bg-surface-container border border-subtle rounded overflow-hidden">
-            <div className="bg-surface-container-high px-3 py-2 border-b border-subtle flex justify-between items-center">
-              <span className="font-label-caps text-label-caps text-secondary">Coin Asset Visibility</span>
-              <span className="font-data-mono text-[10px] text-on-surface-variant">{coins.length} coins in Firestore</span>
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+          <div className="bg-surface-bright border border-subtle rounded-xl overflow-hidden shadow-sm flex flex-col">
+            <div className="bg-surface-container-low px-4 py-3 border-b border-subtle flex justify-between items-center">
+              <span className="font-label-caps text-label-caps text-secondary font-bold">Coin Asset Visibility</span>
+              <span className="font-data-mono text-xs text-on-surface-variant">{coins.length} coins tracked</span>
             </div>
-            <div className="p-1 space-y-[2px]">
+            <div className="p-3 space-y-2">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-14 bg-surface-container-high/50 animate-pulse rounded" />
+                  <div key={i} className="h-14 bg-surface-container-high/50 animate-pulse rounded-lg" />
                 ))
               ) : coins.length === 0 ? (
                 <div className="p-6 text-center">
-                  <span className="material-symbols-outlined text-on-surface-variant text-[32px] mb-2 block">search_off</span>
+                  <span className="material-symbols-outlined text-on-surface-variant text-[36px] mb-2 block">search_off</span>
                   <p className="text-on-surface-variant text-body-sm mb-3">No coins in market_data collection</p>
                   <button
                     onClick={() => setShowAddForm(true)}
-                    className="text-secondary font-label-caps hover:underline"
+                    className="text-secondary font-label-caps font-bold hover:underline"
                   >
                     + Add your first asset
                   </button>
@@ -170,23 +170,22 @@ export default function CryptoPage() {
                   return (
                     <div
                       key={coin.id}
-                      className={`flex items-center justify-between p-2 hover:bg-surface-container-highest rounded border border-transparent hover:border-subtle group transition-all ${!isVisible ? "opacity-50" : ""}`}
+                      className={`flex items-center justify-between p-3 bg-surface-container-low hover:bg-surface-container-highest rounded-lg border border-subtle group transition-all ${!isVisible ? "opacity-50" : ""}`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-on-surface-variant drag-handle text-[20px]">drag_indicator</span>
-                        <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden" style={{ backgroundColor: `${meta.color}20` }}>
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden" style={{ backgroundColor: `${meta.color}20` }}>
                           {meta.logo ? (
                             <img src={meta.logo} alt={meta.name} className="w-6 h-6 object-contain" />
                           ) : (
-                            <span className="font-data-mono text-[10px] font-bold" style={{ color: meta.color }}>{coin.symbol?.slice(0, 3)}</span>
+                            <span className="font-data-mono text-[11px] font-bold" style={{ color: meta.color }}>{coin.symbol?.slice(0, 3)}</span>
                           )}
                         </div>
                         <div>
-                          <div className="font-body-md text-body-md text-on-surface">{meta.name}</div>
+                          <div className="font-body-md text-body-md font-semibold text-on-surface">{meta.name}</div>
                           <div className="flex items-center gap-2">
-                            <span className="font-data-mono text-data-mono text-on-surface-variant uppercase">{coin.symbol}</span>
+                            <span className="font-data-mono text-xs text-on-surface-variant uppercase">{coin.symbol}</span>
                             {coin.priceNaira != null && coin.priceNaira > 0 && (
-                              <span className="font-data-mono text-[10px] text-on-surface-variant">{formatNaira(coin.priceNaira)}</span>
+                              <span className="font-data-mono text-xs text-status-success font-medium">{formatNaira(coin.priceNaira)}</span>
                             )}
                           </div>
                         </div>
@@ -202,7 +201,7 @@ export default function CryptoPage() {
                               type="checkbox"
                               onChange={() => handleToggle(coin)}
                             />
-                            <div className="w-8 h-4 bg-surface-deep peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-status-success"></div>
+                            <div className="w-8 h-4.5 bg-surface-deep peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-status-success"></div>
                           </label>
                         )}
                       </div>
@@ -214,11 +213,11 @@ export default function CryptoPage() {
 
             {/* Add New Asset Form */}
             {showAddForm && (
-              <div className="p-3 bg-surface-container-low border-t border-subtle">
-                <form onSubmit={handleAddCoin} className="space-y-2">
+              <div className="p-4 bg-surface-container-low border-t border-subtle">
+                <form onSubmit={handleAddCoin} className="space-y-3">
                   <div className="flex gap-2">
                     <input
-                      className="bg-surface-deep border border-subtle rounded px-2 py-1.5 text-data-mono text-data-mono text-on-surface w-24 focus:ring-1 focus:ring-secondary outline-none uppercase"
+                      className="bg-surface-deep border border-subtle rounded-lg px-3 py-2 text-data-mono text-on-surface w-24 focus:border-secondary outline-none uppercase"
                       placeholder="BTC"
                       type="text"
                       value={newCoin.symbol}
@@ -226,7 +225,7 @@ export default function CryptoPage() {
                       required
                     />
                     <input
-                      className="bg-surface-deep border border-subtle rounded px-2 py-1.5 text-body-sm text-on-surface flex-1 focus:ring-1 focus:ring-secondary outline-none"
+                      className="bg-surface-deep border border-subtle rounded-lg px-3 py-2 text-body-sm text-on-surface flex-1 focus:border-secondary outline-none"
                       placeholder="Bitcoin"
                       type="text"
                       value={newCoin.name}
@@ -238,14 +237,14 @@ export default function CryptoPage() {
                     <button
                       type="submit"
                       disabled={adding}
-                      className="flex-1 py-1.5 bg-secondary text-on-secondary-fixed font-label-caps text-label-caps rounded hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
+                      className="flex-1 py-2 bg-secondary text-on-secondary-fixed font-label-caps text-xs font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
                     >
                       {adding ? "ADDING..." : "ADD ASSET"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowAddForm(false)}
-                      className="px-3 py-1.5 border border-subtle font-label-caps text-label-caps rounded hover:bg-surface-container-highest transition-colors"
+                      className="px-4 py-2 border border-subtle font-label-caps text-xs font-bold rounded-lg hover:bg-surface-container-highest transition-colors"
                     >
                       CANCEL
                     </button>
@@ -258,7 +257,7 @@ export default function CryptoPage() {
               <div className="p-3 bg-surface-container-low border-t border-subtle">
                 <button
                   onClick={() => setShowAddForm(true)}
-                  className="w-full py-1.5 bg-secondary text-on-secondary-fixed font-label-caps text-label-caps rounded hover:brightness-110 active:scale-[0.98] transition-all"
+                  className="w-full py-2 bg-secondary text-on-secondary-fixed font-label-caps text-xs font-bold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all"
                 >
                   + ADD NEW ASSET
                 </button>
@@ -267,11 +266,11 @@ export default function CryptoPage() {
           </div>
 
           {/* Fee Settings */}
-          <div className="bg-surface-container border border-subtle rounded">
-            <div className="bg-surface-container-high px-3 py-2 border-b border-subtle">
-              <span className="font-label-caps text-label-caps text-secondary">Global Fee Overrides</span>
+          <div className="bg-surface-bright border border-subtle rounded-xl overflow-hidden shadow-sm flex flex-col">
+            <div className="bg-surface-container-low px-4 py-3 border-b border-subtle">
+              <span className="font-label-caps text-label-caps text-secondary font-bold">Global Fee Overrides</span>
             </div>
-            <form onSubmit={handleSaveFees} className="p-3 space-y-4">
+            <form onSubmit={handleSaveFees} className="p-4 md:p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="font-label-caps text-label-caps text-on-surface-variant block mb-1">Buy Fee (%)</label>

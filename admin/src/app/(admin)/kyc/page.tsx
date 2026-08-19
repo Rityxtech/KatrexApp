@@ -97,124 +97,132 @@ export default function KycPage() {
   }
 
   return (
-    <div className="px-container-padding pt-5 space-y-gutter w-full">
+    <div className="w-full flex flex-col gap-6">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded shadow-lg font-body-sm text-body-sm text-on-surface">
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded-xl shadow-lg font-body-sm text-body-sm text-on-surface">
           {toast}
         </div>
       )}
 
       {/* Verification Metrics */}
-      <section className="grid grid-cols-3 gap-2">
-        <div className="bg-surface-container border border-subtle p-stack-base">
-          <p className="font-label-caps text-on-surface-variant mb-1">PENDING</p>
-          <p className="font-headline-lg text-secondary font-data-mono">{loading ? "..." : pendingKyc.length}</p>
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
+          <p className="font-label-caps text-on-surface-variant font-bold mb-1">PENDING VERIFICATIONS</p>
+          <p className="font-headline-lg text-3xl text-secondary font-bold font-data-mono">{loading ? "..." : pendingKyc.length}</p>
         </div>
-        <div className="bg-surface-container border border-subtle p-stack-base">
-          <p className="font-label-caps text-on-surface-variant mb-1">VERIFIED</p>
-          <p className="font-headline-lg text-status-success font-data-mono">{verifiedUsers.length}</p>
+        <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
+          <p className="font-label-caps text-on-surface-variant font-bold mb-1">VERIFIED USERS</p>
+          <p className="font-headline-lg text-3xl text-status-success font-bold font-data-mono">{verifiedUsers.length}</p>
         </div>
-        <div className="bg-surface-container border border-subtle p-stack-base">
-          <p className="font-label-caps text-on-surface-variant mb-1">REJECTION</p>
-          <p className="font-headline-lg text-status-danger font-data-mono">{rejectionRate}%</p>
+        <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
+          <p className="font-label-caps text-on-surface-variant font-bold mb-1">REJECTION RATE</p>
+          <p className="font-headline-lg text-3xl text-status-danger font-bold font-data-mono">{rejectionRate}%</p>
         </div>
       </section>
 
       {/* Review Queue */}
-      <section className="space-y-stack-base">
-        <div className="flex justify-between items-center px-1">
-          <h2 className="font-label-caps text-primary">REVIEW QUEUE</h2>
-          <span className="font-label-caps text-outline">{pendingKyc.length} PENDING</span>
+      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-5 md:p-6 flex flex-col gap-5">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="font-headline-md text-headline-md text-primary font-bold">Review Queue</h2>
+            <p className="text-body-sm text-on-surface-variant mt-0.5">Pending user identity verification submissions</p>
+          </div>
+          <span className="bg-status-warning/10 text-status-warning font-label-caps font-bold px-3 py-1 rounded-full text-xs">{pendingKyc.length} PENDING</span>
         </div>
 
         {loading ? (
-          <div className="bg-surface-container border border-subtle p-container-padding rounded animate-pulse h-48" />
+          <div className="bg-surface-container-low border border-subtle p-6 rounded-xl animate-pulse h-48" />
         ) : pendingKyc.length === 0 ? (
-          <div className="bg-surface-container border border-subtle p-container-padding rounded text-center text-on-surface-variant text-body-sm">
-            No pending KYC reviews
+          <div className="bg-surface-container-low border border-subtle p-8 rounded-xl text-center text-on-surface-variant text-body-sm">
+            No pending KYC reviews. All verifications are up to date.
           </div>
         ) : (
-          pendingKyc.slice(0, 10).map((user: any) => {
-            const isProcessing = processing === user.id;
-            return (
-              <div key={user.id} className="bg-surface-container border-l-2 border-l-secondary border-y border-r border-subtle p-container-padding flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-surface-bright border border-subtle flex items-center justify-center">
-                      <span className="material-symbols-outlined text-outline">account_circle</span>
+          <div className="grid grid-cols-1 gap-4">
+            {pendingKyc.slice(0, 10).map((user: any) => {
+              const isProcessing = processing === user.id;
+              return (
+                <div key={user.id} className="bg-surface-container-low border-l-4 border-l-secondary border-y border-r border-subtle rounded-xl p-5 flex flex-col gap-4 shadow-sm">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 bg-surface-container-high rounded-xl border border-subtle flex items-center justify-center">
+                        <span className="material-symbols-outlined text-primary text-[24px]">account_circle</span>
+                      </div>
+                      <div>
+                        <p className="font-body-md text-base font-bold text-on-surface">{user.displayName || user.email || user.id?.slice(0, 12)}</p>
+                        <p className="font-body-sm text-xs text-on-surface-variant">Ref: KYC-{user.id?.slice(0, 8)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-headline-md text-on-background leading-none">{user.displayName || user.email || user.id?.slice(0, 12)}</p>
-                      <p className="font-body-sm text-outline">Ref: KYC-{user.id?.slice(0, 8)}</p>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="bg-status-warning/10 text-status-warning border border-status-warning/20 font-label-caps font-bold px-2.5 py-0.5 rounded-full text-xs">AWAITING REVIEW</span>
+                      <span className="font-data-mono text-xs text-on-surface-variant">{timeAgo(user.createdAt)}</span>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="bg-status-warning/10 text-status-warning border border-status-warning/20 font-label-caps px-2 py-0.5 rounded">AWAITING REVIEW</span>
-                    <span className="font-data-mono text-[10px] text-outline">{timeAgo(user.createdAt)}</span>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 gap-2 bg-surface-deep/50 p-2 border border-subtle/50">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-status-success text-sm">verified_user</span>
-                      <span className="font-label-caps">BVN DATA</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-surface-deep/60 p-3.5 rounded-lg border border-subtle">
+                    <div className="flex justify-between items-center px-2">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-status-success text-sm">verified_user</span>
+                        <span className="font-label-caps text-xs font-bold">BVN DATA</span>
+                      </div>
+                      <span className="font-data-mono text-status-success text-xs font-bold">{user.bvn ? "VERIFIED" : "NOT PROVIDED"}</span>
                     </div>
-                    <span className="font-data-mono text-status-success text-xs">{user.bvn ? "VERIFIED" : "NOT PROVIDED"}</span>
+                    <div className="flex justify-between items-center px-2">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-status-warning text-sm">pending</span>
+                        <span className="font-label-caps text-xs font-bold">ID DOCUMENT</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-data-mono text-status-warning text-xs font-bold">{user.idDocumentUrl ? "UPLOADED" : "MANUAL REVIEW"}</span>
+                        {user.idDocumentUrl && (
+                          <button
+                            onClick={() => setDocViewer({ url: user.idDocumentUrl, name: user.displayName || user.id?.slice(0, 12) })}
+                            className="material-symbols-outlined text-primary text-[18px] hover:text-secondary transition-colors"
+                            title="View document"
+                          >
+                            visibility
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-status-warning text-sm">pending</span>
-                      <span className="font-label-caps">ID DOCUMENT</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-data-mono text-status-warning text-xs">{user.idDocumentUrl ? "UPLOADED" : "MANUAL REVIEW"}</span>
-                      {user.idDocumentUrl && (
-                        <button
-                          onClick={() => setDocViewer({ url: user.idDocumentUrl, name: user.displayName || user.id?.slice(0, 12) })}
-                          className="material-symbols-outlined text-primary text-sm hover:text-secondary transition-colors"
-                          title="View document"
-                        >
-                          visibility
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  <button
-                    disabled={isProcessing}
-                    onClick={() => handleRequestDocs(user.id)}
-                    className="bg-surface-bright border border-subtle text-on-surface py-2 font-label-caps hover:bg-surface-variant transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-sm">description</span> DOCS REQ.
-                  </button>
-                  <button
-                    disabled={isProcessing}
-                    onClick={() => { setRejectModal({ uid: user.id, name: user.displayName || user.email || user.id?.slice(0, 12) }); setRejectReason(""); }}
-                    className="bg-status-danger/10 border border-status-danger/30 text-status-danger py-2 font-label-caps hover:bg-status-danger/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-sm">{isProcessing ? "hourglass_top" : "block"}</span> REJECT
-                  </button>
-                  <button
-                    disabled={isProcessing}
-                    onClick={() => handleApprove(user.id)}
-                    className="col-span-2 bg-status-success text-on-primary py-2.5 font-label-caps active:opacity-80 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-sm">{isProcessing ? "hourglass_top" : "check_circle"}</span> {isProcessing ? "PROCESSING..." : "APPROVE VERIFICATION"}
-                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                    <button
+                      disabled={isProcessing}
+                      onClick={() => handleRequestDocs(user.id)}
+                      className="bg-surface-container border border-subtle text-on-surface py-2.5 px-3 rounded-lg font-label-caps text-xs font-bold hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+                    >
+                      <span className="material-symbols-outlined text-sm">description</span> DOCS REQ.
+                    </button>
+                    <button
+                      disabled={isProcessing}
+                      onClick={() => { setRejectModal({ uid: user.id, name: user.displayName || user.email || user.id?.slice(0, 12) }); setRejectReason(""); }}
+                      className="bg-status-danger/10 border border-status-danger/30 text-status-danger py-2.5 px-3 rounded-lg font-label-caps text-xs font-bold hover:bg-status-danger/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+                    >
+                      <span className="material-symbols-outlined text-sm">{isProcessing ? "hourglass_top" : "block"}</span> REJECT
+                    </button>
+                    <button
+                      disabled={isProcessing}
+                      onClick={() => handleApprove(user.id)}
+                      className="bg-status-success text-on-primary py-2.5 px-4 rounded-lg font-label-caps text-xs font-bold active:opacity-80 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40 shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-sm">{isProcessing ? "hourglass_top" : "check_circle"}</span> {isProcessing ? "PROCESSING..." : "APPROVE VERIFICATION"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </section>
 
       {/* Audit Trail */}
-      <section className="space-y-stack-base">
-        <h2 className="font-label-caps text-primary px-1">AUDIT TRAIL</h2>
-        <div className="bg-surface-container border border-subtle max-h-48 overflow-y-auto">
+      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-5 md:p-6 flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <h2 className="font-headline-md text-headline-md text-primary font-bold">Audit Trail</h2>
+          <span className="font-data-mono text-xs text-on-surface-variant">{auditTrail.length} records</span>
+        </div>
+        <div className="bg-surface-container-low border border-subtle rounded-xl max-h-60 overflow-y-auto no-scrollbar divide-y divide-subtle">
           {auditTrail.length === 0 ? (
             <div className="p-4 text-center text-on-surface-variant text-body-sm">No audit records</div>
           ) : (
