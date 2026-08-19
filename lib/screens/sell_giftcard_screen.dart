@@ -15,6 +15,8 @@ import '../services/storage_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 import 'giftcard_trade_preview_screen.dart';
+import 'giftcard_trades_history_screen.dart';
+import 'live_rates_screen.dart';
 
 class SellGiftcardScreen extends StatefulWidget {
   const SellGiftcardScreen({super.key});
@@ -166,7 +168,7 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
         CarouselSlider.builder(
           itemCount: _promos.length,
           options: CarouselOptions(
-            height: 140,
+            height: 112,
             viewportFraction: 0.92,
             enlargeCenterPage: true,
             autoPlay: true,
@@ -184,7 +186,7 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
             return Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 image: DecorationImage(
                   image: NetworkImage(promo['image']),
                   fit: BoxFit.cover,
@@ -198,10 +200,10 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
               child: Stack(
                 children: [
                   Positioned(
-                    top: 14,
-                    left: 16,
+                    top: 10,
+                    left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
                         color: (promo['tagColor'] as Color).withOpacity(0.9),
                         borderRadius: BorderRadius.circular(6),
@@ -209,7 +211,7 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
                       child: Text(
                         promo['tag'],
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
+                          fontSize: 8.5,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                         ),
@@ -217,29 +219,30 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
                     ),
                   ),
                   Positioned(
-                    bottom: 14,
-                    left: 16,
-                    right: 16,
+                    bottom: 10,
+                    left: 12,
+                    right: 12,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               promo['title'],
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w900,
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 1),
                             Text(
                               promo['subtitle'],
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: const Color(0xFFD1D5DB),
                               ),
@@ -247,10 +250,10 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
                           ],
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.white.withOpacity(0.3)),
                           ),
                           child: Row(
@@ -258,12 +261,12 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
                               Text(
                                 'Trade',
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 3),
                               const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 10),
                             ],
                           ),
@@ -276,14 +279,14 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
             );
           },
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: _promos.asMap().entries.map((entry) {
             final isSelected = _currentPromoIndex == entry.key;
             return Container(
-              width: isSelected ? 16 : 4,
-              height: 4,
+              width: isSelected ? 14 : 4,
+              height: 3.5,
               margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(2),
@@ -334,61 +337,75 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF3B82F6).withOpacity(0.15), const Color(0xFF1D4ED8).withOpacity(0.05)],
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const GiftcardTradesHistoryScreen()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [const Color(0xFF3B82F6).withOpacity(0.15), const Color(0xFF1D4ED8).withOpacity(0.05)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.2)),
                 ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                    child: const Center(child: Icon(Icons.bolt_rounded, color: Color(0xFF60A5FA), size: 18)),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Instant Trade', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
-                      Text('Auto 2-min payout', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                    ],
-                  ),
-                ],
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                      child: const Center(child: Icon(Icons.receipt_long_rounded, color: Color(0xFF60A5FA), size: 18)),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('My Trades', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
+                        Text('View active & past', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF10B981).withOpacity(0.15), const Color(0xFF047857).withOpacity(0.05)],
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LiveRatesScreen(initialIsGiftcardTab: true)),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [const Color(0xFF10B981).withOpacity(0.15), const Color(0xFF047857).withOpacity(0.05)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
                 ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                    child: const Center(child: Icon(Icons.calculate_rounded, color: Color(0xFF34D399), size: 18)),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Rate Calculator', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
-                      Text('Live unit values', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                    ],
-                  ),
-                ],
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                      child: const Center(child: Icon(Icons.calculate_rounded, color: Color(0xFF34D399), size: 18)),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Rate Calculator', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
+                        Text('Live unit values', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

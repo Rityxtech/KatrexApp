@@ -10,14 +10,15 @@ import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 
 class LiveRatesScreen extends StatefulWidget {
-  const LiveRatesScreen({super.key});
+  final bool initialIsGiftcardTab;
+  const LiveRatesScreen({super.key, this.initialIsGiftcardTab = false});
 
   @override
   State<LiveRatesScreen> createState() => _LiveRatesScreenState();
 }
 
 class _LiveRatesScreenState extends State<LiveRatesScreen> {
-  bool _isCryptoTab = true;
+  late bool _isCryptoTab;
   int _selectedFilter = 0;
   bool _isSellAction = true;
   final TextEditingController _calcAmountController = TextEditingController(text: '100');
@@ -44,6 +45,7 @@ class _LiveRatesScreenState extends State<LiveRatesScreen> {
   @override
   void initState() {
     super.initState();
+    _isCryptoTab = !widget.initialIsGiftcardTab;
     _coinsSub = MarketDataService.watchAllCoins().listen((coins) {
       if (mounted) setState(() => _liveCoins = coins);
     });
