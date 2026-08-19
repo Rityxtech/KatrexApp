@@ -94,13 +94,13 @@
 }
 
 :root {
-  /* Generous, modern spacing scale */
-  --spacing-gutter: 24px;
-  --spacing-container-padding: 24px;
-  --spacing-stack-tight: 8px;
-  --spacing-unit: 16px;
-  --spacing-max-gap: 24px;
-  --spacing-stack-base: 16px;
+  /* Tight modern spacing scale (reduced 45%) */
+  --spacing-gutter: 13px;
+  --spacing-container-padding: 13px;
+  --spacing-stack-tight: 5px;
+  --spacing-unit: 9px;
+  --spacing-max-gap: 13px;
+  --spacing-stack-base: 9px;
 }
 
 html,

@@ -108,70 +108,70 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-3.5">
       {/* ── Main Ledger Card ── */}
       <div className="w-full bg-surface-bright rounded-xl border border-subtle overflow-hidden shadow-sm flex flex-col">
         {/* ── Header ──────────────────────────────────────────────── */}
-        <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-dim border-b border-subtle">
+        <div className="p-3.5 md:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-surface-dim border-b border-subtle">
           <div>
             <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold">Transaction Ledger</h1>
-            <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2 mt-1">
+            <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
               Real-time monitoring &mdash; {loading ? "..." : filtered.length.toLocaleString()} transactions
               {!loading && (
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> LIVE
+                <span className="flex items-center gap-1 text-[10px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE
                 </span>
               )}
             </p>
           </div>
-          <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={exportCsv}
-              className="flex items-center gap-1.5 px-4 py-2 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-bold"
+              className="flex items-center gap-1 px-3 py-1.5 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-xs font-bold"
             >
-              <span className="material-symbols-outlined text-[18px]">download</span> EXPORT CSV
+              <span className="material-symbols-outlined text-[16px]">download</span> EXPORT CSV
             </button>
           </div>
         </div>
 
         {/* ── Stats Row ───────────────────────────────────────────── */}
-        <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-5 bg-surface border-b border-subtle">
-          <div className="bg-surface-container-low border border-subtle p-4 rounded-xl flex flex-col justify-between h-28">
+        <div className="p-3 grid grid-cols-1 md:grid-cols-3 gap-3 bg-surface border-b border-subtle">
+          <div className="bg-surface-container-low border border-subtle p-3 rounded-xl flex flex-col justify-between h-24">
             <div>
-              <span className="font-label-caps text-label-caps text-on-primary-container font-bold">TOTAL FEES COLLECTED</span>
-              <div className="flex items-baseline gap-2 mt-1">
+              <span className="font-label-caps text-[10px] text-on-primary-container font-bold">TOTAL FEES COLLECTED</span>
+              <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="font-headline-lg text-headline-lg font-data-mono font-bold">{formatNaira(totalFees)}</span>
-                <span className="text-status-success text-xs font-bold">
+                <span className="text-status-success text-[10px] font-bold">
                   {filtered.filter((t: any) => t.status === "completed").length} completed
                 </span>
               </div>
             </div>
-            <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden flex gap-[2px]">
+            <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden flex gap-[2px]">
               <div className="h-full bg-secondary" style={{ width: `${(cryptoVol / maxVol) * 100}%` }}></div>
               <div className="h-full bg-tertiary" style={{ width: `${(airtimeVol / maxVol) * 100}%` }}></div>
               <div className="h-full bg-primary" style={{ width: `${(giftcardVol / maxVol) * 100}%` }}></div>
             </div>
           </div>
 
-          <div className="md:col-span-2 bg-surface-container-low border border-subtle p-4 rounded-xl flex flex-col justify-between h-28 relative overflow-hidden">
+          <div className="md:col-span-2 bg-surface-container-low border border-subtle p-3 rounded-xl flex flex-col justify-between h-24 relative overflow-hidden">
             <div className="flex justify-between items-start z-10">
-              <span className="font-label-caps text-label-caps text-on-primary-container font-bold">VOLUME BREAKDOWN</span>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                  <span className="text-[10px] font-bold">CRYPTO</span>
+              <span className="font-label-caps text-[10px] text-on-primary-container font-bold">VOLUME BREAKDOWN</span>
+              <div className="flex gap-3">
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  <span className="text-[9px] font-bold">CRYPTO</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-tertiary"></span>
-                  <span className="text-[10px] font-bold">AIRTIME</span>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                  <span className="text-[9px] font-bold">AIRTIME</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-primary"></span>
-                  <span className="text-[10px] font-bold">GIFTCARD</span>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                  <span className="text-[9px] font-bold">GIFTCARD</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-end gap-1.5 h-12 pt-2">
+            <div className="flex items-end gap-1 h-10 pt-1">
               {loading ? (
                 Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className="flex-1 bg-surface-container-high rounded animate-pulse" style={{ height: "50%" }}></div>
@@ -198,11 +198,11 @@ export default function TransactionsPage() {
         </div>
 
         {/* ── Filters ─────────────────────────────────────────────── */}
-        <div className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-12 gap-3 bg-surface-container-low border-b border-subtle items-center">
+        <div className="p-2.5 md:p-3 grid grid-cols-1 md:grid-cols-12 gap-2 bg-surface-container-low border-b border-subtle items-center">
           <div className="md:col-span-5 relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[18px]">search</span>
             <input
-              className="w-full h-10 pl-10 pr-4 bg-surface-deep border border-subtle rounded-lg text-body-sm focus:border-secondary focus:ring-0 text-on-surface placeholder:text-outline-variant outline-none"
+              className="w-full h-8 pl-9 pr-3 bg-surface-deep border border-subtle rounded-lg text-xs focus:border-secondary focus:ring-0 text-on-surface placeholder:text-outline-variant outline-none"
               placeholder="Search by TX ID, reference, user UID, or hash..."
               type="text"
               value={search}
@@ -211,7 +211,7 @@ export default function TransactionsPage() {
           </div>
           <div className="md:col-span-3">
             <select
-              className="w-full h-10 bg-surface-deep border border-subtle rounded-lg text-body-sm px-3 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
+              className="w-full h-8 bg-surface-deep border border-subtle rounded-lg text-xs px-2.5 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
             >
@@ -228,7 +228,7 @@ export default function TransactionsPage() {
           </div>
           <div className="md:col-span-2">
             <select
-              className="w-full h-10 bg-surface-deep border border-subtle rounded-lg text-body-sm px-3 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
+              className="w-full h-8 bg-surface-deep border border-subtle rounded-lg text-xs px-2.5 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
             >

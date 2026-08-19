@@ -189,50 +189,50 @@ export default function P2PPage() {
     const pagedPeers = useMemo(() => peers.slice((page - 1) * pageSize, page * pageSize), [page, peers]);
 
     return (
-      <div className="flex flex-col lg:flex-row gap-6" style={{ height: "calc(100vh - 180px)", minHeight: "500px" }}>
+      <div className="flex flex-col lg:flex-row gap-3.5" style={{ height: "calc(100vh - 180px)", minHeight: "500px" }}>
         {/* Left pane — fixed height, inner content scrolls */}
-        <div className="w-full lg:w-[360px] shrink-0 bg-surface-bright border border-subtle rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
+        <div className="w-full lg:w-[320px] shrink-0 bg-surface-bright border border-subtle rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
           {/* Pinned header */}
-          <div className="px-5 py-4 border-b border-subtle bg-surface-container-low shrink-0 flex justify-between items-center">
-            <h3 className="font-headline-sm font-bold text-on-surface">Peers ({peers.length})</h3>
-            <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">ACTIVE QUEUE</span>
+          <div className="px-3.5 py-2.5 border-b border-subtle bg-surface-container-low shrink-0 flex justify-between items-center">
+            <h3 className="font-headline-sm font-bold text-on-surface text-sm">Peers ({peers.length})</h3>
+            <span className="font-label-caps text-[9px] text-on-surface-variant font-bold">ACTIVE QUEUE</span>
           </div>
           {/* Scrollable list fills remaining space */}
           <div className="flex-1 overflow-y-auto divide-y divide-subtle no-scrollbar">
             {pagedPeers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-on-surface-variant text-body-sm p-6 text-center">
-                <span className="material-symbols-outlined text-[40px] mb-2 opacity-30">group</span>
+              <div className="flex flex-col items-center justify-center h-full text-on-surface-variant text-body-sm p-4 text-center">
+                <span className="material-symbols-outlined text-[32px] mb-1.5 opacity-30">group</span>
                 No peers in queue
               </div>
             ) : (
               pagedPeers.map((p: any) => (
-                <div key={p.id} className="px-4 py-3.5 flex justify-between items-center hover:bg-surface-container-low transition-colors cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-surface-deep flex items-center justify-center font-bold text-xs text-primary">
-                      <span className="material-symbols-outlined text-[18px]">person</span>
+                <div key={p.id} className="px-3 py-2 flex justify-between items-center hover:bg-surface-container-low transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-surface-deep flex items-center justify-center font-bold text-xs text-primary">
+                      <span className="material-symbols-outlined text-[16px]">person</span>
                     </div>
                     <div>
-                      <div className="font-body-sm font-bold text-on-surface">{p.title || p.name || "Peer"}</div>
-                      <div className="text-xs font-data-mono text-on-surface-variant">{p.sellerUid?.slice(0, 12) || p.uid?.slice(0, 12) || "—"}</div>
+                      <div className="font-body-sm text-xs font-bold text-on-surface">{p.title || p.name || "Peer"}</div>
+                      <div className="text-[10px] font-data-mono text-on-surface-variant">{p.sellerUid?.slice(0, 12) || p.uid?.slice(0, 12) || "—"}</div>
                     </div>
                   </div>
-                  <div className="text-xs font-data-mono text-on-surface-variant shrink-0">{timeAgo(p.createdAt)}</div>
+                  <div className="text-[10px] font-data-mono text-on-surface-variant shrink-0">{timeAgo(p.createdAt)}</div>
                 </div>
               ))
             )}
           </div>
           {/* Pinned pagination */}
-          <div className="flex justify-between items-center px-4 py-3 border-t border-subtle bg-surface-container-low shrink-0 text-sm">
+          <div className="flex justify-between items-center px-3 py-2 border-t border-subtle bg-surface-container-low shrink-0 text-xs">
             <button
               onClick={() => setPage(p => Math.max(p - 1, 1))}
               disabled={page === 1}
-              className="px-3 py-1 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
+              className="px-2.5 py-0.5 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
             >Prev</button>
             <span className="text-on-surface-variant text-xs font-data-mono">{page} / {totalPages || 1}</span>
             <button
               onClick={() => setPage(p => Math.min(p + 1, totalPages))}
               disabled={page >= totalPages}
-              className="px-3 py-1 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
+              className="px-2.5 py-0.5 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
             >Next</button>
           </div>
         </div>
@@ -240,14 +240,14 @@ export default function P2PPage() {
         {/* Right pane — fixed height, inner content scrolls */}
         <div className="flex-1 bg-surface-bright border border-subtle rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
           {/* Pinned header */}
-          <div className="px-5 py-4 border-b border-subtle bg-surface-container-low shrink-0">
-            <h3 className="font-headline-sm font-bold text-on-surface">Peer Inspector</h3>
+          <div className="px-3.5 py-2.5 border-b border-subtle bg-surface-container-low shrink-0">
+            <h3 className="font-headline-sm font-bold text-on-surface text-sm">Peer Inspector</h3>
           </div>
           {/* Scrollable body fills remaining space */}
-          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center text-center p-8">
-            <span className="material-symbols-outlined text-[54px] text-on-surface-variant/30 mb-3">person_search</span>
-            <p className="font-headline-md text-base font-bold text-on-surface">No peer selected</p>
-            <p className="text-xs text-on-surface-variant mt-1 max-w-sm">
+          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center text-center p-6">
+            <span className="material-symbols-outlined text-[44px] text-on-surface-variant/30 mb-2">person_search</span>
+            <p className="font-headline-md text-sm font-bold text-on-surface">No peer selected</p>
+            <p className="text-xs text-on-surface-variant mt-0.5 max-w-sm">
               Select a peer listing from the queue on the left to view detailed transaction histories, collateral ratios, and escrow management actions.
             </p>
           </div>
@@ -263,7 +263,7 @@ export default function P2PPage() {
     const paged = useMemo(() => trades.slice((page - 1) * pageSize, page * pageSize), [page, trades]);
     return (
       <div className="bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <div className="p-4 md:p-5 border-b border-subtle bg-surface-container-low flex justify-between items-center">
+        <div className="px-3.5 py-2.5 border-b border-subtle bg-surface-container-low flex justify-between items-center">
           <h2 className="font-headline-md text-headline-md font-bold">P2P Trade Ledger</h2>
           <span className="font-data-mono text-xs text-on-surface-variant">{trades.length} total trades</span>
         </div>
@@ -271,47 +271,47 @@ export default function P2PPage() {
           <table className="w-full text-left font-body-sm border-collapse">
             <thead className="bg-surface-container-low text-on-surface-variant font-label-caps text-[10px] border-b border-subtle">
               <tr>
-                <th className="px-4 py-3 font-bold">TRADE ID</th>
-                <th className="px-4 py-3 font-bold">BUYER</th>
-                <th className="px-4 py-3 font-bold">SELLER</th>
-                <th className="px-4 py-3 font-bold">AMOUNT</th>
-                <th className="px-4 py-3 font-bold">STATUS</th>
-                <th className="px-4 py-3 font-bold">ESCROW</th>
-                <th className="px-4 py-3 font-bold text-right">ACTION</th>
+                <th className="px-3 py-2 font-bold">TRADE ID</th>
+                <th className="px-3 py-2 font-bold">BUYER</th>
+                <th className="px-3 py-2 font-bold">SELLER</th>
+                <th className="px-3 py-2 font-bold">AMOUNT</th>
+                <th className="px-3 py-2 font-bold">STATUS</th>
+                <th className="px-3 py-2 font-bold">ESCROW</th>
+                <th className="px-3 py-2 font-bold text-right">ACTION</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-subtle">
+            <tbody className="divide-y divide-subtle font-data-mono">
               {paged.map((t: any) => {
                 const isDisputed = t.status === "disputed" && disputes.find((d: any) => d.tradeId === t.id && d.status === "open");
                 const isCompleted = ["released", "refunded", "cancelled"].includes(t.status);
                 const displayStatus = isCompleted ? "Completed" : (t.status || "").replace(/_/g, " ");
                 return (
                   <tr key={t.id} className={`hover:bg-primary/5 transition-colors ${isDisputed ? "bg-status-danger/5" : ""}`}>
-                    <td className="px-4 py-3 font-data-mono text-secondary font-bold">#{t.id?.slice(0, 8)}</td>
-                    <td className="px-4 py-3"><span className="text-on-surface font-medium">{t.buyerUid?.slice(0, 12) || "—"}</span></td>
-                    <td className="px-4 py-3"><span className="text-on-surface font-medium">{t.sellerUid?.slice(0, 12) || "—"}</span></td>
-                    <td className="px-4 py-3 font-data-mono font-bold">{formatNaira(t.totalNaira || t.priceNaira || 0)}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2 text-secondary font-bold text-xs">#{t.id?.slice(0, 8)}</td>
+                    <td className="px-3 py-2"><span className="text-on-surface font-medium font-body-sm text-xs">{t.buyerUid?.slice(0, 12) || "—"}</span></td>
+                    <td className="px-3 py-2"><span className="text-on-surface font-medium font-body-sm text-xs">{t.sellerUid?.slice(0, 12) || "—"}</span></td>
+                    <td className="px-3 py-2 font-bold text-xs">{formatNaira(t.totalNaira || t.priceNaira || 0)}</td>
+                    <td className="px-3 py-2">
                       <span className={`flex items-center gap-1.5 font-medium ${isCompleted ? STATUS_COLORS.completed : (STATUS_COLORS[t.status] || "text-on-surface-variant")}`}>
-                        <span className={`w-2 h-2 rounded-full ${isDisputed ? "bg-status-danger animate-pulse" : "bg-current"}`} />
-                        <span className="capitalize text-xs">{displayStatus}</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isDisputed ? "bg-status-danger animate-pulse" : "bg-current"}`} />
+                        <span className="capitalize text-xs font-body-sm">{displayStatus}</span>
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${ESCROW_COLORS[t.escrowStatus] || ESCROW_COLORS.pending} uppercase`}>{t.escrowStatus || "pending"}</span>
+                    <td className="px-3 py-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${ESCROW_COLORS[t.escrowStatus] || ESCROW_COLORS.pending} uppercase`}>{t.escrowStatus || "pending"}</span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-2 text-right">
                       {isDisputed ? (
                         <button
                           onClick={() => setResolvingDisputeId(isDisputed.id)}
-                          className="bg-status-danger text-white px-3 py-1 rounded-lg text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
+                          className="bg-status-danger text-white px-2.5 py-0.5 rounded-lg text-[10px] font-bold hover:opacity-90 transition-opacity shadow-sm"
                         >
                           RESOLVE
                         </button>
                       ) : (
                         <button
                           onClick={() => setManualTradeId(t.id)}
-                          className="material-symbols-outlined text-on-surface-variant hover:text-secondary text-[20px]"
+                          className="material-symbols-outlined text-on-surface-variant hover:text-secondary text-[18px]"
                           title="Set as active trade for manual release/refund"
                         >
                           more_vert
@@ -324,17 +324,17 @@ export default function P2PPage() {
             </tbody>
           </table>
         </div>
-        <div className="flex justify-between items-center p-4 bg-surface-container-low border-t border-subtle text-sm">
+        <div className="flex justify-between items-center px-3.5 py-2 bg-surface-container-low border-t border-subtle text-xs">
           <button
             onClick={() => setPage(p => Math.max(p - 1, 1))}
             disabled={page === 1}
-            className="px-3 py-1.5 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
+            className="px-2.5 py-1 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
           >Prev</button>
           <span className="font-data-mono text-xs text-on-surface-variant">{page} / {totalPages || 1}</span>
           <button
             onClick={() => setPage(p => Math.min(p + 1, totalPages))}
             disabled={page >= totalPages}
-            className="px-3 py-1.5 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
+            className="px-2.5 py-1 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
           >Next</button>
         </div>
       </div>
@@ -343,59 +343,59 @@ export default function P2PPage() {
 
   const renderAnalyticsTab = () => {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm flex flex-col justify-between">
-          <span className="font-label-caps text-on-surface-variant font-bold uppercase mb-1">Total in Escrow</span>
-          <h2 className="font-headline-lg text-3xl font-bold font-data-mono text-secondary mt-1">{formatNaira(escrowBalance)}</h2>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
+        <div className="bg-surface-bright border border-subtle p-3.5 md:p-4 rounded-xl shadow-sm flex flex-col justify-between">
+          <span className="font-label-caps text-[10px] text-on-surface-variant font-bold uppercase mb-0.5">Total in Escrow</span>
+          <h2 className="font-headline-lg text-2xl font-bold font-data-mono text-secondary mt-0.5">{formatNaira(escrowBalance)}</h2>
         </div>
-        <div className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm flex flex-col justify-between">
-          <span className="font-label-caps text-on-surface-variant font-bold uppercase mb-1">Pending Listings</span>
-          <h2 className="font-headline-lg text-3xl font-bold font-data-mono text-primary mt-1">{pendingListings.length}</h2>
+        <div className="bg-surface-bright border border-subtle p-3.5 md:p-4 rounded-xl shadow-sm flex flex-col justify-between">
+          <span className="font-label-caps text-[10px] text-on-surface-variant font-bold uppercase mb-0.5">Pending Listings</span>
+          <h2 className="font-headline-lg text-2xl font-bold font-data-mono text-primary mt-0.5">{pendingListings.length}</h2>
         </div>
-        <div className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm flex flex-col justify-between">
-          <span className="font-label-caps text-on-surface-variant font-bold uppercase mb-1">Open Disputes</span>
-          <h2 className="font-headline-lg text-3xl font-bold font-data-mono text-status-danger mt-1">{openDisputes.length}</h2>
+        <div className="bg-surface-bright border border-subtle p-3.5 md:p-4 rounded-xl shadow-sm flex flex-col justify-between">
+          <span className="font-label-caps text-[10px] text-on-surface-variant font-bold uppercase mb-0.5">Open Disputes</span>
+          <h2 className="font-headline-lg text-2xl font-bold font-data-mono text-status-danger mt-0.5">{openDisputes.length}</h2>
         </div>
-        <div className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm flex flex-col justify-between">
-          <span className="font-label-caps text-on-surface-variant font-bold uppercase mb-1">Live Listings</span>
-          <h2 className="font-headline-lg text-3xl font-bold font-data-mono text-status-success mt-1">{listings.filter((l: any) => l.status === "live").length}</h2>
+        <div className="bg-surface-bright border border-subtle p-3.5 md:p-4 rounded-xl shadow-sm flex flex-col justify-between">
+          <span className="font-label-caps text-[10px] text-on-surface-variant font-bold uppercase mb-0.5">Live Listings</span>
+          <h2 className="font-headline-lg text-2xl font-bold font-data-mono text-status-success mt-0.5">{listings.filter((l: any) => l.status === "live").length}</h2>
         </div>
       </div>
     );
   };
 
   const renderSettingsTab = () => (
-    <div className="bg-surface-bright border border-subtle p-5 md:p-6 rounded-xl shadow-sm flex flex-col gap-6 max-w-2xl">
+    <div className="bg-surface-bright border border-subtle p-3.5 md:p-4 rounded-xl shadow-sm flex flex-col gap-3.5 max-w-2xl">
       <div>
         <h2 className="font-headline-md text-headline-md font-bold text-primary">P2P Escrow &amp; Engine Settings</h2>
         <p className="text-xs text-on-surface-variant mt-0.5">Control platform commission cuts and manual escrow overrides.</p>
       </div>
 
-      <div className="space-y-2">
-        <label className="block font-label-caps text-xs font-bold text-on-surface-variant">MANUAL ESCROW CONTROL</label>
-        <div className="flex gap-2">
+      <div className="space-y-1.5">
+        <label className="block font-label-caps text-[10px] font-bold text-on-surface-variant">MANUAL ESCROW CONTROL</label>
+        <div className="flex gap-1.5">
           <input
-            className="flex-1 bg-surface-deep border border-subtle rounded-lg px-3 py-2 text-xs font-data-mono focus:border-secondary outline-none"
+            className="flex-1 bg-surface-deep border border-subtle rounded-lg px-2.5 py-1.5 text-xs font-data-mono focus:border-secondary outline-none"
             placeholder="Enter Trade ID..."
             value={manualTradeId}
             onChange={e => setManualTradeId(e.target.value)}
           />
           <button
             onClick={handleManualRelease}
-            className="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-caps text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
+            className="bg-secondary text-on-secondary px-3 py-1.5 rounded-lg font-label-caps text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
           >RELEASE</button>
           <button
             onClick={handleRefundAll}
-            className="bg-surface-container border border-subtle text-on-surface px-4 py-2 rounded-lg font-label-caps text-xs font-bold hover:bg-surface-container-high transition-colors"
+            className="bg-surface-container border border-subtle text-on-surface px-3 py-1.5 rounded-lg font-label-caps text-xs font-bold hover:bg-surface-container-high transition-colors"
           >REFUND ALL</button>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className="block font-label-caps text-xs font-bold text-on-surface-variant">ESCROW FEE (%)</label>
-        <div className="flex gap-2">
+      <div className="space-y-1.5">
+        <label className="block font-label-caps text-[10px] font-bold text-on-surface-variant">ESCROW FEE (%)</label>
+        <div className="flex gap-1.5">
           <input
-            className="flex-1 bg-surface-deep border border-subtle rounded-lg px-3 py-2 text-xs font-data-mono focus:border-secondary outline-none"
+            className="flex-1 bg-surface-deep border border-subtle rounded-lg px-2.5 py-1.5 text-xs font-data-mono focus:border-secondary outline-none"
             placeholder={settings?.escrowFeePercent != null ? String(settings.escrowFeePercent) : "0"}
             type="number"
             step="0.5"
@@ -407,17 +407,17 @@ export default function P2PPage() {
           <button
             onClick={handleSaveSettings}
             disabled={savingSettings}
-            className="bg-primary text-on-primary px-5 py-2 rounded-lg font-label-caps text-xs font-bold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
+            className="bg-primary text-on-primary px-3.5 py-1.5 rounded-lg font-label-caps text-xs font-bold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
           >{savingSettings ? "SAVING..." : "SAVE"}</button>
         </div>
       </div>
 
       <div className="pt-2 border-t border-subtle flex items-center justify-between">
         <div>
-          <label className="block font-label-caps text-xs font-bold text-on-surface">AUTOMATIC LISTING APPROVAL</label>
+          <label className="block font-label-caps text-[10px] font-bold text-on-surface">AUTOMATIC LISTING APPROVAL</label>
           <p className="text-xs text-on-surface-variant">Auto-publish verified user ads without manual moderation</p>
         </div>
-        <span className={`font-data-mono text-xs font-bold px-3 py-1 rounded-full ${settings?.autoApproveListings ? "bg-status-success/10 text-status-success" : "bg-surface-container text-on-surface-variant"}`}>
+        <span className={`font-data-mono text-xs font-bold px-2.5 py-0.5 rounded-full ${settings?.autoApproveListings ? "bg-status-success/10 text-status-success" : "bg-surface-container text-on-surface-variant"}`}>
           {settings?.autoApproveListings ? "ENABLED" : "MANUAL REVIEW"}
         </span>
       </div>
@@ -428,14 +428,14 @@ export default function P2PPage() {
   // Main render
   // ---------------------------------------------------------------------
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-3.5">
       {/* Tab Navigation */}
-      <div className="flex bg-surface-bright border border-subtle p-1.5 rounded-xl shadow-sm gap-1.5 w-fit">
+      <div className="flex bg-surface-bright border border-subtle p-1 rounded-xl shadow-sm gap-1 w-fit">
         {tabs.map(t => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
-            className={`px-5 py-2 rounded-lg font-bold text-xs transition-all ${activeTab === t ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"}`}
+            className={`px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all ${activeTab === t ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"}`}
           >
             {t}
           </button>

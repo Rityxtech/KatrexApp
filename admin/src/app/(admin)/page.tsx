@@ -266,25 +266,25 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 animate-pulse">
+      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-3.5 animate-pulse">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="bg-surface-bright border border-subtle p-5 rounded-xl h-36" />
+          <div key={i} className="bg-surface-bright border border-subtle p-3.5 rounded-xl h-32" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-3.5">
       {/* Section: Key Stats */}
-      <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+      <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
         {/* Total Users */}
-        <div className="bg-surface-bright border border-subtle p-5 rounded-xl flex flex-col justify-between shadow-sm">
+        <div className="bg-surface-bright border border-subtle p-3.5 rounded-xl flex flex-col justify-between shadow-sm">
           <div>
-            <p className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Total Users</p>
+            <p className="font-label-caps text-label-caps text-on-surface-variant mb-0.5 uppercase font-bold">Total Users</p>
             <p className="font-headline-lg text-headline-lg text-primary">{stats.totalUsers.toLocaleString()}</p>
           </div>
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center justify-between mt-2">
             <span className="text-status-success font-data-mono text-[10px]">LIVE</span>
             <div className="sparkline-container bg-surface-container-low rounded-sm overflow-hidden flex items-end px-1 pb-1">
               <div className="flex items-end gap-[1px] h-full w-full">
@@ -300,12 +300,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Crypto Value */}
-        <div className="bg-surface-bright border border-subtle p-5 rounded-xl flex flex-col justify-between shadow-sm">
+        <div className="bg-surface-bright border border-subtle p-3.5 rounded-xl flex flex-col justify-between shadow-sm">
           <div>
-            <p className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Crypto Value</p>
+            <p className="font-label-caps text-label-caps text-on-surface-variant mb-0.5 uppercase font-bold">Crypto Value</p>
             <p className="font-headline-lg text-headline-lg text-secondary">{formatNaira(safeCryptoValue)}</p>
           </div>
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center justify-between mt-2">
             <span className="text-status-success font-data-mono text-[10px]">{stats.marketCoins} coins</span>
             <div className="sparkline-container bg-surface-container-low rounded-sm overflow-hidden flex items-end px-1 pb-1">
               <div className="flex items-end gap-[1px] h-full w-full">
@@ -321,12 +321,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Platform Profit */}
-        <div className="bg-surface-bright border border-subtle p-5 rounded-xl flex flex-col justify-between shadow-sm">
+        <div className="bg-surface-bright border border-subtle p-3.5 rounded-xl flex flex-col justify-between shadow-sm">
           <div>
-            <p className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Platform Profit</p>
+            <p className="font-label-caps text-label-caps text-on-surface-variant mb-0.5 uppercase font-bold">Platform Profit</p>
             <p className="font-headline-lg text-headline-lg text-primary">{formatNaira(safeTotalProfit)}</p>
           </div>
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center justify-between mt-2">
             <span className="text-on-surface-variant font-data-mono text-[10px]">all services</span>
             <div className="sparkline-container bg-surface-container-low rounded-sm overflow-hidden flex items-end px-1 pb-1">
               <div className="flex items-end gap-[1px] h-full w-full">
@@ -342,12 +342,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Pending Txns */}
-        <div className="bg-surface-bright border border-subtle p-5 rounded-xl flex flex-col justify-between shadow-sm">
+        <div className="bg-surface-bright border border-subtle p-3.5 rounded-xl flex flex-col justify-between shadow-sm">
           <div>
-            <p className="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Pending Txns</p>
+            <p className="font-label-caps text-label-caps text-on-surface-variant mb-0.5 uppercase font-bold">Pending Txns</p>
             <p className="font-headline-lg text-headline-lg text-status-warning">{stats.pendingTxns}</p>
           </div>
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center justify-between mt-2">
             <span className="text-status-warning font-data-mono text-[10px]">awaiting</span>
             <div className="sparkline-container bg-surface-container-low rounded-sm overflow-hidden flex items-end px-1 pb-1">
               <div className="flex items-end gap-[1px] h-full w-full">
@@ -363,14 +363,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Service Performance */}
-        <div className="col-span-2 bg-surface-bright border border-subtle p-5 rounded-xl shadow-sm">
-          <div className="flex justify-between items-center mb-3">
-            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">Service Performance</p>
+        <div className="col-span-2 bg-surface-bright border border-subtle p-3.5 rounded-xl shadow-sm">
+          <div className="flex justify-between items-center mb-2.5">
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase font-bold">Service Performance</p>
             <span className="font-data-mono text-[10px] text-on-surface-variant">{stats.completedTxns} total txns</span>
           </div>
-          <div className="flex gap-4 items-start">
+          <div className="flex gap-3 items-start">
             {/* Donut Chart */}
-            <div className="relative w-24 h-24 flex-shrink-0">
+            <div className="relative w-20 h-20 flex-shrink-0">
               <div
                 className="w-full h-full rounded-full"
                 style={{
@@ -387,24 +387,24 @@ export default function DashboardPage() {
                       }).join(", ")})`,
                 }}
               />
-              <div className="absolute inset-3 bg-surface-bright rounded-full flex items-center justify-center">
-                <span className="font-data-mono text-[10px] text-on-surface-variant text-center leading-tight">
+              <div className="absolute inset-2.5 bg-surface-bright rounded-full flex items-center justify-center">
+                <span className="font-data-mono text-[9px] text-on-surface-variant text-center leading-tight">
                   {formatNaira(totalServiceVol)}
                 </span>
               </div>
             </div>
             {/* Service Breakdown */}
-            <div className="flex-1 space-y-2 min-w-0">
+            <div className="flex-1 space-y-1.5 min-w-0">
               {services.map((sv) => (
                 <div key={sv.name} className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className={`material-symbols-outlined text-[14px] ${sv.color}`}>{sv.icon}</span>
                     <span className="font-body-sm text-[11px] truncate">{sv.name}</span>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center gap-2.5 flex-shrink-0">
                     <span className="font-data-mono text-[10px] text-on-surface-variant">{sv.count} txns</span>
                     <span className="font-data-mono text-[11px] font-medium">{formatNaira(sv.vol)}</span>
-                    <span className="font-data-mono text-[10px] text-on-surface-variant w-8 text-right">
+                    <span className="font-data-mono text-[10px] text-on-surface-variant w-7 text-right">
                       {((sv.vol / totalServiceVol) * 100).toFixed(0)}%
                     </span>
                   </div>
@@ -413,23 +413,23 @@ export default function DashboardPage() {
             </div>
           </div>
           {/* Profit row */}
-          <div className="mt-4 pt-3 border-t border-subtle flex items-center justify-between">
-            <span className="font-label-caps text-[10px] text-on-surface-variant uppercase">Est. Revenue</span>
+          <div className="mt-3 pt-2.5 border-t border-subtle flex items-center justify-between">
+            <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold">Est. Revenue</span>
             <span className="font-data-mono text-body-sm text-status-success font-bold">{formatNaira(safeTotalProfit)}</span>
           </div>
         </div>
 
         {/* 7-Day Activity */}
-        <div className="col-span-2 bg-surface-bright border border-subtle p-5 rounded-xl shadow-sm">
-          <div className="flex justify-between items-center mb-3">
-            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">7-Day Activity</p>
-            <div className="flex gap-3">
+        <div className="col-span-2 bg-surface-bright border border-subtle p-3.5 rounded-xl shadow-sm">
+          <div className="flex justify-between items-center mb-2.5">
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase font-bold">7-Day Activity</p>
+            <div className="flex gap-2.5">
               <span className="font-data-mono text-[10px] text-on-surface-variant">avg {avgDaily.toFixed(1)}/day</span>
               <span className="font-data-mono text-[10px] text-status-success font-semibold">{successRate}% success</span>
             </div>
           </div>
           {/* Bar Chart */}
-          <div className="flex items-end gap-1.5 h-24 mb-2">
+          <div className="flex items-end gap-1.5 h-20 mb-1.5">
             {days.map((day) => {
               const heightPct = (day.count / maxDayCount) * 100;
               const isPeak = day.date === peakDay.date;
@@ -458,17 +458,17 @@ export default function DashboardPage() {
             })}
           </div>
           {/* Summary metrics */}
-          <div className="mt-4 pt-3 border-t border-subtle grid grid-cols-3 gap-2">
+          <div className="mt-3 pt-2.5 border-t border-subtle grid grid-cols-3 gap-2">
             <div className="text-center">
-              <p className="font-data-mono text-headline-sm text-on-surface">{totalWeekTxns}</p>
+              <p className="font-data-mono text-body-sm font-bold text-on-surface">{totalWeekTxns}</p>
               <p className="font-label-caps text-[9px] text-on-surface-variant uppercase">Total Txns</p>
             </div>
             <div className="text-center">
-              <p className="font-data-mono text-headline-sm text-on-surface">{peakDay.label}</p>
+              <p className="font-data-mono text-body-sm font-bold text-on-surface">{peakDay.label}</p>
               <p className="font-label-caps text-[9px] text-on-surface-variant uppercase">Peak Day</p>
             </div>
             <div className="text-center">
-              <p className="font-data-mono text-headline-sm text-on-surface">{formatNaira(days.reduce((s, d) => s + d.volume, 0))}</p>
+              <p className="font-data-mono text-body-sm font-bold text-on-surface">{formatNaira(days.reduce((s, d) => s + d.volume, 0))}</p>
               <p className="font-label-caps text-[9px] text-on-surface-variant uppercase">Week Volume</p>
             </div>
           </div>
@@ -477,16 +477,16 @@ export default function DashboardPage() {
 
       {/* Live Transactions Feed */}
       <div className="lg:col-span-4 bg-surface-bright border border-subtle flex flex-col rounded-xl overflow-hidden shadow-sm">
-        <div className="px-4 py-3 border-b border-subtle bg-surface-container-low flex justify-between items-center">
+        <div className="px-3.5 py-2.5 border-b border-subtle bg-surface-container-low flex justify-between items-center">
           <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase font-bold">Live Transactions</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
             <span className="text-[9px] font-label-caps text-status-success font-bold">STREAMING</span>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar max-h-[460px]">
+        <div className="flex-1 overflow-y-auto no-scrollbar max-h-[440px]">
           {recentTxns.length === 0 ? (
-            <div className="p-6 text-center text-on-surface-variant text-body-sm">No transactions yet</div>
+            <div className="p-4 text-center text-on-surface-variant text-body-sm">No transactions yet</div>
           ) : (
             <table className="w-full text-left border-collapse">
               <tbody className="divide-y divide-subtle">
@@ -496,19 +496,19 @@ export default function DashboardPage() {
                   const amount = t.amountNaira ? formatNaira(t.amountNaira) : t.amountCoin ? `${t.amountCoin} ${t.coinSymbol || ""}` : "\u2014";
                   return (
                     <tr key={t.id} className="hover:bg-surface-container-highest transition-colors cursor-pointer group">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-7 h-7 rounded-lg bg-surface-container-low flex items-center justify-center ${meta.color}`}>
-                            <span className="material-symbols-outlined text-[18px]">{meta.icon}</span>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-6 h-6 rounded bg-surface-container-low flex items-center justify-center ${meta.color}`}>
+                            <span className="material-symbols-outlined text-[16px]">{meta.icon}</span>
                           </div>
                           <div>
-                            <p className="font-body-sm font-medium capitalize">{t.type || t.paymentMethod || "Transaction"}</p>
-                            <p className="text-[10px] text-on-surface-variant">{t.uid?.slice(0, 12) || "\u2014"}</p>
+                            <p className="font-body-sm font-medium capitalize text-xs">{t.type || t.paymentMethod || "Transaction"}</p>
+                            <p className="text-[10px] text-on-surface-variant font-data-mono">{t.uid?.slice(0, 10) || "\u2014"}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <p className="font-data-mono text-body-sm">{amount}</p>
+                      <td className="px-3 py-2 text-right">
+                        <p className="font-data-mono text-xs font-bold">{amount}</p>
                         <p className={`text-[10px] capitalize font-medium ${statusColor}`}>{t.status}</p>
                       </td>
                     </tr>
@@ -518,41 +518,41 @@ export default function DashboardPage() {
             </table>
           )}
         </div>
-        <div className="px-4 py-3 border-t border-subtle bg-surface-container-low text-center">
+        <div className="px-3.5 py-2 border-t border-subtle bg-surface-container-low text-center">
           <a href="/transactions" className="font-label-caps text-xs text-primary font-bold hover:underline">View All Records</a>
         </div>
       </div>
 
       {/* Alerts & System Health */}
-      <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="bg-surface-bright border border-subtle p-5 rounded-xl shadow-sm">
-          <div className="flex justify-between items-center mb-4">
+      <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="bg-surface-bright border border-subtle p-3.5 rounded-xl shadow-sm">
+          <div className="flex justify-between items-center mb-3">
             <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase font-bold">Action Center</h3>
             <span className="font-data-mono text-[10px] text-on-surface-variant">{activeAlerts.length} active</span>
           </div>
-          <div className="space-y-2.5 max-h-56 overflow-y-auto no-scrollbar">
+          <div className="space-y-2 max-h-52 overflow-y-auto no-scrollbar">
             {activeAlerts.length === 0 ? (
-              <div className="flex items-center gap-3 bg-surface-container-low p-3 rounded-lg border-l-4 border-status-success">
-                <span className="material-symbols-outlined text-status-success">check_circle</span>
-                <span className="font-body-sm">All clear — no actions needed</span>
+              <div className="flex items-center gap-2.5 bg-surface-container-low p-2.5 rounded-lg border-l-4 border-status-success">
+                <span className="material-symbols-outlined text-status-success text-[18px]">check_circle</span>
+                <span className="font-body-sm text-xs">All clear — no actions needed</span>
               </div>
             ) : (
               activeAlerts.map((alert) => (
                 <a
                   key={alert.id}
                   href={alert.href}
-                  className={`flex items-center justify-between bg-surface-container-low p-3 rounded-lg border-l-4 ${alert.borderColor} hover:bg-surface-container-highest transition-colors cursor-pointer group`}
+                  className={`flex items-center justify-between bg-surface-container-low p-2.5 rounded-lg border-l-4 ${alert.borderColor} hover:bg-surface-container-highest transition-colors cursor-pointer group`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className={`material-symbols-outlined text-[20px] ${alert.iconColor}`}>{alert.icon}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={`material-symbols-outlined text-[18px] ${alert.iconColor}`}>{alert.icon}</span>
                     <div className="min-w-0">
-                      <p className="font-body-sm font-medium truncate">{alert.title}</p>
+                      <p className="font-body-sm font-medium truncate text-xs">{alert.title}</p>
                       <p className="text-[10px] text-on-surface-variant">{alert.subtitle}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`${alert.badgeColor} px-2 py-0.5 rounded text-[9px] font-bold`}>{alert.badge}</span>
-                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`${alert.badgeColor} px-1.5 py-0.5 rounded text-[9px] font-bold`}>{alert.badge}</span>
+                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
                   </div>
                 </a>
               ))
@@ -560,34 +560,34 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-surface-bright border border-subtle p-5 rounded-xl shadow-sm">
-          <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-4 font-bold">Integration Gateway Health</h3>
-          <div className="grid grid-cols-1 gap-3.5">
+        <div className="bg-surface-bright border border-subtle p-3.5 rounded-xl shadow-sm">
+          <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-3 font-bold">Integration Gateway Health</h3>
+          <div className="grid grid-cols-1 gap-2.5">
             <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
-                <span className="font-body-sm font-medium">Firestore Database</span>
+                <span className="font-body-sm font-medium text-xs">Firestore Database</span>
               </div>
               <span className="font-data-mono text-[10px] text-status-success font-bold">CONNECTED</span>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-success" />
-                <span className="font-body-sm font-medium">Market Data Feed</span>
+                <span className="font-body-sm font-medium text-xs">Market Data Feed</span>
               </div>
               <span className="font-data-mono text-[10px] text-on-surface-variant">{stats.marketCoins} coins tracked</span>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-success" />
-                <span className="font-body-sm font-medium">Wallets Sync</span>
+                <span className="font-body-sm font-medium text-xs">Wallets Sync</span>
               </div>
               <span className="font-data-mono text-[10px] text-on-surface-variant">{wallets.length} wallets</span>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-success" />
-                <span className="font-body-sm font-medium">User Registry</span>
+                <span className="font-body-sm font-medium text-xs">User Registry</span>
               </div>
               <span className="font-data-mono text-[10px] text-on-surface-variant">{stats.totalUsers} users</span>
             </div>
@@ -596,25 +596,25 @@ export default function DashboardPage() {
       </div>
 
       {/* System Snapshot */}
-      <div className="lg:col-span-4 bg-surface-bright border border-subtle p-5 rounded-xl shadow-sm flex flex-col justify-between">
+      <div className="lg:col-span-4 bg-surface-bright border border-subtle p-3.5 rounded-xl shadow-sm flex flex-col justify-between">
         <div>
-          <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-4 font-bold">System Snapshot</h3>
-          <div className="space-y-4">
-            <div className="p-3.5 bg-surface-container-low rounded-lg border border-subtle">
-              <p className="font-label-caps text-label-caps text-primary mb-1">Total Fiat Valuation</p>
-              <p className="font-headline-md text-headline-md font-bold">{formatNaira(fiatReserve)}</p>
-              <div className="mt-2 h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+          <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-3 font-bold">System Snapshot</h3>
+          <div className="space-y-2.5">
+            <div className="p-2.5 bg-surface-container-low rounded-lg border border-subtle">
+              <p className="font-label-caps text-[10px] text-primary mb-0.5 font-bold">Total Fiat Valuation</p>
+              <p className="font-headline-md text-headline-md font-bold font-data-mono">{formatNaira(fiatReserve)}</p>
+              <div className="mt-1.5 h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
                 <div className="h-full bg-primary" style={{ width: `${Math.min((fiatReserve / 100_000_000) * 100, 100)}%` }} />
               </div>
             </div>
-            <div className="p-3.5 bg-surface-container-low rounded-lg border border-subtle">
-              <p className="font-label-caps text-label-caps text-secondary mb-1">Verified Users</p>
-              <p className="font-headline-md text-headline-md font-bold">{stats.verifiedUsers.toLocaleString()}</p>
-              <p className="text-[10px] text-on-surface-variant mt-1">out of {stats.totalUsers.toLocaleString()} total platform users</p>
+            <div className="p-2.5 bg-surface-container-low rounded-lg border border-subtle">
+              <p className="font-label-caps text-[10px] text-secondary mb-0.5 font-bold">Verified Users</p>
+              <p className="font-headline-md text-headline-md font-bold font-data-mono">{stats.verifiedUsers.toLocaleString()}</p>
+              <p className="text-[10px] text-on-surface-variant mt-0.5">out of {stats.totalUsers.toLocaleString()} total platform users</p>
             </div>
           </div>
         </div>
-        <button className="w-full mt-4 py-2.5 bg-primary text-on-primary font-headline-md rounded-lg hover:opacity-90 transition-opacity font-bold">
+        <button className="w-full mt-3 py-2 bg-primary text-on-primary font-label-caps text-xs rounded-lg hover:opacity-90 transition-opacity font-bold">
           Manual Reconciliation
         </button>
       </div>

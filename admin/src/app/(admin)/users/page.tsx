@@ -258,46 +258,46 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-3.5">
       {/* ── Main User Workspace Card ── */}
       <div className="w-full bg-surface-bright rounded-xl border border-subtle overflow-hidden shadow-sm flex flex-col">
         {/* ── Header ──────────────────────────────────────────────── */}
-        <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-dim border-b border-subtle">
+        <div className="p-3.5 md:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-surface-dim border-b border-subtle">
           <div>
-            <h1 className="font-headline-lg text-headline-lg text-on-surface">User Management</h1>
-            <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2 mt-1">
+            <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold">User Management</h1>
+            <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
               Manage total {loading ? "..." : filtered.length.toLocaleString()} platform users
-              {!loading && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> LIVE</span>}
+              {!loading && <span className="flex items-center gap-1 text-[10px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE</span>}
             </p>
           </div>
-          <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={exportCsv}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-medium"
+              className="flex items-center gap-1 px-3 py-1.5 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-xs font-medium"
             >
-              <span className="material-symbols-outlined text-[18px]">upload</span> CSV
+              <span className="material-symbols-outlined text-[16px]">upload</span> CSV
             </button>
             <button
               onClick={exportPdf}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-body-sm font-medium"
+              className="flex items-center gap-1 px-3 py-1.5 bg-surface-container text-on-surface-variant border border-subtle rounded-lg hover:bg-surface-container-high transition-colors text-xs font-medium"
             >
-              <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF
+              <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span> PDF
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-on-secondary-container rounded-lg hover:opacity-90 transition-all text-body-sm font-bold shadow-sm"
+              className="flex items-center gap-1 px-3.5 py-1.5 bg-secondary text-on-secondary-container rounded-lg hover:opacity-90 transition-all text-xs font-bold shadow-sm"
             >
-              <span className="material-symbols-outlined text-[18px]">person_add</span> Add User
+              <span className="material-symbols-outlined text-[16px]">person_add</span> Add User
             </button>
           </div>
         </div>
 
         {/* ── Filters ─────────────────────────────────────────────── */}
-        <div className="p-4 md:p-5 grid grid-cols-1 md:grid-cols-12 gap-3 bg-surface-container-low border-b border-subtle items-center">
+        <div className="p-2.5 md:p-3 grid grid-cols-1 md:grid-cols-12 gap-2 bg-surface-container-low border-b border-subtle items-center">
           <div className="md:col-span-5 relative group">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[18px]">search</span>
             <input
-              className="w-full h-10 pl-10 pr-4 bg-surface-deep border border-subtle rounded-lg text-body-sm focus:border-secondary focus:ring-0 text-on-surface placeholder:text-outline-variant outline-none"
+              className="w-full h-8 pl-9 pr-3 bg-surface-deep border border-subtle rounded-lg text-xs focus:border-secondary focus:ring-0 text-on-surface placeholder:text-outline-variant outline-none"
               placeholder="Search name, email, or UID..."
               type="text"
               value={search}
@@ -306,7 +306,7 @@ export default function UsersPage() {
           </div>
           <div className="md:col-span-2">
             <select
-              className="w-full h-10 bg-surface-deep border border-subtle rounded-lg text-body-sm px-3 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
+              className="w-full h-8 bg-surface-deep border border-subtle rounded-lg text-xs px-2.5 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
               value={kycFilter}
               onChange={(e) => { setKycFilter(e.target.value); setPage(0); }}
             >
@@ -318,7 +318,7 @@ export default function UsersPage() {
           </div>
           <div className="md:col-span-2">
             <select
-              className="w-full h-10 bg-surface-deep border border-subtle rounded-lg text-body-sm px-3 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
+              className="w-full h-8 bg-surface-deep border border-subtle rounded-lg text-xs px-2.5 focus:border-secondary focus:ring-0 text-on-surface outline-none cursor-pointer"
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
             >
@@ -331,7 +331,7 @@ export default function UsersPage() {
           <div className="md:col-span-3 flex justify-end gap-2">
             <button
               onClick={clearFilters}
-              className="h-10 px-4 text-secondary hover:bg-secondary/10 transition-colors rounded-lg text-body-sm font-bold border border-secondary/20"
+              className="h-8 px-3 text-secondary hover:bg-secondary/10 transition-colors rounded-lg text-xs font-bold border border-secondary/20"
             >
               Clear Filters
             </button>

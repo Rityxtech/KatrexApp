@@ -97,86 +97,86 @@ export default function KycPage() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-3.5">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded-xl shadow-lg font-body-sm text-body-sm text-on-surface">
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-3 py-1.5 rounded-xl shadow-lg font-body-sm text-xs text-on-surface">
           {toast}
         </div>
       )}
 
       {/* Verification Metrics */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
-          <p className="font-label-caps text-on-surface-variant font-bold mb-1">PENDING VERIFICATIONS</p>
-          <p className="font-headline-lg text-3xl text-secondary font-bold font-data-mono">{loading ? "..." : pendingKyc.length}</p>
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col justify-between">
+          <p className="font-label-caps text-[10px] text-on-surface-variant font-bold mb-0.5">PENDING VERIFICATIONS</p>
+          <p className="font-headline-lg text-2xl text-secondary font-bold font-data-mono">{loading ? "..." : pendingKyc.length}</p>
         </div>
-        <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
-          <p className="font-label-caps text-on-surface-variant font-bold mb-1">VERIFIED USERS</p>
-          <p className="font-headline-lg text-3xl text-status-success font-bold font-data-mono">{verifiedUsers.length}</p>
+        <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col justify-between">
+          <p className="font-label-caps text-[10px] text-on-surface-variant font-bold mb-0.5">VERIFIED USERS</p>
+          <p className="font-headline-lg text-2xl text-status-success font-bold font-data-mono">{verifiedUsers.length}</p>
         </div>
-        <div className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex flex-col justify-between">
-          <p className="font-label-caps text-on-surface-variant font-bold mb-1">REJECTION RATE</p>
-          <p className="font-headline-lg text-3xl text-status-danger font-bold font-data-mono">{rejectionRate}%</p>
+        <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col justify-between">
+          <p className="font-label-caps text-[10px] text-on-surface-variant font-bold mb-0.5">REJECTION RATE</p>
+          <p className="font-headline-lg text-2xl text-status-danger font-bold font-data-mono">{rejectionRate}%</p>
         </div>
       </section>
 
       {/* Review Queue */}
-      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-5 md:p-6 flex flex-col gap-5">
+      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-3.5 md:p-4 flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <div>
             <h2 className="font-headline-md text-headline-md text-primary font-bold">Review Queue</h2>
-            <p className="text-body-sm text-on-surface-variant mt-0.5">Pending user identity verification submissions</p>
+            <p className="text-body-sm text-xs text-on-surface-variant mt-0.5">Pending user identity verification submissions</p>
           </div>
-          <span className="bg-status-warning/10 text-status-warning font-label-caps font-bold px-3 py-1 rounded-full text-xs">{pendingKyc.length} PENDING</span>
+          <span className="bg-status-warning/10 text-status-warning font-label-caps font-bold px-2.5 py-0.5 rounded-full text-[10px]">{pendingKyc.length} PENDING</span>
         </div>
 
         {loading ? (
-          <div className="bg-surface-container-low border border-subtle p-6 rounded-xl animate-pulse h-48" />
+          <div className="bg-surface-container-low border border-subtle p-4 rounded-xl animate-pulse h-36" />
         ) : pendingKyc.length === 0 ? (
-          <div className="bg-surface-container-low border border-subtle p-8 rounded-xl text-center text-on-surface-variant text-body-sm">
+          <div className="bg-surface-container-low border border-subtle p-6 rounded-xl text-center text-on-surface-variant text-body-sm">
             No pending KYC reviews. All verifications are up to date.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3">
             {pendingKyc.slice(0, 10).map((user: any) => {
               const isProcessing = processing === user.id;
               return (
-                <div key={user.id} className="bg-surface-container-low border-l-4 border-l-secondary border-y border-r border-subtle rounded-xl p-5 flex flex-col gap-4 shadow-sm">
+                <div key={user.id} className="bg-surface-container-low border-l-4 border-l-secondary border-y border-r border-subtle rounded-xl p-3.5 flex flex-col gap-2.5 shadow-sm">
                   <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 bg-surface-container-high rounded-xl border border-subtle flex items-center justify-center">
-                        <span className="material-symbols-outlined text-primary text-[24px]">account_circle</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-surface-container-high rounded-xl border border-subtle flex items-center justify-center">
+                        <span className="material-symbols-outlined text-primary text-[20px]">account_circle</span>
                       </div>
                       <div>
-                        <p className="font-body-md text-base font-bold text-on-surface">{user.displayName || user.email || user.id?.slice(0, 12)}</p>
-                        <p className="font-body-sm text-xs text-on-surface-variant">Ref: KYC-{user.id?.slice(0, 8)}</p>
+                        <p className="font-body-md text-sm font-bold text-on-surface">{user.displayName || user.email || user.id?.slice(0, 12)}</p>
+                        <p className="font-body-sm text-[10px] text-on-surface-variant">Ref: KYC-{user.id?.slice(0, 8)}</p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="bg-status-warning/10 text-status-warning border border-status-warning/20 font-label-caps font-bold px-2.5 py-0.5 rounded-full text-xs">AWAITING REVIEW</span>
-                      <span className="font-data-mono text-xs text-on-surface-variant">{timeAgo(user.createdAt)}</span>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="bg-status-warning/10 text-status-warning border border-status-warning/20 font-label-caps font-bold px-2 py-0.5 rounded-full text-[10px]">AWAITING REVIEW</span>
+                      <span className="font-data-mono text-[10px] text-on-surface-variant">{timeAgo(user.createdAt)}</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-surface-deep/60 p-3.5 rounded-lg border border-subtle">
-                    <div className="flex justify-between items-center px-2">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-status-success text-sm">verified_user</span>
-                        <span className="font-label-caps text-xs font-bold">BVN DATA</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 bg-surface-deep/60 p-2.5 rounded-lg border border-subtle">
+                    <div className="flex justify-between items-center px-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-status-success text-xs">verified_user</span>
+                        <span className="font-label-caps text-[10px] font-bold">BVN DATA</span>
                       </div>
                       <span className="font-data-mono text-status-success text-xs font-bold">{user.bvn ? "VERIFIED" : "NOT PROVIDED"}</span>
                     </div>
-                    <div className="flex justify-between items-center px-2">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-status-warning text-sm">pending</span>
-                        <span className="font-label-caps text-xs font-bold">ID DOCUMENT</span>
+                    <div className="flex justify-between items-center px-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-status-warning text-xs">pending</span>
+                        <span className="font-label-caps text-[10px] font-bold">ID DOCUMENT</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span className="font-data-mono text-status-warning text-xs font-bold">{user.idDocumentUrl ? "UPLOADED" : "MANUAL REVIEW"}</span>
                         {user.idDocumentUrl && (
                           <button
                             onClick={() => setDocViewer({ url: user.idDocumentUrl, name: user.displayName || user.id?.slice(0, 12) })}
-                            className="material-symbols-outlined text-primary text-[18px] hover:text-secondary transition-colors"
+                            className="material-symbols-outlined text-primary text-[16px] hover:text-secondary transition-colors"
                             title="View document"
                           >
                             visibility
@@ -186,27 +186,27 @@ export default function KycPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                  <div className="flex justify-end gap-2 pt-1 border-t border-subtle">
                     <button
                       disabled={isProcessing}
                       onClick={() => handleRequestDocs(user.id)}
-                      className="bg-surface-container border border-subtle text-on-surface py-2.5 px-3 rounded-lg font-label-caps text-xs font-bold hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+                      className="px-3 py-1.5 border border-subtle font-label-caps text-xs font-bold rounded-lg hover:bg-surface-container-high transition-colors disabled:opacity-40"
                     >
-                      <span className="material-symbols-outlined text-sm">description</span> DOCS REQ.
+                      REQUEST INFO
                     </button>
                     <button
                       disabled={isProcessing}
-                      onClick={() => { setRejectModal({ uid: user.id, name: user.displayName || user.email || user.id?.slice(0, 12) }); setRejectReason(""); }}
-                      className="bg-status-danger/10 border border-status-danger/30 text-status-danger py-2.5 px-3 rounded-lg font-label-caps text-xs font-bold hover:bg-status-danger/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+                      onClick={() => setRejectModal({ uid: user.id, name: user.displayName || user.id?.slice(0, 8) })}
+                      className="px-3 py-1.5 bg-status-danger/10 text-status-danger font-label-caps text-xs font-bold rounded-lg hover:bg-status-danger/20 transition-colors disabled:opacity-40"
                     >
-                      <span className="material-symbols-outlined text-sm">{isProcessing ? "hourglass_top" : "block"}</span> REJECT
+                      REJECT
                     </button>
                     <button
                       disabled={isProcessing}
                       onClick={() => handleApprove(user.id)}
-                      className="bg-status-success text-on-primary py-2.5 px-4 rounded-lg font-label-caps text-xs font-bold active:opacity-80 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40 shadow-sm"
+                      className="px-3 py-1.5 bg-status-success text-on-primary font-label-caps text-xs font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40"
                     >
-                      <span className="material-symbols-outlined text-sm">{isProcessing ? "hourglass_top" : "check_circle"}</span> {isProcessing ? "PROCESSING..." : "APPROVE VERIFICATION"}
+                      {isProcessing ? "PROCESSING..." : "APPROVE"}
                     </button>
                   </div>
                 </div>
@@ -217,33 +217,33 @@ export default function KycPage() {
       </section>
 
       {/* Audit Trail */}
-      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-5 md:p-6 flex flex-col gap-4">
+      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-3.5 md:p-4 flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <h2 className="font-headline-md text-headline-md text-primary font-bold">Audit Trail</h2>
           <span className="font-data-mono text-xs text-on-surface-variant">{auditTrail.length} records</span>
         </div>
-        <div className="bg-surface-container-low border border-subtle rounded-xl max-h-60 overflow-y-auto no-scrollbar divide-y divide-subtle">
+        <div className="bg-surface-container-low border border-subtle rounded-xl max-h-52 overflow-y-auto no-scrollbar divide-y divide-subtle">
           {auditTrail.length === 0 ? (
-            <div className="p-4 text-center text-on-surface-variant text-body-sm">No audit records</div>
+            <div className="p-3 text-center text-on-surface-variant text-body-sm">No audit records</div>
           ) : (
             auditTrail.map((log: any) => {
               const approved = log.kycStatus === "verified" || log.kycStatus === "completed";
               const dot = approved ? "bg-status-success" : "bg-status-danger";
               const shadow = approved ? "shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "shadow-[0_0_8px_rgba(239,68,68,0.6)]";
               return (
-                <div key={log.id} className="p-2 border-b border-subtle flex gap-3">
+                <div key={log.id} className="p-2 border-b border-subtle flex gap-2.5">
                   <div className="mt-1 flex flex-col items-center">
                     <div className={`w-1.5 h-1.5 rounded-full ${dot} ${shadow}`}></div>
                     <div className="w-px h-full bg-subtle mt-1"></div>
                   </div>
                   <div className="flex-1">
                     <div className="flex justify-between items-start">
-                      <p className={`font-label-caps ${approved ? "text-on-background" : "text-status-danger"}`}>
+                      <p className={`font-label-caps text-xs ${approved ? "text-on-background" : "text-status-danger"}`}>
                         {log.displayName || log.email?.slice(0, 16) || log.id?.slice(0, 8)} {approved ? "APPROVED" : "REJECTED"}
                       </p>
-                      <span className="font-data-mono text-[10px] text-outline">{formatTimestamp(log.kycVerifiedAt || log.updatedAt || log.createdAt)}</span>
+                      <span className="font-data-mono text-[9px] text-outline">{formatTimestamp(log.kycVerifiedAt || log.updatedAt || log.createdAt)}</span>
                     </div>
-                    <p className="text-[11px] text-on-surface-variant leading-tight mt-1 italic">
+                    <p className="text-[10px] text-on-surface-variant leading-tight mt-0.5 italic">
                       {log.kycRejectionReason || `KYC ${approved ? "approved" : "rejected"} for ${log.kycTier ? `Tier ${log.kycTier}` : "user"}.`}
                     </p>
                   </div>

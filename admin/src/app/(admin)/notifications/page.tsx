@@ -140,22 +140,22 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-3.5">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-4 py-2 rounded-xl shadow-lg font-body-sm text-body-sm text-on-surface">
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-3 py-1.5 rounded-xl shadow-lg font-body-sm text-xs text-on-surface">
           {toast}
         </div>
       )}
 
       {/* Header Banner */}
-      <section className="bg-surface-bright rounded-xl border border-subtle p-5 md:p-6 shadow-sm flex flex-col gap-4">
+      <section className="bg-surface-bright rounded-xl border border-subtle p-3.5 md:p-4 shadow-sm flex flex-col gap-2.5">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="font-headline-lg text-headline-lg text-primary font-bold">Notifications &amp; Campaigns</h1>
-            <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">Broadcast announcements, targeted push alerts, and automated transactional triggers.</p>
+            <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Broadcast announcements, targeted push alerts, and automated transactional triggers.</p>
           </div>
-          <span className="font-data-mono text-xs text-status-success bg-status-success/10 px-3 py-1 rounded-full font-bold flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" /> {loading ? "SYNCING" : "ONLINE"}
+          <span className="font-data-mono text-xs text-status-success bg-status-success/10 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> {loading ? "SYNCING" : "ONLINE"}
           </span>
         </div>
         <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
@@ -164,79 +164,79 @@ export default function NotificationsPage() {
       </section>
 
       {/* Quick Actions */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         <button
           onClick={() => { setCreateType("push"); setShowCreateModal(true); }}
-          className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex items-center gap-4 hover:border-secondary transition-all text-left group"
+          className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex items-center gap-3 hover:border-secondary transition-all text-left group"
         >
-          <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:scale-105 transition-transform">
-            <span className="material-symbols-outlined text-[24px]">send</span>
+          <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:scale-105 transition-transform">
+            <span className="material-symbols-outlined text-[20px]">send</span>
           </div>
           <div>
-            <span className="font-headline-md text-base font-bold text-on-surface block">New Push Notification</span>
-            <span className="text-xs text-on-surface-variant">Instant mobile push alert</span>
+            <span className="font-headline-md text-sm font-bold text-on-surface block">New Push Notification</span>
+            <span className="text-[10px] text-on-surface-variant">Instant mobile push alert</span>
           </div>
         </button>
         <button
           onClick={() => { setCreateType("email"); setShowCreateModal(true); }}
-          className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex items-center gap-4 hover:border-tertiary transition-all text-left group"
+          className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex items-center gap-3 hover:border-tertiary transition-all text-left group"
         >
-          <div className="w-12 h-12 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary group-hover:scale-105 transition-transform">
-            <span className="material-symbols-outlined text-[24px]">mail</span>
+          <div className="w-10 h-10 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary group-hover:scale-105 transition-transform">
+            <span className="material-symbols-outlined text-[20px]">mail</span>
           </div>
           <div>
-            <span className="font-headline-md text-base font-bold text-on-surface block">New Email Campaign</span>
-            <span className="text-xs text-on-surface-variant">Send email broadcasts</span>
+            <span className="font-headline-md text-sm font-bold text-on-surface block">New Email Campaign</span>
+            <span className="text-[10px] text-on-surface-variant">Send email broadcasts</span>
           </div>
         </button>
         <button
           onClick={() => { setCreateType("banner"); setShowCreateModal(true); }}
-          className="bg-surface-bright border border-subtle rounded-xl p-5 md:p-6 shadow-sm flex items-center gap-4 hover:border-status-success transition-all text-left group"
+          className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex items-center gap-3 hover:border-status-success transition-all text-left group"
         >
-          <div className="w-12 h-12 rounded-xl bg-status-success/10 flex items-center justify-center text-status-success group-hover:scale-105 transition-transform">
-            <span className="material-symbols-outlined text-[24px]">ad_units</span>
+          <div className="w-10 h-10 rounded-xl bg-status-success/10 flex items-center justify-center text-status-success group-hover:scale-105 transition-transform">
+            <span className="material-symbols-outlined text-[20px]">ad_units</span>
           </div>
           <div>
-            <span className="font-headline-md text-base font-bold text-on-surface block">New In-App Banner</span>
-            <span className="text-xs text-on-surface-variant">Top-bar promo message</span>
+            <span className="font-headline-md text-sm font-bold text-on-surface block">New In-App Banner</span>
+            <span className="text-[10px] text-on-surface-variant">Top-bar promo message</span>
           </div>
         </button>
       </section>
 
       {/* Active Campaigns */}
-      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-5 md:p-6 flex flex-col gap-4">
+      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-3.5 md:p-4 flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <h3 className="font-headline-md text-headline-md font-bold text-primary">Active Campaigns</h3>
           <span className="font-data-mono text-xs text-on-surface-variant">{activeCampaigns.length} campaigns</span>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="min-w-[240px] bg-surface-container-low border border-subtle p-5 h-36 rounded-xl animate-pulse" />
+              <div key={i} className="min-w-[200px] bg-surface-container-low border border-subtle p-3.5 h-28 rounded-xl animate-pulse" />
             ))
           ) : activeCampaigns.length === 0 ? (
-            <div className="text-on-surface-variant text-body-sm p-6 text-center w-full bg-surface-container-low rounded-xl border border-subtle">No active campaigns at this time.</div>
+            <div className="text-on-surface-variant text-body-sm p-4 text-center w-full bg-surface-container-low rounded-xl border border-subtle">No active campaigns at this time.</div>
           ) : (
             activeCampaigns.slice(0, 6).map((c: any) => {
               const meta = TYPE_ICONS[c.type] || TYPE_ICONS.push;
               const statusColor = c.status === "live" ? "text-status-success" : c.status === "sending" ? "text-status-info" : "text-status-warning";
               return (
-                <div key={c.id} className="min-w-[240px] bg-surface-container-low border border-subtle p-5 rounded-xl space-y-3 shadow-sm flex flex-col justify-between">
+                <div key={c.id} className="min-w-[220px] bg-surface-container-low border border-subtle p-3 rounded-xl space-y-2 shadow-sm flex flex-col justify-between">
                   <div className="flex justify-between items-start">
-                    <span className={`material-symbols-outlined ${meta.color} text-[22px]`}>{meta.icon}</span>
-                    <span className={`font-data-mono text-xs font-bold ${statusColor} uppercase`}>{c.status}</span>
+                    <span className={`material-symbols-outlined ${meta.color} text-[18px]`}>{meta.icon}</span>
+                    <span className={`font-data-mono text-[10px] font-bold ${statusColor} uppercase`}>{c.status}</span>
                   </div>
                   <div>
-                    <p className="font-body-md font-bold text-base text-on-surface truncate">{c.title || c.subject || "Untitled"}</p>
-                    <p className="font-body-sm text-xs text-on-surface-variant capitalize mt-0.5">{c.type || "push"}</p>
+                    <p className="font-body-md font-bold text-xs text-on-surface truncate">{c.title || c.subject || "Untitled"}</p>
+                    <p className="font-body-sm text-[10px] text-on-surface-variant capitalize mt-0.5">{c.type || "push"}</p>
                   </div>
-                  <div className="pt-3 border-t border-subtle grid grid-cols-2 gap-2 text-xs">
+                  <div className="pt-2 border-t border-subtle grid grid-cols-2 gap-1 text-[10px]">
                     <div>
-                      <p className="font-label-caps text-[10px] text-on-surface-variant font-bold">TARGET</p>
+                      <p className="font-label-caps text-[9px] text-on-surface-variant font-bold">TARGET</p>
                       <p className="font-data-mono font-semibold text-on-surface">{c.target || "ALL"}</p>
                     </div>
                     <div>
-                      <p className="font-label-caps text-[10px] text-on-surface-variant font-bold">SENT</p>
+                      <p className="font-label-caps text-[9px] text-on-surface-variant font-bold">SENT</p>
                       <p className="font-data-mono font-semibold text-on-surface">{timeAgo(c.createdAt)}</p>
                     </div>
                   </div>
@@ -248,19 +248,19 @@ export default function NotificationsPage() {
       </section>
 
       {/* Targeting Segments */}
-      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-5 md:p-6 flex flex-col gap-4">
+      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-3.5 md:p-4 flex flex-col gap-3">
         <h3 className="font-headline-md text-headline-md font-bold text-primary">Audience Segments</h3>
-        <div className="flex flex-wrap gap-3">
-          <span className="bg-surface-container-low border border-subtle px-3.5 py-2 rounded-lg font-data-mono text-xs font-bold text-secondary">ALL USERS [{userSegments.all.toLocaleString()}]</span>
-          <span className="bg-surface-container-low border border-subtle px-3.5 py-2 rounded-lg font-data-mono text-xs font-bold text-status-success">VERIFIED [{userSegments.verified.toLocaleString()}]</span>
-          <span className="bg-surface-container-low border border-subtle px-3.5 py-2 rounded-lg font-data-mono text-xs font-bold text-status-warning">PENDING KYC [{userSegments.pendingKyc.toLocaleString()}]</span>
-          <span className="bg-surface-container-low border border-subtle px-3.5 py-2 rounded-lg font-data-mono text-xs font-bold text-status-danger">REJECTED [{userSegments.rejected.toLocaleString()}]</span>
+        <div className="flex flex-wrap gap-2">
+          <span className="bg-surface-container-low border border-subtle px-2.5 py-1 rounded-lg font-data-mono text-xs font-bold text-secondary">ALL USERS [{userSegments.all.toLocaleString()}]</span>
+          <span className="bg-surface-container-low border border-subtle px-2.5 py-1 rounded-lg font-data-mono text-xs font-bold text-status-success">VERIFIED [{userSegments.verified.toLocaleString()}]</span>
+          <span className="bg-surface-container-low border border-subtle px-2.5 py-1 rounded-lg font-data-mono text-xs font-bold text-status-warning">PENDING KYC [{userSegments.pendingKyc.toLocaleString()}]</span>
+          <span className="bg-surface-container-low border border-subtle px-2.5 py-1 rounded-lg font-data-mono text-xs font-bold text-status-danger">REJECTED [{userSegments.rejected.toLocaleString()}]</span>
         </div>
       </section>
 
       {/* Auto-Notification Settings */}
       <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <div className="p-4 md:p-5 border-b border-subtle bg-surface-container-low">
+        <div className="px-3.5 py-2.5 border-b border-subtle bg-surface-container-low">
           <h3 className="font-headline-md text-headline-md font-bold text-primary">Automated Event Triggers</h3>
         </div>
         <div className="divide-y divide-subtle">
@@ -270,16 +270,16 @@ export default function NotificationsPage() {
             { icon: "swap_vert", label: "Trade Executed", key: "trade", checked: autoTriggers.trade, danger: false },
             { icon: "security", label: "Security Alert (High)", key: "security", checked: autoTriggers.security, danger: true },
           ].map((t) => (
-            <div key={t.label} className="flex items-center justify-between p-4 md:p-5 hover:bg-surface-container-low transition-colors">
-              <div className={`flex items-center gap-3.5 ${t.danger ? "text-status-danger" : "text-on-surface"}`}>
-                <span className="material-symbols-outlined text-[22px]">{t.icon}</span>
-                <span className="font-body-md font-semibold text-sm">{t.label}</span>
+            <div key={t.label} className="flex items-center justify-between p-3 md:p-3.5 hover:bg-surface-container-low transition-colors">
+              <div className={`flex items-center gap-2.5 ${t.danger ? "text-status-danger" : "text-on-surface"}`}>
+                <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
+                <span className="font-body-md font-semibold text-xs">{t.label}</span>
               </div>
               <div
                 onClick={() => toggleAutoTrigger(t.key)}
-                className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${t.checked ? (t.danger ? "bg-status-danger" : "bg-secondary") : "bg-surface-deep border border-outline"}`}
+                className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${t.checked ? (t.danger ? "bg-status-danger" : "bg-secondary") : "bg-surface-deep border border-outline"}`}
               >
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${t.checked ? "left-[22px]" : "left-0.5"} ${t.danger && t.checked ? "bg-white" : "bg-on-surface-variant"}`}></div>
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${t.checked ? "left-[18px]" : "left-0.5"} ${t.danger && t.checked ? "bg-white" : "bg-on-surface-variant"}`}></div>
               </div>
             </div>
           ))}
@@ -287,36 +287,36 @@ export default function NotificationsPage() {
       </section>
 
       {/* Notification Logs */}
-      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-5 md:p-6 flex flex-col gap-4">
+      <section className="bg-surface-bright border border-subtle rounded-xl shadow-sm p-3.5 md:p-4 flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <h3 className="font-headline-md text-headline-md font-bold text-primary">Notification Dispatch Log</h3>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1">
             {["all", "push", "email", "banner"].map((f) => (
               <button
                 key={f}
                 onClick={() => setLogFilter(f)}
-                className={`font-label-caps text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${logFilter === f ? "border-primary text-on-primary bg-primary" : "border-subtle text-on-surface-variant hover:bg-surface-container"}`}
+                className={`font-label-caps text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${logFilter === f ? "border-primary text-on-primary bg-primary" : "border-subtle text-on-surface-variant hover:bg-surface-container"}`}
               >
                 {f.toUpperCase()}
               </button>
             ))}
           </div>
         </div>
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-surface-container-low border border-subtle p-4 h-16 rounded-xl animate-pulse" />
+              <div key={i} className="bg-surface-container-low border border-subtle p-3 h-14 rounded-xl animate-pulse" />
             ))
           ) : displayedLogs.length === 0 ? (
-            <div className="p-8 text-center text-on-surface-variant text-body-sm bg-surface-container-low rounded-xl border border-subtle">No notifications match filter</div>
+            <div className="p-6 text-center text-on-surface-variant text-body-sm bg-surface-container-low rounded-xl border border-subtle">No notifications match filter</div>
           ) : (
             displayedLogs.map((log: any) => {
               const statusColor = STATUS_COLORS[log.status] || "text-on-surface-variant";
               const barColor = log.type === "email" ? "bg-tertiary" : log.type === "banner" ? "bg-status-success" : "bg-secondary";
               return (
-                <div key={log.id} className="bg-surface-container-low border border-subtle rounded-xl p-3.5 flex items-center justify-between hover:bg-surface-container transition-colors">
-                  <div className="flex items-center gap-3.5">
-                    <div className={`w-1.5 h-10 rounded-full ${barColor}`}></div>
+                <div key={log.id} className="bg-surface-container-low border border-subtle rounded-xl p-2.5 flex items-center justify-between hover:bg-surface-container transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-1 h-8 rounded-full ${barColor}`}></div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-data-mono text-body-sm font-bold">{log.uid?.slice(0, 12) || "ALL USERS"}</span>

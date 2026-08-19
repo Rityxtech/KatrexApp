@@ -35,39 +35,39 @@ export default function ExchangeRatesTable() {
   return (
     <div className="col-span-12 lg:col-span-8">
       <div className="bg-surface-bright border border-subtle rounded-xl h-full flex flex-col overflow-hidden shadow-sm">
-        <div className="bg-surface-container-low px-5 py-3.5 border-b border-subtle flex justify-between items-center">
-          <div className="flex items-center gap-3">
+        <div className="bg-surface-container-low px-3.5 py-2.5 border-b border-subtle flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
             <span className="font-label-caps text-label-caps text-secondary font-bold">NGN Exchange Rates</span>
-            <span className="bg-status-success/10 text-status-success px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
+            <span className="bg-status-success/10 text-status-success px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> AUTO-UPDATE ON
             </span>
           </div>
           <div className="flex gap-2">
             <div className="relative">
-              <input className="bg-surface-deep border border-subtle rounded-full px-8 py-1 text-body-sm focus:w-48 transition-all outline-none" placeholder="Search rates..." type="text" />
-              <span className="material-symbols-outlined absolute left-2 top-1.5 text-on-surface-variant text-[16px]">search</span>
+              <input className="bg-surface-deep border border-subtle rounded-full px-7 py-1 text-xs focus:w-44 transition-all outline-none" placeholder="Search rates..." type="text" />
+              <span className="material-symbols-outlined absolute left-2 top-1 text-on-surface-variant text-[14px]">search</span>
             </div>
           </div>
         </div>
 
         <div className="overflow-x-auto flex-1">
           {loading ? (
-            <div className="p-4 space-y-3">
+            <div className="p-3 space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-12 bg-surface-container-high rounded animate-pulse" />
+                <div key={i} className="h-10 bg-surface-container-high rounded animate-pulse" />
               ))}
             </div>
           ) : coins.length === 0 ? (
-            <div className="p-8 text-center text-on-surface-variant text-body-sm">No market data available</div>
+            <div className="p-6 text-center text-on-surface-variant text-body-sm">No market data available</div>
           ) : (
             <table className="w-full border-collapse">
               <thead className="bg-surface-container-low sticky top-0 z-10">
                 <tr>
-                  <th className="text-left px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Asset</th>
-                  <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Price (NGN)</th>
-                  <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Price (USD)</th>
-                  <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">24h Change</th>
-                  <th className="text-right px-4 py-3 font-label-caps text-label-caps text-on-surface-variant border-b border-subtle">Volume 24h</th>
+                  <th className="text-left px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">Asset</th>
+                  <th className="text-right px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">Price (NGN)</th>
+                  <th className="text-right px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">Price (USD)</th>
+                  <th className="text-right px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">24h Change</th>
+                  <th className="text-right px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">Volume 24h</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-subtle">
@@ -77,29 +77,29 @@ export default function ExchangeRatesTable() {
                   const changeClass = change >= 0 ? "text-status-success" : "text-status-danger";
                   return (
                     <tr key={coin.id} className="hover:bg-primary-container/20 transition-colors group">
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: `${meta.color}20` }}>
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: `${meta.color}20` }}>
                             {meta.logo ? (
-                              <img src={meta.logo} alt={coin.name} className="w-4 h-4 object-contain" />
+                              <img src={meta.logo} alt={coin.name} className="w-3.5 h-3.5 object-contain" />
                             ) : (
-                              <span className="font-data-mono text-[8px] font-bold" style={{ color: meta.color }}>{coin.symbol?.slice(0, 3)}</span>
+                              <span className="font-data-mono text-[7px] font-bold" style={{ color: meta.color }}>{coin.symbol?.slice(0, 3)}</span>
                             )}
                           </div>
                           <div>
-                            <span className="font-data-mono text-data-mono">{coin.symbol}/NGN</span>
-                            <span className="text-[10px] text-on-surface-variant block">{coin.name}</span>
+                            <span className="font-data-mono text-xs font-bold">{coin.symbol}/NGN</span>
+                            <span className="text-[9px] text-on-surface-variant block">{coin.name}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface">{formatNaira(coin.priceNaira || 0)}</span></td>
-                      <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface-variant">${(coin.priceUsd || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={`font-data-mono text-[11px] ${changeClass}`}>
+                      <td className="px-3 py-2 text-right"><span className="font-data-mono text-xs font-bold text-on-surface">{formatNaira(coin.priceNaira || 0)}</span></td>
+                      <td className="px-3 py-2 text-right"><span className="font-data-mono text-xs text-on-surface-variant">${(coin.priceUsd || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></td>
+                      <td className="px-3 py-2 text-right">
+                        <span className={`font-data-mono text-[10px] font-bold ${changeClass}`}>
                           {change >= 0 ? "+" : ""}{change.toFixed(2)}%
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right"><span className="font-data-mono text-data-mono text-on-surface-variant">${((coin.volume24h || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></td>
+                      <td className="px-3 py-2 text-right"><span className="font-data-mono text-xs text-on-surface-variant">${((coin.volume24h || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></td>
                     </tr>
                   );
                 })}
@@ -108,35 +108,35 @@ export default function ExchangeRatesTable() {
           )}
         </div>
 
-        <div className="p-3 border-t border-subtle grid grid-cols-1 md:grid-cols-3 gap-stack-base">
-          <div className="bg-surface-container-low p-2 rounded flex items-center justify-between">
+        <div className="p-2.5 border-t border-subtle grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="bg-surface-container-low p-2 rounded-lg flex items-center justify-between">
             <div>
-              <div className="font-label-caps text-label-caps text-on-surface-variant">Total Volume</div>
-              <div className="font-headline-md text-headline-md text-primary">{formatNaira(totalVolume * ngnRate)}</div>
+              <div className="font-label-caps text-[10px] text-on-surface-variant font-bold">Total Volume</div>
+              <div className="font-headline-md text-sm font-bold text-primary">{formatNaira(totalVolume * ngnRate)}</div>
             </div>
-            <div className="w-16 h-8 bg-status-success/10 rounded overflow-hidden">
+            <div className="w-12 h-6 bg-status-success/10 rounded overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 100 40">
                 <polyline fill="none" points="0,35 10,30 20,38 30,25 40,30 50,20 60,25 70,10 80,15 90,5 100,8" stroke="#10B981" strokeWidth="2" />
               </svg>
             </div>
           </div>
-          <div className="bg-surface-container-low p-2 rounded flex items-center justify-between">
+          <div className="bg-surface-container-low p-2 rounded-lg flex items-center justify-between">
             <div>
-              <div className="font-label-caps text-label-caps text-on-surface-variant">Active Coins</div>
-              <div className="font-headline-md text-headline-md text-primary">{coins.length}</div>
+              <div className="font-label-caps text-[10px] text-on-surface-variant font-bold">Active Coins</div>
+              <div className="font-headline-md text-sm font-bold text-primary">{coins.length}</div>
             </div>
-            <div className="w-16 h-8 bg-secondary/10 rounded overflow-hidden">
+            <div className="w-12 h-6 bg-secondary/10 rounded overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 100 40">
                 <polyline fill="none" points="0,20 10,25 20,22 30,18 40,20 50,15 60,12 70,14 80,10 90,8 100,5" stroke="#7bd0ff" strokeWidth="2" />
               </svg>
             </div>
           </div>
-          <div className="bg-surface-container-low p-2 rounded flex items-center justify-between">
+          <div className="bg-surface-container-low p-2 rounded-lg flex items-center justify-between">
             <div>
-              <div className="font-label-caps text-label-caps text-on-surface-variant">NGN Rate</div>
-              <div className="font-headline-md text-headline-md text-status-success">{"\u20a6"}{ngnRate.toFixed(0)}</div>
+              <div className="font-label-caps text-[10px] text-on-surface-variant font-bold">NGN Rate</div>
+              <div className="font-headline-md text-sm font-bold text-status-success font-data-mono">{"\u20a6"}{ngnRate.toFixed(0)}</div>
             </div>
-            <div className="w-16 h-8 bg-status-info/10 rounded overflow-hidden">
+            <div className="w-12 h-6 bg-status-info/10 rounded overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 100 40">
                 <polyline fill="none" points="0,30 20,30 40,25 60,25 80,20 100,20" stroke="#0EA5E9" strokeWidth="2" />
               </svg>

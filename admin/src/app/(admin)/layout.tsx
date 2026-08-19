@@ -12,7 +12,7 @@ export default function AdminLayout({
     <AuthGuard>
       <TopAppBar />
       <Sidebar />
-      <main className="ml-16 pt-12 min-h-[calc(100vh-48px)] flex flex-col bg-surface-deep p-4 md:p-6 lg:p-8">
+      <main className="ml-16 pt-12 min-h-[calc(100vh-48px)] flex flex-col bg-surface-deep p-2.5 md:p-3.5 lg:p-4">
         {children}
       </main>
       <BottomNavBar />
