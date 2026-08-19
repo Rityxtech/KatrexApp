@@ -388,13 +388,14 @@ export default function SettingsPage() {
           )}
 
           {/* Top Switchable Tabs */}
-          <div className="flex overflow-x-auto border-b border-outline-variant gap-[8px] pb-px scrollbar-none">
+          <div className="flex overflow-x-auto border-b border-outline-variant gap-[8px] pb-px scrollbar-none" style={{ display: "flex", gap: "8px" }}>
             {TAB_CONFIG.map((t) => {
               const isActive = activeTab === t.id;
               return (
                 <button
                   key={t.id}
                   onClick={() => setActiveTab(t.id)}
+                  style={{ padding: "10px 16px", display: "inline-flex", alignItems: "center", gap: "8px" }}
                   className={`flex items-center gap-[8px] px-4 py-2.5 rounded-t-lg font-label-caps text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
                     isActive
                       ? "border-secondary bg-surface-container text-secondary"
@@ -402,7 +403,7 @@ export default function SettingsPage() {
                   }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
-                  {t.label}
+                  <span>{t.label}</span>
                   {t.id === "banners" && (
                     <span className="ml-1 bg-surface-container-highest px-1.5 py-0.2 rounded-full text-[10px] text-on-surface-variant">
                       {banners.length}
@@ -422,11 +423,11 @@ export default function SettingsPage() {
               TAB 1: GENERAL & SYSTEM
           ───────────────────────────────────────────────────────────── */}
           {activeTab === "general" && (
-            <div className="flex flex-col gap-[24px] animate-fadeIn">
+            <div className="flex flex-col gap-[20px] animate-fadeIn" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               {/* Row 1: Maintenance & Base Currency */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-[20px]" style={{ display: "grid", gap: "20px" }}>
                 {/* System Maintenance & Kill Switch */}
-                <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between">
+                <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between" style={{ padding: "20px" }}>
                   <div>
                     <div className="flex items-center gap-[8px] mb-3">
                       <span className="material-symbols-outlined text-secondary">power_settings_new</span>
@@ -437,7 +438,7 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  <div className="p-4 bg-surface-container-low rounded-lg border border-outline-variant/50 flex items-center justify-between">
+                  <div className="p-4 bg-surface-container-low rounded-lg border border-outline-variant/50 flex items-center justify-between" style={{ padding: "16px" }}>
                     <div>
                       <span className="font-bold font-body-md text-on-surface block">App-wide Lock</span>
                       <span
@@ -464,7 +465,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Global Default Currency */}
-                <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between">
+                <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between" style={{ padding: "20px" }}>
                   <div>
                     <div className="flex items-center gap-[8px] mb-3">
                       <span className="material-symbols-outlined text-secondary">monetization_on</span>
@@ -481,6 +482,7 @@ export default function SettingsPage() {
                     </label>
                     <select
                       className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 font-body-md text-on-surface focus:border-secondary outline-none cursor-pointer"
+                      style={{ padding: "10px 12px" }}
                       value={defaultCurrency}
                       onChange={(e) => setDefaultCurrency(e.target.value)}
                     >
@@ -494,7 +496,7 @@ export default function SettingsPage() {
               </div>
 
               {/* Row 2: Version Management (Full Width Card) */}
-              <div className="w-full bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col gap-[16px]">
+              <div className="w-full bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col gap-[16px]" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div>
                   <div className="flex items-center gap-[8px] mb-1">
                     <span className="material-symbols-outlined text-secondary">system_update</span>
@@ -506,14 +508,15 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px] pt-1">
-                  <div className="bg-surface-container-low p-4 rounded-lg border border-outline-variant">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px] pt-1" style={{ display: "grid", gap: "16px" }}>
+                  <div className="bg-surface-container-low p-4 rounded-lg border border-outline-variant" style={{ padding: "16px" }}>
                     <div className="flex items-center gap-[8px] mb-2">
                       <span className="material-symbols-outlined text-status-success">android</span>
                       <span className="font-label-caps font-bold text-on-surface">ANDROID OS VERSION</span>
                     </div>
                     <input
                       className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 font-data-mono text-primary focus:border-secondary outline-none"
+                      style={{ padding: "8px 12px" }}
                       type="text"
                       value={androidVersion}
                       onChange={(e) => setAndroidVersion(e.target.value)}
@@ -524,13 +527,14 @@ export default function SettingsPage() {
                     </span>
                   </div>
 
-                  <div className="bg-surface-container-low p-4 rounded-lg border border-outline-variant">
+                  <div className="bg-surface-container-low p-4 rounded-lg border border-outline-variant" style={{ padding: "16px" }}>
                     <div className="flex items-center gap-[8px] mb-2">
                       <span className="material-symbols-outlined text-status-info">phone_iphone</span>
                       <span className="font-label-caps font-bold text-on-surface">APPLE IOS VERSION</span>
                     </div>
                     <input
                       className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 font-data-mono text-primary focus:border-secondary outline-none"
+                      style={{ padding: "8px 12px" }}
                       type="text"
                       value={iosVersion}
                       onChange={(e) => setIosVersion(e.target.value)}
