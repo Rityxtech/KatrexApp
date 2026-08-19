@@ -210,6 +210,7 @@ export default function GiftcardPage() {
   const [rateModal, setRateModal] = useState<GiftcardRate | "new" | null>(null);
   const [tradeModal, setTradeModal] = useState<{ trade: GiftcardTrade; action: TradeAction } | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImageIndex, setPreviewImageIndex] = useState<number>(0);
   const [processingTrade, setProcessingTrade] = useState<string | null>(null);
   const [togglingBrand, setTogglingBrand] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -286,6 +287,12 @@ export default function GiftcardPage() {
   const selectedTrade = useMemo(() => {
     return allTrades.find((t) => t.id === selectedTradeId) || null;
   }, [allTrades, selectedTradeId]);
+
+  // Valid card images for selected trade
+  const validTradeImages = useMemo(() => {
+    if (!selectedTrade?.cardImageUrls) return [];
+    return selectedTrade.cardImageUrls.map(safeImageUrl).filter((url): url is string => Boolean(url));
+  }, [selectedTrade]);
 
   // Filter rates by tab
   const filteredRates = useMemo(() => {
@@ -588,7 +595,7 @@ export default function GiftcardPage() {
               </div>
 
               {/* Scrollable Inspector Body */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
                 {/* 4-Column Key Metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                   <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
@@ -619,7 +626,7 @@ export default function GiftcardPage() {
 
                 {/* E-Code Verification Section (if available) */}
                 {selectedTrade.ecode && (
-                  <div className="bg-surface-deep border border-secondary/30 rounded-xl p-3.5 flex flex-col gap-2">
+                  <div className="bg-surface-deep border border-secondary/30 rounded-xl p-3 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
                       <span className="font-label-caps text-[10px] text-secondary font-bold flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[16px]">pin</span>
@@ -633,63 +640,58 @@ export default function GiftcardPage() {
                         {copiedCode ? "COPIED!" : "COPY PIN"}
                       </button>
                     </div>
-                    <div className="p-3 bg-surface-container-lowest rounded-lg border border-subtle font-data-mono text-base font-black text-primary tracking-widest text-center select-all">
+                    <div className="p-2.5 bg-surface-container-lowest rounded-lg border border-subtle font-data-mono text-base font-black text-primary tracking-widest text-center select-all">
                       {selectedTrade.ecode}
                     </div>
                   </div>
                 )}
 
-                {/* Card Uploaded Images Gallery */}
-                <div className="bg-surface-container-low border border-subtle rounded-xl p-3.5 flex flex-col gap-2.5">
+                {/* Compact Scrollable Card Uploaded Images Gallery */}
+                <div className="bg-surface-container-low border border-subtle rounded-xl p-3 flex flex-col gap-2">
                   <div className="flex justify-between items-center">
                     <span className="font-label-caps text-[10px] text-on-surface-variant font-bold flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[16px]">photo_library</span>
-                      UPLOADED CARD IMAGES &amp; RECEIPT PROOF ({(selectedTrade.cardImageUrls || []).length})
+                      <span className="material-symbols-outlined text-[15px]">photo_library</span>
+                      UPLOADED CARD PROOFS &amp; RECEIPT ({validTradeImages.length})
                     </span>
-                    <span className="text-[10px] text-on-surface-variant">Click any image to view full high-res</span>
+                    {validTradeImages.length > 0 && (
+                      <span className="text-[10px] text-secondary font-bold flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">swipe</span>
+                        Scroll to view · Click to enlarge
+                      </span>
+                    )}
                   </div>
 
-                  {(!selectedTrade.cardImageUrls || selectedTrade.cardImageUrls.length === 0) ? (
-                    <div className="p-6 text-center text-on-surface-variant/50 border border-dashed border-subtle rounded-lg">
-                      <span className="material-symbols-outlined text-[32px] mb-1 opacity-30">image_not_supported</span>
+                  {validTradeImages.length === 0 ? (
+                    <div className="p-4 text-center text-on-surface-variant/50 border border-dashed border-subtle rounded-lg">
+                      <span className="material-symbols-outlined text-[24px] mb-0.5 opacity-30">image_not_supported</span>
                       <p className="text-xs">No physical images uploaded with this trade.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {selectedTrade.cardImageUrls.map((rawUrl, idx) => {
-                        const url = safeImageUrl(rawUrl);
-                        if (!url) return null;
-                        return (
-                          <div
-                            key={idx}
-                            className="group relative h-48 bg-surface-deep rounded-lg border border-subtle overflow-hidden cursor-pointer hover:border-primary transition-all shadow-sm"
-                            onClick={() => setPreviewImage(url)}
-                          >
-                            <img
-                              src={url}
-                              alt={`Giftcard image ${idx + 1}`}
-                              className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-200"
-                              referrerPolicy="no-referrer"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                              <span className="material-symbols-outlined text-white text-[24px]">zoom_in</span>
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="p-1.5 bg-black/60 hover:bg-black/90 text-white rounded-md transition-colors"
-                                title="Open in new tab"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                              </a>
-                            </div>
-                            <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 bg-black/70 text-white rounded text-[9px] font-data-mono">
-                              Photo #{idx + 1}
-                            </span>
+                    <div className="flex gap-2.5 overflow-x-auto p-2 bg-surface-deep rounded-lg border border-subtle max-h-36 no-scrollbar">
+                      {validTradeImages.map((url, idx) => (
+                        <div
+                          key={idx}
+                          className="group relative w-32 h-24 shrink-0 bg-surface-container-lowest rounded-lg border border-subtle overflow-hidden cursor-pointer hover:border-secondary transition-all shadow-sm flex items-center justify-center"
+                          onClick={() => {
+                            setPreviewImage(url);
+                            setPreviewImageIndex(idx);
+                          }}
+                        >
+                          <img
+                            src={url}
+                            alt={`Giftcard image ${idx + 1}`}
+                            className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-200"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                            <span className="material-symbols-outlined text-white text-[20px]">zoom_in</span>
+                            <span className="text-[9px] text-white font-bold">Inspect</span>
                           </div>
-                        );
-                      })}
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/75 text-white rounded text-[8px] font-data-mono">
+                            #{idx + 1}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1366,24 +1368,81 @@ export default function GiftcardPage() {
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-fadeIn"
           onClick={() => setPreviewImage(null)}
         >
-          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
-            <button
-              onClick={() => setPreviewImage(null)}
-              className="absolute -top-10 right-0 text-white hover:text-secondary p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[24px]">close</span>
-            </button>
-            <img
-              src={previewImage}
-              alt="High-res giftcard preview"
-              className="max-w-full max-h-[85vh] object-contain rounded-xl border border-white/20 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-              referrerPolicy="no-referrer"
-            />
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            {/* Top Toolbar */}
+            <div className="w-full flex justify-between items-center text-white px-2">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-bold">Card Proof Preview</span>
+                {validTradeImages.length > 1 && (
+                  <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-data-mono">
+                    Image {previewImageIndex + 1} of {validTradeImages.length}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewImage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                  Open Original
+                </a>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="Close"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Main Image Container */}
+            <div className="relative flex items-center justify-center">
+              {/* Prev button if multiple images */}
+              {validTradeImages.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const nextIdx = previewImageIndex > 0 ? previewImageIndex - 1 : validTradeImages.length - 1;
+                    setPreviewImageIndex(nextIdx);
+                    setPreviewImage(validTradeImages[nextIdx]);
+                  }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white transition-colors z-10"
+                  title="Previous image"
+                >
+                  <span className="material-symbols-outlined text-[24px]">chevron_left</span>
+                </button>
+              )}
+
+              <img
+                src={previewImage}
+                alt="High-res giftcard preview"
+                className="max-w-full max-h-[78vh] object-contain rounded-xl border border-white/20 shadow-2xl bg-black/50"
+                referrerPolicy="no-referrer"
+              />
+
+              {/* Next button if multiple images */}
+              {validTradeImages.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const nextIdx = previewImageIndex < validTradeImages.length - 1 ? previewImageIndex + 1 : 0;
+                    setPreviewImageIndex(nextIdx);
+                    setPreviewImage(validTradeImages[nextIdx]);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white transition-colors z-10"
+                  title="Next image"
+                >
+                  <span className="material-symbols-outlined text-[24px]">chevron_right</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
-
