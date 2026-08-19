@@ -15,8 +15,8 @@ import {
 
 type TradeAction = "approve" | "reject";
 
-const inputClass = "w-full rounded border border-outline-variant bg-surface-container-high px-2 py-1.5 text-body-sm outline-none focus:border-primary";
-const buttonClass = "rounded px-3 py-1.5 text-body-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+const inputClass = "w-full rounded-lg border border-subtle bg-surface-deep px-2.5 py-1.5 text-xs font-body-sm outline-none focus:border-secondary transition-colors";
+const buttonClass = "rounded-lg px-3 py-1.5 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "The request could not be completed.";
@@ -37,6 +37,18 @@ function formatDate(value: unknown) {
   return date ? date.toLocaleString() : "—";
 }
 
+function timeAgo(date: any) {
+  if (!date) return "—";
+  const d = date?.toDate ? date.toDate() : new Date(date);
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 function formatMoney(value: number, currency = "NGN") {
   try {
     return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(value) || 0);
@@ -54,21 +66,14 @@ function safeImageUrl(url: string) {
   }
 }
 
-function SectionState({ loading, error, empty, emptyText }: { loading: boolean; error: string | null; empty: boolean; emptyText: string }) {
-  if (loading) return <div className="h-16 animate-pulse rounded bg-surface-container-high" />;
-  if (error) return <p className="rounded border border-status-danger/40 bg-status-danger/10 p-3 text-body-sm text-status-danger">{error}</p>;
-  if (empty) return <p className="py-4 text-center text-body-sm text-on-surface-variant">{emptyText}</p>;
-  return null;
-}
-
 function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-outline-variant bg-surface-bright p-container-padding shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-headline-md text-headline-md text-primary">{title}</h3>
-          <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary" aria-label="Close modal">
-            <span className="material-symbols-outlined">close</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-fadeIn" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-subtle bg-surface-bright p-4 shadow-2xl">
+        <div className="mb-3.5 flex items-center justify-between border-b border-subtle pb-2.5">
+          <h3 className="font-headline-md text-sm text-primary font-bold">{title}</h3>
+          <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary transition-colors" aria-label="Close modal">
+            <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>
         {children}
@@ -110,24 +115,24 @@ function BrandForm({ brand, onClose }: { brand: GiftcardBrand | null; onClose: (
   }
 
   return (
-    <form onSubmit={submit} className="grid grid-cols-2 gap-3">
-      <label className="col-span-2 text-body-sm">Name<input className={inputClass} name="name" required defaultValue={brand?.name || ""} /></label>
-      <label className="text-body-sm">Icon name<input className={inputClass} name="iconName" required defaultValue={brand?.iconName || ""} /></label>
-      <label className="text-body-sm">Color<input className={`${inputClass} h-9`} name="colorHex" type="color" required defaultValue={brand?.colorHex || "#6750A4"} /></label>
-      <label className="col-span-2 text-body-sm">Brand image URL<input className={inputClass} name="imageUrl" type="url" defaultValue={brand?.imageUrl || ""} /></label>
-      <label className="text-body-sm">Sort order<input className={inputClass} name="sortOrder" type="number" required defaultValue={brand?.sortOrder ?? 0} /></label>
-      <div className="flex items-end gap-4 pb-1 text-body-sm">
-        <label><input name="isActive" type="checkbox" className="mr-2" defaultChecked={brand?.isActive ?? true} />Active</label>
-        <label><input name="featured" type="checkbox" className="mr-2" defaultChecked={brand?.featured ?? false} />Featured</label>
+    <form onSubmit={submit} className="grid grid-cols-2 gap-2.5">
+      <label className="col-span-2 text-xs font-bold text-on-surface-variant">Name<input className={inputClass} name="name" required defaultValue={brand?.name || ""} /></label>
+      <label className="text-xs font-bold text-on-surface-variant">Icon name<input className={inputClass} name="iconName" required defaultValue={brand?.iconName || ""} placeholder="e.g. redeem" /></label>
+      <label className="text-xs font-bold text-on-surface-variant">Accent Color<input className={`${inputClass} h-8 cursor-pointer`} name="colorHex" type="color" required defaultValue={brand?.colorHex || "#6750A4"} /></label>
+      <label className="col-span-2 text-xs font-bold text-on-surface-variant">Brand image URL<input className={inputClass} name="imageUrl" type="url" defaultValue={brand?.imageUrl || ""} /></label>
+      <label className="text-xs font-bold text-on-surface-variant">Sort order<input className={inputClass} name="sortOrder" type="number" required defaultValue={brand?.sortOrder ?? 0} /></label>
+      <div className="flex items-end gap-3 pb-1 text-xs font-bold">
+        <label className="flex items-center gap-1"><input name="isActive" type="checkbox" defaultChecked={brand?.isActive ?? true} />Active</label>
+        <label className="flex items-center gap-1"><input name="featured" type="checkbox" defaultChecked={brand?.featured ?? false} />Featured</label>
       </div>
-      <label className="text-body-sm">Promo tag<input className={inputClass} name="promoTag" defaultValue={brand?.promoTag || ""} /></label>
-      <label className="text-body-sm">Promo title<input className={inputClass} name="promoTitle" defaultValue={brand?.promoTitle || ""} /></label>
-      <label className="col-span-2 text-body-sm">Promo subtitle<input className={inputClass} name="promoSubtitle" defaultValue={brand?.promoSubtitle || ""} /></label>
-      <label className="col-span-2 text-body-sm">Promo image URL<input className={inputClass} name="promoImageUrl" type="url" defaultValue={brand?.promoImageUrl || ""} /></label>
-      {error && <p className="col-span-2 text-body-sm text-status-danger">{error}</p>}
-      <div className="col-span-2 flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onClose} className={`${buttonClass} border border-subtle`}>Cancel</button>
-        <button type="submit" disabled={saving} className={`${buttonClass} bg-primary text-on-primary`}>{saving ? "Saving…" : "Save brand"}</button>
+      <label className="text-xs font-bold text-on-surface-variant">Promo tag<input className={inputClass} name="promoTag" defaultValue={brand?.promoTag || ""} placeholder="HOT / BEST RATE" /></label>
+      <label className="text-xs font-bold text-on-surface-variant">Promo title<input className={inputClass} name="promoTitle" defaultValue={brand?.promoTitle || ""} /></label>
+      <label className="col-span-2 text-xs font-bold text-on-surface-variant">Promo subtitle<input className={inputClass} name="promoSubtitle" defaultValue={brand?.promoSubtitle || ""} /></label>
+      <label className="col-span-2 text-xs font-bold text-on-surface-variant">Promo image URL<input className={inputClass} name="promoImageUrl" type="url" defaultValue={brand?.promoImageUrl || ""} /></label>
+      {error && <p className="col-span-2 text-xs text-status-danger bg-status-danger/10 p-2 rounded">{error}</p>}
+      <div className="col-span-2 flex justify-end gap-2 pt-2 border-t border-subtle">
+        <button type="button" onClick={onClose} className={`${buttonClass} border border-subtle bg-surface-deep`}>Cancel</button>
+        <button type="submit" disabled={saving} className={`${buttonClass} bg-primary text-on-primary`}>{saving ? "Saving…" : "Save Brand"}</button>
       </div>
     </form>
   );
@@ -167,19 +172,19 @@ function RateForm({ rate, brands, onClose }: { rate: GiftcardRate | null; brands
   }
 
   return (
-    <form onSubmit={submit} className="grid grid-cols-2 gap-3">
-      <label className="col-span-2 text-body-sm">Brand<select className={inputClass} name="brandId" required defaultValue={rate?.brandId || ""}><option value="" disabled>Select brand</option>{brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></label>
-      <label className="text-body-sm">Currency<input className={inputClass} name="currency" required maxLength={3} defaultValue={rate?.currency || ""} /></label>
-      <label className="text-body-sm">Card type<input className={inputClass} name="cardType" required defaultValue={rate?.cardType || ""} /></label>
-      <label className="text-body-sm">Minimum value<input className={inputClass} name="minValue" type="number" min="0" step="any" required defaultValue={rate?.minValue ?? 0} /></label>
-      <label className="text-body-sm">Maximum value (optional)<input className={inputClass} name="maxValue" type="number" min="0" step="any" defaultValue={rate?.maxValue ?? ""} /></label>
-      <label className="text-body-sm">Rate per unit<input className={inputClass} name="ratePerUnit" type="number" min="0" step="any" required defaultValue={rate?.ratePerUnit ?? 0} /></label>
-      <label className="text-body-sm">Version<input className={inputClass} name="version" type="number" min="0" step="1" required defaultValue={rate?.version ?? 1} /></label>
-      <label className="col-span-2 text-body-sm"><input name="isActive" type="checkbox" className="mr-2" defaultChecked={rate?.isActive ?? true} />Active rate</label>
-      {error && <p className="col-span-2 text-body-sm text-status-danger">{error}</p>}
-      <div className="col-span-2 flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onClose} className={`${buttonClass} border border-subtle`}>Cancel</button>
-        <button type="submit" disabled={saving} className={`${buttonClass} bg-primary text-on-primary`}>{saving ? "Saving…" : "Save rate"}</button>
+    <form onSubmit={submit} className="grid grid-cols-2 gap-2.5">
+      <label className="col-span-2 text-xs font-bold text-on-surface-variant">Brand<select className={inputClass} name="brandId" required defaultValue={rate?.brandId || ""}><option value="" disabled>Select brand</option>{brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></label>
+      <label className="text-xs font-bold text-on-surface-variant">Currency<input className={inputClass} name="currency" required maxLength={3} defaultValue={rate?.currency || "USD"} placeholder="USD, GBP, EUR..." /></label>
+      <label className="text-xs font-bold text-on-surface-variant">Card type<select className={inputClass} name="cardType" required defaultValue={rate?.cardType || "physical"}><option value="physical">Physical Card</option><option value="ecode">E-Code / Digital</option></select></label>
+      <label className="text-xs font-bold text-on-surface-variant">Minimum value<input className={inputClass} name="minValue" type="number" min="0" step="any" required defaultValue={rate?.minValue ?? 10} /></label>
+      <label className="text-xs font-bold text-on-surface-variant">Maximum value (optional)<input className={inputClass} name="maxValue" type="number" min="0" step="any" defaultValue={rate?.maxValue ?? ""} placeholder="No maximum" /></label>
+      <label className="text-xs font-bold text-on-surface-variant">Rate per Unit (₦)<input className={inputClass} name="ratePerUnit" type="number" min="0" step="any" required defaultValue={rate?.ratePerUnit ?? 1500} /></label>
+      <label className="text-xs font-bold text-on-surface-variant">Version<input className={inputClass} name="version" type="number" min="0" step="1" required defaultValue={rate?.version ?? 1} /></label>
+      <label className="col-span-2 flex items-center gap-2 text-xs font-bold"><input name="isActive" type="checkbox" defaultChecked={rate?.isActive ?? true} />Active rate in market</label>
+      {error && <p className="col-span-2 text-xs text-status-danger bg-status-danger/10 p-2 rounded">{error}</p>}
+      <div className="col-span-2 flex justify-end gap-2 pt-2 border-t border-subtle">
+        <button type="button" onClick={onClose} className={`${buttonClass} border border-subtle bg-surface-deep`}>Cancel</button>
+        <button type="submit" disabled={saving} className={`${buttonClass} bg-primary text-on-primary`}>{saving ? "Saving…" : "Save Rate"}</button>
       </div>
     </form>
   );
@@ -190,33 +195,99 @@ export default function GiftcardPage() {
   const ratesState = useGiftcardRates();
   const tradesState = useGiftcardTrades();
   const settingsState = useGiftcardSettings();
+
+  // Active top-level tab
+  type MainTab = "queue" | "history" | "rates" | "brands";
+  const [activeTab, setActiveTab] = useState<MainTab>("queue");
+
+  // Selected trade for Inspector
+  const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
+  const [selectedQueueFilter, setSelectedQueueFilter] = useState<"pending" | "all" | "approved" | "rejected">("pending");
+  const [queueSearch, setQueueSearch] = useState("");
+
+  // Modals & Action states
   const [brandModal, setBrandModal] = useState<GiftcardBrand | "new" | null>(null);
   const [rateModal, setRateModal] = useState<GiftcardRate | "new" | null>(null);
   const [tradeModal, setTradeModal] = useState<{ trade: GiftcardTrade; action: TradeAction } | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [processingTrade, setProcessingTrade] = useState<string | null>(null);
   const [togglingBrand, setTogglingBrand] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  // Settings form state
   const [payoutMode, setPayoutMode] = useState("");
   const [payoutDestination, setPayoutDestination] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  // Rate management: filter tabs + pagination
+  // Ledger state
+  const [ledgerSearch, setLedgerSearch] = useState("");
+  const [ledgerStatus, setLedgerStatus] = useState<"all" | "approved" | "rejected" | "pending">("all");
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LEDGER_PER_PAGE = 15;
+
+  // Rate tab state
   type RateTab = "all" | "physical" | "ecode" | "USD" | "GBP" | "EUR";
   const [rateTab, setRateTab] = useState<RateTab>("all");
   const [ratePage, setRatePage] = useState(0);
-  const RATES_PER_PAGE = 8;
+  const RATES_PER_PAGE = 10;
 
   useEffect(() => {
     if (settingsState.data) {
-      setPayoutMode(settingsState.data.payoutMode || "");
+      setPayoutMode(settingsState.data.payoutMode || "auto");
       setPayoutDestination(settingsState.data.payoutDestination || "");
     }
   }, [settingsState.data]);
 
-  const pendingTrades = useMemo(() => tradesState.data.filter((trade) => trade.status === "pending"), [tradesState.data]);
-  const history = useMemo(() => tradesState.data.filter((trade) => trade.status !== "pending"), [tradesState.data]);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
 
-  // Filter rates by the selected tab, then paginate
+  // Derived lists
+  const allTrades = tradesState.data;
+  const pendingTrades = useMemo(() => allTrades.filter((t) => t.status === "pending"), [allTrades]);
+  const approvedTrades = useMemo(() => allTrades.filter((t) => t.status === "approved"), [allTrades]);
+  const rejectedTrades = useMemo(() => allTrades.filter((t) => t.status === "rejected"), [allTrades]);
+
+  const totalRedeemedNaira = useMemo(() => {
+    return approvedTrades.reduce((sum, t) => sum + (Number(t.payoutAmount) || 0), 0);
+  }, [approvedTrades]);
+
+  // Queue filtered trades
+  const filteredQueueTrades = useMemo(() => {
+    let list = allTrades;
+    if (selectedQueueFilter === "pending") list = pendingTrades;
+    else if (selectedQueueFilter === "approved") list = approvedTrades;
+    else if (selectedQueueFilter === "rejected") list = rejectedTrades;
+
+    if (!queueSearch.trim()) return list;
+    const q = queueSearch.toLowerCase();
+    return list.filter(
+      (t) =>
+        t.id?.toLowerCase().includes(q) ||
+        t.brandName?.toLowerCase().includes(q) ||
+        t.userName?.toLowerCase().includes(q) ||
+        t.userEmail?.toLowerCase().includes(q) ||
+        t.ecode?.toLowerCase().includes(q)
+    );
+  }, [allTrades, pendingTrades, approvedTrades, rejectedTrades, selectedQueueFilter, queueSearch]);
+
+  // Auto-select first trade in queue if current selection is invalid
+  useEffect(() => {
+    if (!selectedTradeId && filteredQueueTrades.length > 0) {
+      setSelectedTradeId(filteredQueueTrades[0].id);
+    } else if (selectedTradeId && !allTrades.some((t) => t.id === selectedTradeId)) {
+      setSelectedTradeId(filteredQueueTrades[0]?.id || null);
+    }
+  }, [filteredQueueTrades, selectedTradeId, allTrades]);
+
+  const selectedTrade = useMemo(() => {
+    return allTrades.find((t) => t.id === selectedTradeId) || null;
+  }, [allTrades, selectedTradeId]);
+
+  // Filter rates by tab
   const filteredRates = useMemo(() => {
     const rates = ratesState.data;
     if (rateTab === "all") return rates;
@@ -231,8 +302,28 @@ export default function GiftcardPage() {
     return filteredRates.slice(start, start + RATES_PER_PAGE);
   }, [filteredRates, safeRatePage]);
 
-  // Reset to page 0 whenever tab changes or data reloads
-  useEffect(() => { setRatePage(0); }, [rateTab]);
+  // Ledger filtered trades
+  const filteredLedger = useMemo(() => {
+    return allTrades.filter((t) => {
+      const matchStatus = ledgerStatus === "all" || t.status === ledgerStatus;
+      if (!matchStatus) return false;
+      if (!ledgerSearch.trim()) return true;
+      const q = ledgerSearch.toLowerCase();
+      return (
+        t.id?.toLowerCase().includes(q) ||
+        t.brandName?.toLowerCase().includes(q) ||
+        t.userName?.toLowerCase().includes(q) ||
+        t.userEmail?.toLowerCase().includes(q) ||
+        t.ecode?.toLowerCase().includes(q)
+      );
+    });
+  }, [allTrades, ledgerStatus, ledgerSearch]);
+
+  const ledgerPageCount = Math.max(1, Math.ceil(filteredLedger.length / LEDGER_PER_PAGE));
+  const pagedLedger = useMemo(() => {
+    const start = (ledgerPage - 1) * LEDGER_PER_PAGE;
+    return filteredLedger.slice(start, start + LEDGER_PER_PAGE);
+  }, [filteredLedger, ledgerPage]);
 
   async function toggleBrand(brand: GiftcardBrand) {
     setTogglingBrand(brand.id);
@@ -252,6 +343,7 @@ export default function GiftcardPage() {
         promoSubtitle: brand.promoSubtitle,
         promoImageUrl: brand.promoImageUrl,
       });
+      showToast(`Brand ${brand.name} updated`);
     } catch (caught) {
       setActionError(errorMessage(caught));
     } finally {
@@ -265,6 +357,7 @@ export default function GiftcardPage() {
     setActionError(null);
     try {
       await httpsCallable(functions, "updateGiftcardSettings")({ payoutMode, payoutDestination: payoutDestination.trim() });
+      showToast("Payout settings updated successfully");
     } catch (caught) {
       setActionError(errorMessage(caught));
     } finally {
@@ -281,6 +374,7 @@ export default function GiftcardPage() {
     setActionError(null);
     try {
       await httpsCallable(functions, "processGiftcardTrade")({ tradeId: tradeModal.trade.id, action: tradeModal.action, comment });
+      showToast(`Trade #${tradeModal.trade.id.slice(0, 8)} ${tradeModal.action === "approve" ? "Approved" : "Rejected"}`);
       setTradeModal(null);
     } catch (caught) {
       setActionError(errorMessage(caught));
@@ -289,9 +383,31 @@ export default function GiftcardPage() {
     }
   }
 
+  function handleCopyEcode(code: string) {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  }
+
   function exportCsv() {
     const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-    const rows = history.map((trade) => [formatDate(trade.createdAt), trade.id, trade.uid, trade.userName, trade.userEmail, trade.brandName, trade.cardType, trade.currency, trade.cardValue, trade.rateApplied, trade.payoutAmount, trade.status, trade.adminId, trade.adminComment, trade.rejectionReason].map(escape).join(","));
+    const rows = filteredLedger.map((trade) => [
+      formatDate(trade.createdAt),
+      trade.id,
+      trade.uid,
+      trade.userName,
+      trade.userEmail,
+      trade.brandName,
+      trade.cardType,
+      trade.currency,
+      trade.cardValue,
+      trade.rateApplied,
+      trade.payoutAmount,
+      trade.status,
+      trade.adminId,
+      trade.adminComment,
+      trade.rejectionReason,
+    ].map(escape).join(","));
     const header = ["Created at", "Trade ID", "User ID", "User name", "User email", "Brand", "Card type", "Currency", "Card value", "Rate applied", "Payout amount", "Status", "Admin ID", "Admin comment", "Rejection reason"].map(escape).join(",");
     const url = URL.createObjectURL(new Blob([[header, ...rows].join("\r\n")], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
@@ -299,256 +415,975 @@ export default function GiftcardPage() {
     link.download = `giftcard-trades-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    showToast("CSV Exported successfully");
   }
 
-  return (
-    <div className="w-full flex flex-col gap-3.5">
-      {actionError && (
-        <div className="flex justify-between items-center rounded-xl border border-status-danger/40 bg-status-danger/10 p-3 text-body-sm text-status-danger">
-          <span>{actionError}</span>
-          <button onClick={() => setActionError(null)} className="font-bold underline">Dismiss</button>
-        </div>
-      )}
-      <div className="grid grid-cols-12 gap-3.5">
-        <section className="col-span-12 lg:col-span-4 flex flex-col gap-3.5">
-          <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col gap-3">
-            <div className="flex justify-between items-center">
-              <h2 className="font-headline-md text-headline-md text-primary font-bold">Brand Management</h2>
-              <button onClick={() => setBrandModal("new")} className="bg-primary text-on-primary-fixed px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:opacity-90 transition-opacity">Add Brand</button>
-            </div>
-            <SectionState loading={brandsState.loading} error={brandsState.error} empty={!brandsState.data.length} emptyText="No gift-card brands configured." />
-            {!brandsState.loading && !brandsState.error && (
-              <div className="flex flex-col gap-2">
-                {brandsState.data.map((brand) => (
-                  <div key={brand.id} className={`brand-card flex items-center justify-between p-2.5 bg-surface-container-low border border-subtle rounded-lg hover:border-primary transition-all ${!brand.isActive ? "opacity-50" : ""}`}>
-                    <button type="button" onClick={() => setBrandModal(brand)} className="flex min-w-0 items-center gap-2.5 text-left" title="Edit brand">
-                      <span className="material-symbols-outlined text-on-surface-variant text-[16px]">edit</span>
-                      <div className="w-8 h-8 shrink-0 rounded-lg bg-surface-container-high flex items-center justify-center border border-outline-variant" style={{ borderColor: brand.colorHex || undefined }}>
-                        {brand.imageUrl && safeImageUrl(brand.imageUrl) ? (
-                          <img src={safeImageUrl(brand.imageUrl)!} alt="" className="h-full w-full rounded-lg object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <span className="material-symbols-outlined text-secondary text-[18px]">{brand.iconName || "redeem"}</span>
-                        )}
-                      </div>
-                      <span className="truncate font-body-sm text-xs font-semibold">{brand.name}</span>
-                    </button>
-                    <label className="relative inline-flex items-center cursor-pointer ml-2">
-                      <input checked={brand.isActive} disabled={togglingBrand === brand.id} onChange={() => toggleBrand(brand)} className="sr-only peer" type="checkbox" />
-                      <div className="w-7 h-4 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-status-success"></div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+  // ---------------------------------------------------------------------
+  // RENDER HELPERS
+  // ---------------------------------------------------------------------
 
-          <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col gap-3">
-            <h2 className="font-headline-md text-headline-md text-primary font-bold">Payout Control</h2>
-            <SectionState loading={settingsState.loading} error={settingsState.error} empty={!settingsState.data} emptyText="No payout settings saved yet. Configure them below." />
-            {!settingsState.loading && !settingsState.error && (
-              <div className="flex flex-col gap-3">
-                <div className="flex justify-between items-center p-2.5 bg-surface-container-low rounded-lg border border-subtle">
-                  <div>
-                    <p className="font-body-sm text-xs font-bold">Payout Mode</p>
-                    <p className="text-[10px] text-on-surface-variant">Switch between manual &amp; instant</p>
-                  </div>
-                  <div className="flex bg-surface-deep p-0.5 rounded-lg border border-outline-variant">
-                    {(["auto", "manual"] as const).map((mode) => (
-                      <button key={mode} type="button" onClick={() => setPayoutMode(mode)} className={`px-2.5 py-1 text-[10px] rounded font-bold uppercase transition-colors ${payoutMode === mode ? "bg-secondary text-on-secondary" : "text-on-surface-variant"}`}>
-                        {mode}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <label className="flex flex-col gap-1.5 font-label-caps text-label-caps text-on-surface-variant font-bold">
-                  PAYOUT DESTINATION
-                  <input className="w-full rounded-lg border border-outline-variant bg-surface-container-high px-2.5 py-1.5 text-xs outline-none focus:border-primary" value={payoutDestination} onChange={(event) => setPayoutDestination(event.target.value)} placeholder="Destination identifier" />
-                </label>
-                <button type="button" disabled={savingSettings || !payoutMode || !payoutDestination.trim()} onClick={saveSettings} className="w-full py-2 rounded-lg font-bold bg-primary text-on-primary hover:opacity-90 transition-opacity disabled:opacity-50 text-xs">
-                  {savingSettings ? "Saving…" : "Save Payout Settings"}
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="col-span-12 lg:col-span-8 flex flex-col gap-3.5">
-          <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col gap-3">
+  // TAB 1: Queue & Trade Inspector (Split Screen Workspace)
+  const renderQueueTab = () => {
+    return (
+      <div className="flex flex-col lg:flex-row gap-3.5" style={{ height: "calc(100vh - 220px)", minHeight: "560px" }}>
+        {/* LEFT PANE: Queue List (340px width) */}
+        <div className="w-full lg:w-[340px] shrink-0 bg-surface-bright border border-subtle rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
+          {/* Header & Filter Row */}
+          <div className="p-3 border-b border-subtle bg-surface-container-low shrink-0 flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <div>
-                <h2 className="font-headline-md text-headline-md text-primary font-bold">Rate Management</h2>
-                <p className="text-body-sm text-on-surface-variant text-xs mt-0.5">Live gift-card exchange rates</p>
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-secondary text-[18px]">verified</span>
+                <h3 className="font-headline-sm font-bold text-on-surface text-sm">Giftcard Queue</h3>
               </div>
-              <button disabled={!brandsState.data.length} onClick={() => setRateModal("new")} className="bg-secondary text-on-secondary px-3 py-1.5 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity">Add Rate</button>
+              <span className={`font-label-caps text-[10px] font-bold px-2 py-0.5 rounded-full ${pendingTrades.length > 0 ? "bg-status-danger text-white animate-pulse" : "bg-surface-container text-on-surface-variant"}`}>
+                {pendingTrades.length} PENDING
+              </span>
             </div>
 
-            {/* Scrollable filter tabs */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {(["all", "physical", "ecode", "USD", "GBP", "EUR"] as const).map((tab) => (
+            {/* Filter Pills */}
+            <div className="flex gap-1 bg-surface-deep p-0.5 rounded-lg border border-subtle">
+              {(["pending", "all", "approved", "rejected"] as const).map((filter) => (
                 <button
-                  key={tab}
-                  onClick={() => setRateTab(tab)}
-                  className={`shrink-0 rounded-lg px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors ${rateTab === tab ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
+                  key={filter}
+                  onClick={() => setSelectedQueueFilter(filter)}
+                  className={`flex-1 py-1 rounded text-[10px] font-bold uppercase transition-all ${
+                    selectedQueueFilter === filter ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface"
+                  }`}
                 >
-                  {tab === "all" ? "All" : tab}
+                  {filter}
                 </button>
               ))}
             </div>
 
-            <SectionState loading={ratesState.loading} error={ratesState.error} empty={!filteredRates.length} emptyText="No gift-card rates match this filter." />
-            {!ratesState.loading && !ratesState.error && pagedRates.length > 0 && (
-              <div className="overflow-x-auto rounded-lg border border-subtle">
-                <table className="w-full text-left text-body-sm">
-                  <thead className="bg-surface-container-low text-on-surface-variant font-label-caps text-[10px]">
-                    <tr className="border-b border-subtle">
-                      <th className="py-2 px-3">BRAND/CURRENCY</th>
-                      <th className="py-2 px-3">TYPE</th>
-                      <th className="py-2 px-3">RANGE</th>
-                      <th className="py-2 px-3">CURRENT RATE</th>
-                      <th className="py-2 px-3 text-right">ACTION</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-subtle">
-                    {pagedRates.map((rate) => (
-                      <tr key={rate.id} className={`hover:bg-primary/5 transition-colors ${!rate.isActive ? "opacity-50" : ""}`}>
-                        <td className="py-2 px-3 font-body-sm"><div className="flex items-center gap-2"><span className="bg-white/10 px-1.5 py-0.5 rounded text-[9px] font-bold">{rate.currency}</span>{rate.brandName}</div></td>
-                        <td className="py-2 px-3"><span className="px-2.5 py-1 rounded-full bg-surface-container text-[10px] uppercase font-bold text-secondary">{rate.cardType}</span></td>
-                        <td className="py-2 px-3 font-data-mono text-xs">{formatMoney(rate.minValue, rate.currency)} – {rate.maxValue == null ? "No max" : formatMoney(rate.maxValue, rate.currency)}</td>
-                        <td className="py-2 px-3 font-data-mono text-xs text-status-success font-bold">{formatMoney(rate.ratePerUnit)} / unit</td>
-                        <td className="py-2 px-3 text-right"><button type="button" onClick={() => setRateModal(rate)} aria-label={`Edit ${rate.brandName} rate`} className="p-1 rounded hover:bg-surface-container"><span className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-primary">edit</span></button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {/* Search Input */}
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-2 top-1.5 text-on-surface-variant text-[14px]">search</span>
+              <input
+                type="text"
+                placeholder="Search user, brand, ID..."
+                value={queueSearch}
+                onChange={(e) => setQueueSearch(e.target.value)}
+                className="w-full bg-surface-bright border border-subtle rounded-md pl-7 pr-2 py-1 text-xs font-body-sm outline-none focus:border-secondary"
+              />
+            </div>
+          </div>
 
-            {/* Pagination */}
-            {!ratesState.loading && !ratesState.error && ratePageCount > 1 && (
-              <div className="flex items-center justify-between border-t border-subtle pt-3">
-                <span className="text-[10px] text-on-surface-variant">
-                  Showing {safeRatePage * RATES_PER_PAGE + 1}–{Math.min((safeRatePage + 1) * RATES_PER_PAGE, filteredRates.length)} of {filteredRates.length}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setRatePage((p) => Math.max(0, p - 1))}
-                    disabled={safeRatePage === 0}
-                    className={`rounded-lg px-2 py-1 text-xs font-bold transition-colors ${safeRatePage === 0 ? "cursor-not-allowed opacity-40" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
-                    aria-label="Previous page"
+          {/* Scrollable Trades Queue */}
+          <div className="flex-1 overflow-y-auto divide-y divide-subtle no-scrollbar">
+            {tradesState.loading ? (
+              <div className="p-4 space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-16 bg-surface-container-high rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : filteredQueueTrades.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-on-surface-variant text-body-sm p-6 text-center">
+                <span className="material-symbols-outlined text-[36px] mb-2 opacity-30">card_giftcard</span>
+                <p className="text-xs font-bold">No trades in queue</p>
+                <p className="text-[10px] text-on-surface-variant/70 mt-0.5">Matching filter "{selectedQueueFilter}"</p>
+              </div>
+            ) : (
+              filteredQueueTrades.map((t) => {
+                const isSelected = selectedTradeId === t.id;
+                const isPending = t.status === "pending";
+                const isApproved = t.status === "approved";
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => setSelectedTradeId(t.id)}
+                    className={`p-3 flex flex-col gap-1.5 cursor-pointer transition-all border-l-4 ${
+                      isSelected
+                        ? "bg-secondary/10 border-l-secondary shadow-inner"
+                        : isPending
+                        ? "border-l-status-warning hover:bg-surface-container-low"
+                        : isApproved
+                        ? "border-l-status-success hover:bg-surface-container-low opacity-80"
+                        : "border-l-status-danger hover:bg-surface-container-low opacity-75"
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-sm">chevron_left</span>
-                  </button>
-                  <button
-                    onClick={() => setRatePage((p) => Math.min(ratePageCount - 1, p + 1))}
-                    disabled={safeRatePage === ratePageCount - 1}
-                    className={`rounded-lg px-2 py-1 text-xs font-bold transition-colors ${safeRatePage === ratePageCount - 1 ? "cursor-not-allowed opacity-40" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}
-                    aria-label="Next page"
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-surface-deep flex items-center justify-center font-bold text-xs text-primary shrink-0 border border-subtle">
+                          <span className="material-symbols-outlined text-[16px]">redeem</span>
+                        </div>
+                        <div className="truncate">
+                          <div className="font-body-sm text-xs font-bold text-on-surface truncate">{t.brandName || "Giftcard"}</div>
+                          <div className="text-[10px] font-data-mono text-on-surface-variant truncate">#{t.id.slice(0, 10)}</div>
+                        </div>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
+                          isPending ? "bg-status-warning/15 text-status-warning" : isApproved ? "bg-status-success/15 text-status-success" : "bg-status-danger/15 text-status-danger"
+                        }`}
+                      >
+                        {t.status}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs pt-1">
+                      <span className="font-data-mono font-bold text-primary">
+                        {formatMoney(t.cardValue, t.currency)}
+                      </span>
+                      <span className="font-data-mono font-bold text-secondary text-[11px]">
+                        {formatMoney(t.payoutAmount)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-[10px] text-on-surface-variant border-t border-subtle/50 pt-1">
+                      <span className="truncate max-w-[140px]">{t.userName || t.userEmail?.slice(0, 16) || "User"}</span>
+                      <span className="font-data-mono shrink-0">{timeAgo(t.createdAt)}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANE: Trade Inspector & Review Engine */}
+        <div className="flex-1 bg-surface-bright border border-subtle rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
+          {!selectedTrade ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-on-surface-variant">
+              <span className="material-symbols-outlined text-[54px] opacity-30 mb-3">quick_reference_all</span>
+              <p className="font-headline-md text-sm font-bold text-on-surface">No trade selected</p>
+              <p className="text-xs text-on-surface-variant mt-1 max-w-sm">
+                Select a gift card trade from the queue on the left to inspect uploaded card images, verify the e-code, review the payout calculation, and process approval or rejection.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Pinned Inspector Header */}
+              <div className="px-4 py-3 border-b border-subtle bg-surface-container-low shrink-0 flex flex-wrap justify-between items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-surface-deep flex items-center justify-center font-bold text-primary border border-subtle">
+                    <span className="material-symbols-outlined text-[20px]">redeem</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-headline-md text-base font-bold text-on-surface">{selectedTrade.brandName} Gift Card</h2>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-surface-container-high text-secondary border border-subtle">
+                        {selectedTrade.cardType || "PHYSICAL"}
+                      </span>
+                    </div>
+                    <p className="font-data-mono text-[10px] text-on-surface-variant">
+                      Trade ID: <span className="font-bold text-primary">#{selectedTrade.id}</span> · Submitted {formatDate(selectedTrade.createdAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold uppercase flex items-center gap-1.5 ${
+                      selectedTrade.status === "pending"
+                        ? "bg-status-warning/15 text-status-warning border border-status-warning/30"
+                        : selectedTrade.status === "approved"
+                        ? "bg-status-success/15 text-status-success border border-status-success/30"
+                        : "bg-status-danger/15 text-status-danger border border-status-danger/30"
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-sm">chevron_right</span>
+                    <span className={`w-2 h-2 rounded-full ${selectedTrade.status === "pending" ? "bg-status-warning animate-pulse" : selectedTrade.status === "approved" ? "bg-status-success" : "bg-status-danger"}`} />
+                    {selectedTrade.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Scrollable Inspector Body */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+                {/* 4-Column Key Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
+                    <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">FACE VALUE</span>
+                    <span className="font-data-mono text-base font-bold text-on-surface mt-1">
+                      {formatMoney(selectedTrade.cardValue, selectedTrade.currency)}
+                    </span>
+                  </div>
+                  <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
+                    <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">RATE APPLIED</span>
+                    <span className="font-data-mono text-base font-bold text-status-info mt-1">
+                      {formatMoney(selectedTrade.rateApplied)} / {selectedTrade.currency || "USD"}
+                    </span>
+                  </div>
+                  <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
+                    <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">PAYOUT AMOUNT</span>
+                    <span className="font-data-mono text-base font-bold text-status-success mt-1">
+                      {formatMoney(selectedTrade.payoutAmount)}
+                    </span>
+                  </div>
+                  <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
+                    <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">USER DETAILS</span>
+                    <span className="text-xs font-bold text-on-surface truncate mt-1" title={selectedTrade.userEmail}>
+                      {selectedTrade.userName || selectedTrade.userEmail || selectedTrade.uid?.slice(0, 10)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* E-Code Verification Section (if available) */}
+                {selectedTrade.ecode && (
+                  <div className="bg-surface-deep border border-secondary/30 rounded-xl p-3.5 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-label-caps text-[10px] text-secondary font-bold flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[16px]">pin</span>
+                        DIGITAL E-CODE PIN
+                      </span>
+                      <button
+                        onClick={() => handleCopyEcode(selectedTrade.ecode!)}
+                        className="px-2.5 py-1 bg-surface-container border border-subtle rounded-md text-[10px] font-bold text-secondary hover:bg-surface-container-high transition-colors flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">{copiedCode ? "check" : "content_copy"}</span>
+                        {copiedCode ? "COPIED!" : "COPY PIN"}
+                      </button>
+                    </div>
+                    <div className="p-3 bg-surface-container-lowest rounded-lg border border-subtle font-data-mono text-base font-black text-primary tracking-widest text-center select-all">
+                      {selectedTrade.ecode}
+                    </div>
+                  </div>
+                )}
+
+                {/* Card Uploaded Images Gallery */}
+                <div className="bg-surface-container-low border border-subtle rounded-xl p-3.5 flex flex-col gap-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="font-label-caps text-[10px] text-on-surface-variant font-bold flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px]">photo_library</span>
+                      UPLOADED CARD IMAGES &amp; RECEIPT PROOF ({(selectedTrade.cardImageUrls || []).length})
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant">Click any image to view full high-res</span>
+                  </div>
+
+                  {(!selectedTrade.cardImageUrls || selectedTrade.cardImageUrls.length === 0) ? (
+                    <div className="p-6 text-center text-on-surface-variant/50 border border-dashed border-subtle rounded-lg">
+                      <span className="material-symbols-outlined text-[32px] mb-1 opacity-30">image_not_supported</span>
+                      <p className="text-xs">No physical images uploaded with this trade.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {selectedTrade.cardImageUrls.map((rawUrl, idx) => {
+                        const url = safeImageUrl(rawUrl);
+                        if (!url) return null;
+                        return (
+                          <div
+                            key={idx}
+                            className="group relative h-48 bg-surface-deep rounded-lg border border-subtle overflow-hidden cursor-pointer hover:border-primary transition-all shadow-sm"
+                            onClick={() => setPreviewImage(url)}
+                          >
+                            <img
+                              src={url}
+                              alt={`Giftcard image ${idx + 1}`}
+                              className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-200"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <span className="material-symbols-outlined text-white text-[24px]">zoom_in</span>
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-1.5 bg-black/60 hover:bg-black/90 text-white rounded-md transition-colors"
+                                title="Open in new tab"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                              </a>
+                            </div>
+                            <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 bg-black/70 text-white rounded text-[9px] font-data-mono">
+                              Photo #{idx + 1}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* User Instructions / Comments */}
+                {selectedTrade.comment && (
+                  <div className="bg-surface-container-low border border-subtle rounded-xl p-3 flex flex-col gap-1">
+                    <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">USER NOTES / COMMENT</span>
+                    <p className="text-xs text-on-surface whitespace-pre-wrap">{selectedTrade.comment}</p>
+                  </div>
+                )}
+
+                {/* Audit & Review Log (If already reviewed) */}
+                {selectedTrade.status !== "pending" && (
+                  <div className="bg-surface-container border border-subtle rounded-xl p-3.5 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px] text-primary">history_edu</span>
+                      <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">AUDIT REVIEW TRAIL</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-on-surface-variant text-[10px] block">Reviewed At:</span>
+                        <span className="font-data-mono font-bold">{formatDate(selectedTrade.reviewedAt)}</span>
+                      </div>
+                      <div>
+                        <span className="text-on-surface-variant text-[10px] block">Reviewer Admin:</span>
+                        <span className="font-data-mono font-bold">{selectedTrade.adminId || "Platform Admin"}</span>
+                      </div>
+                      {(selectedTrade.rejectionReason || selectedTrade.adminComment) && (
+                        <div className="col-span-2 mt-1 p-2 bg-surface-deep rounded border border-subtle">
+                          <span className="text-on-surface-variant text-[10px] block font-bold">Admin Remark:</span>
+                          <span className="text-xs text-on-surface font-medium">{selectedTrade.rejectionReason || selectedTrade.adminComment}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Pinned Bottom Action Toolbar */}
+              {selectedTrade.status === "pending" && (
+                <div className="p-3 border-t border-subtle bg-surface-container-low shrink-0 flex justify-between items-center gap-3">
+                  <div className="text-xs">
+                    <span className="text-on-surface-variant text-[10px] block">Payout upon approval:</span>
+                    <span className="font-data-mono font-black text-secondary text-sm">{formatMoney(selectedTrade.payoutAmount)}</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      disabled={processingTrade === selectedTrade.id}
+                      onClick={() => setTradeModal({ trade: selectedTrade, action: "reject" })}
+                      className="px-4 py-2 rounded-lg text-xs font-bold bg-status-danger/15 text-status-danger hover:bg-status-danger/25 border border-status-danger/30 transition-all"
+                    >
+                      REJECT TRADE
+                    </button>
+                    <button
+                      disabled={processingTrade === selectedTrade.id}
+                      onClick={() => setTradeModal({ trade: selectedTrade, action: "approve" })}
+                      className="px-5 py-2 rounded-lg text-xs font-bold bg-status-success text-white hover:opacity-90 transition-opacity shadow-sm flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                      APPROVE &amp; PAYOUT
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // TAB 2: Trade History Ledger
+  const renderHistoryTab = () => {
+    return (
+      <div className="bg-surface-bright border border-subtle rounded-xl shadow-sm overflow-hidden flex flex-col gap-3">
+        {/* Ledger Header & Search Controls */}
+        <div className="p-3.5 border-b border-subtle bg-surface-container-low flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <div>
+            <h2 className="font-headline-md text-headline-md font-bold text-primary">Giftcard Trade Ledger</h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">Comprehensive audit history of all processed customer redemptions</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-2.5 top-2 text-on-surface-variant text-[14px]">search</span>
+              <input
+                type="text"
+                placeholder="Search ledger..."
+                value={ledgerSearch}
+                onChange={(e) => {
+                  setLedgerSearch(e.target.value);
+                  setLedgerPage(1);
+                }}
+                className="bg-surface-deep border border-subtle rounded-lg pl-7 pr-3 py-1.5 text-xs font-body-sm outline-none focus:border-secondary w-48"
+              />
+            </div>
+
+            <select
+              value={ledgerStatus}
+              onChange={(e: any) => {
+                setLedgerStatus(e.target.value);
+                setLedgerPage(1);
+              }}
+              className="bg-surface-deep border border-subtle rounded-lg px-2.5 py-1.5 text-xs font-body-sm outline-none cursor-pointer"
+            >
+              <option value="all">All Statuses</option>
+              <option value="approved">Approved</option>
+              <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
+            </select>
+
+            <button
+              onClick={exportCsv}
+              disabled={!filteredLedger.length}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-subtle bg-surface-container text-secondary text-xs hover:bg-surface-container-high transition-colors font-bold disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[14px]">download</span> Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Ledger Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-body-sm border-collapse">
+            <thead className="bg-surface-container-low font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">
+              <tr>
+                <th className="py-2.5 px-3 font-bold">DATE</th>
+                <th className="py-2.5 px-3 font-bold">TRADE ID</th>
+                <th className="py-2.5 px-3 font-bold">USER</th>
+                <th className="py-2.5 px-3 font-bold">ASSET &amp; TYPE</th>
+                <th className="py-2.5 px-3 font-bold">CARD VALUE</th>
+                <th className="py-2.5 px-3 font-bold">RATE</th>
+                <th className="py-2.5 px-3 font-bold">PAYOUT</th>
+                <th className="py-2.5 px-3 font-bold">STATUS</th>
+                <th className="py-2.5 px-3 font-bold text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-subtle font-data-mono text-xs">
+              {pagedLedger.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-8 text-center text-on-surface-variant font-body-sm text-xs">
+                    No giftcard trades found matching criteria.
+                  </td>
+                </tr>
+              ) : (
+                pagedLedger.map((trade) => {
+                  const isApproved = trade.status === "approved";
+                  const isPending = trade.status === "pending";
+                  return (
+                    <tr key={trade.id} className="hover:bg-primary/5 transition-colors">
+                      <td className="py-2 px-3 text-on-surface-variant font-body-sm text-xs">{formatDate(trade.reviewedAt || trade.createdAt)}</td>
+                      <td className="py-2 px-3 text-secondary font-bold">#{trade.id.slice(0, 8)}</td>
+                      <td className="py-2 px-3 font-body-sm">
+                        <span className="block font-bold text-xs text-on-surface">{trade.userName || "—"}</span>
+                        <span className="text-[10px] text-on-surface-variant font-data-mono">{trade.userEmail || trade.uid?.slice(0, 10)}</span>
+                      </td>
+                      <td className="py-2 px-3 font-body-sm">
+                        <span className="font-bold text-xs">{trade.brandName}</span>
+                        <span className="text-[10px] text-on-surface-variant ml-1.5 uppercase font-bold">({trade.cardType})</span>
+                      </td>
+                      <td className="py-2 px-3 font-bold text-xs">{formatMoney(trade.cardValue, trade.currency)}</td>
+                      <td className="py-2 px-3 text-on-surface-variant text-[11px]">{formatMoney(trade.rateApplied)}</td>
+                      <td className="py-2 px-3 text-secondary font-bold text-xs">{formatMoney(trade.payoutAmount)}</td>
+                      <td className="py-2 px-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            isApproved ? "bg-status-success/15 text-status-success" : isPending ? "bg-status-warning/15 text-status-warning" : "bg-status-danger/15 text-status-danger"
+                          }`}
+                        >
+                          {trade.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-right font-body-sm">
+                        <button
+                          onClick={() => {
+                            setSelectedTradeId(trade.id);
+                            setActiveTab("queue");
+                          }}
+                          className="px-2.5 py-1 bg-surface-deep border border-subtle rounded text-xs font-bold text-secondary hover:bg-surface-container transition-colors"
+                        >
+                          Inspect
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Ledger Pagination */}
+        {ledgerPageCount > 1 && (
+          <div className="flex justify-between items-center px-3.5 py-2 border-t border-subtle bg-surface-container-low text-xs">
+            <button
+              onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+              disabled={ledgerPage === 1}
+              className="px-2.5 py-1 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
+            >
+              Prev
+            </button>
+            <span className="font-data-mono text-xs text-on-surface-variant">
+              Page {ledgerPage} of {ledgerPageCount} ({filteredLedger.length} trades)
+            </span>
+            <button
+              onClick={() => setLedgerPage((p) => Math.min(ledgerPageCount, p + 1))}
+              disabled={ledgerPage >= ledgerPageCount}
+              className="px-2.5 py-1 bg-surface-deep border border-subtle rounded-lg text-xs font-bold disabled:opacity-40 hover:bg-surface-container transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // TAB 3: Rate Management & Live Quotations
+  const renderRatesTab = () => {
+    return (
+      <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col gap-3.5">
+        <div className="flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h2 className="font-headline-md text-headline-md text-primary font-bold">Exchange Rate Management</h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">Live unit redemption rates configured for end-user mobile app calculations</p>
+          </div>
+          <button
+            disabled={!brandsState.data.length}
+            onClick={() => setRateModal("new")}
+            className="bg-secondary text-on-secondary px-3.5 py-1.5 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity shadow flex items-center gap-1.5"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span> ADD NEW RATE
+          </button>
+        </div>
+
+        {/* Currency Filter Tabs */}
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+          {(["all", "physical", "ecode", "USD", "GBP", "EUR"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => {
+                setRateTab(tab);
+                setRatePage(0);
+              }}
+              className={`shrink-0 rounded-lg px-3 py-1 text-xs font-bold uppercase tracking-wide transition-colors ${
+                rateTab === tab ? "bg-primary text-on-primary shadow-sm" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
+              }`}
+            >
+              {tab === "all" ? "All Rates" : tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Rates Table */}
+        <div className="overflow-x-auto rounded-lg border border-subtle">
+          <table className="w-full text-left text-body-sm">
+            <thead className="bg-surface-container-low text-on-surface-variant font-label-caps text-[10px]">
+              <tr className="border-b border-subtle">
+                <th className="py-2.5 px-3 font-bold">BRAND / CURRENCY</th>
+                <th className="py-2.5 px-3 font-bold">CARD TYPE</th>
+                <th className="py-2.5 px-3 font-bold">DENOMINATION RANGE</th>
+                <th className="py-2.5 px-3 font-bold">EXCHANGE RATE</th>
+                <th className="py-2.5 px-3 font-bold">STATUS</th>
+                <th className="py-2.5 px-3 font-bold text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-subtle font-data-mono text-xs">
+              {pagedRates.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-on-surface-variant font-body-sm text-xs">
+                    No exchange rates configured for this tab.
+                  </td>
+                </tr>
+              ) : (
+                pagedRates.map((rate) => (
+                  <tr key={rate.id} className={`hover:bg-primary/5 transition-colors ${!rate.isActive ? "opacity-50" : ""}`}>
+                    <td className="py-2 px-3 font-body-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-surface-deep px-1.5 py-0.5 rounded text-[10px] font-bold text-primary border border-subtle">
+                          {rate.currency}
+                        </span>
+                        <span className="font-bold text-xs">{rate.brandName}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className="px-2.5 py-0.5 rounded-full bg-surface-container text-[10px] uppercase font-bold text-secondary">
+                        {rate.cardType}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 font-data-mono text-xs">
+                      {formatMoney(rate.minValue, rate.currency)} – {rate.maxValue == null ? "No max" : formatMoney(rate.maxValue, rate.currency)}
+                    </td>
+                    <td className="py-2 px-3 font-bold text-status-success">
+                      {formatMoney(rate.ratePerUnit)} <span className="text-[10px] text-on-surface-variant font-normal">/ unit</span>
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${rate.isActive ? "bg-status-success/15 text-status-success" : "bg-surface-container text-on-surface-variant"}`}>
+                        {rate.isActive ? "ACTIVE" : "DISABLED"}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setRateModal(rate)}
+                        className="p-1 rounded hover:bg-surface-container transition-colors"
+                        title="Edit rate"
+                      >
+                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-primary">edit</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Rate Pagination */}
+        {ratePageCount > 1 && (
+          <div className="flex items-center justify-between border-t border-subtle pt-2 text-xs">
+            <span className="text-[10px] text-on-surface-variant font-data-mono">
+              Showing {safeRatePage * RATES_PER_PAGE + 1}–{Math.min((safeRatePage + 1) * RATES_PER_PAGE, filteredRates.length)} of {filteredRates.length} rates
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setRatePage((p) => Math.max(0, p - 1))}
+                disabled={safeRatePage === 0}
+                className="px-2 py-1 rounded-lg text-xs font-bold bg-surface-deep border border-subtle disabled:opacity-40 hover:bg-surface-container transition-colors"
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setRatePage((p) => Math.min(ratePageCount - 1, p + 1))}
+                disabled={safeRatePage === ratePageCount - 1}
+                className="px-2 py-1 rounded-lg text-xs font-bold bg-surface-deep border border-subtle disabled:opacity-40 hover:bg-surface-container transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // TAB 4: Brands & Payout Settings
+  const renderBrandsTab = () => {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+        {/* Left Column: Brand Management */}
+        <div className="lg:col-span-8 bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col gap-3">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="font-headline-md text-headline-md text-primary font-bold">Brand Catalog Management</h2>
+              <p className="text-xs text-on-surface-variant mt-0.5">Toggle visibility, edit promo tags, and configure brand listings</p>
+            </div>
+            <button
+              onClick={() => setBrandModal("new")}
+              className="bg-primary text-on-primary px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase hover:opacity-90 transition-opacity shadow flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span> ADD BRAND
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {brandsState.data.map((brand) => (
+              <div
+                key={brand.id}
+                className={`p-3 bg-surface-container-low border border-subtle rounded-xl hover:border-primary transition-all flex items-center justify-between gap-3 ${
+                  !brand.isActive ? "opacity-60" : ""
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setBrandModal(brand)}
+                  className="flex min-w-0 items-center gap-2.5 text-left flex-1"
+                  title="Click to edit brand details"
+                >
+                  <div
+                    className="w-10 h-10 shrink-0 rounded-lg bg-surface-container-high flex items-center justify-center border"
+                    style={{ borderColor: brand.colorHex || "#6750A4" }}
+                  >
+                    {brand.imageUrl && safeImageUrl(brand.imageUrl) ? (
+                      <img src={safeImageUrl(brand.imageUrl)!} alt="" className="h-full w-full rounded-lg object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <span className="material-symbols-outlined text-secondary text-[22px]">{brand.iconName || "redeem"}</span>
+                    )}
+                  </div>
+                  <div className="truncate">
+                    <span className="font-bold text-xs text-on-surface block truncate">{brand.name}</span>
+                    <span className="text-[10px] text-on-surface-variant font-data-mono">
+                      Sort: {brand.sortOrder ?? 0} {brand.featured && "· ⭐ Featured"}
+                    </span>
+                  </div>
+                </button>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      checked={brand.isActive}
+                      disabled={togglingBrand === brand.id}
+                      onChange={() => toggleBrand(brand)}
+                      className="sr-only peer"
+                      type="checkbox"
+                    />
+                    <div className="w-8 h-4.5 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-status-success"></div>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setBrandModal(brand)}
+                    className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">edit</span>
                   </button>
                 </div>
               </div>
-            )}
+            ))}
+          </div>
+        </div>
+
+        {/* Right Column: Payout Engine Settings */}
+        <div className="lg:col-span-4 bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col gap-3">
+          <div>
+            <h2 className="font-headline-md text-headline-md text-primary font-bold">Payout Engine Control</h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">Automated disbursement configuration</p>
           </div>
 
-          <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col gap-3">
-            <h2 className="font-headline-md text-headline-md text-primary font-bold">Active Trade Queue <span className="bg-status-danger text-white px-2 py-0.5 rounded-full text-[10px] ml-2 font-bold">{pendingTrades.length} Pending</span></h2>
-            <SectionState loading={tradesState.loading} error={tradesState.error} empty={!pendingTrades.length} emptyText="No pending gift-card trades." />
-            {!tradesState.loading && !tradesState.error && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {pendingTrades.map((trade) => {
-                  const images = (trade.cardImageUrls || []).map(safeImageUrl).filter((url): url is string => Boolean(url));
-                  return (
-                    <article key={trade.id} className="bg-surface-container-high border-l-4 border-l-status-warning rounded-xl p-3 flex flex-col gap-2.5 hover:shadow-xl transition-all border-y border-r border-subtle">
-                      <div className="flex gap-3">
-                        <div className="flex w-20 shrink-0 gap-1 overflow-x-auto">
-                          {images.length ? (
-                            images.map((url, index) => (
-                              <a key={`${trade.id}-${index}`} href={url} target="_blank" rel="noopener noreferrer" className="h-14 w-20 shrink-0">
-                                <img src={url} alt={`${trade.brandName} card ${index + 1}`} className="h-full w-full rounded-lg border border-outline-variant object-cover" loading="lazy" referrerPolicy="no-referrer" />
-                              </a>
-                            ))
-                          ) : (
-                            <div className="w-20 h-14 bg-surface-deep rounded-lg border border-outline-variant flex items-center justify-center">
-                              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">image_not_supported</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex justify-between gap-2">
-                            <div>
-                              <p className="font-body-sm font-bold text-xs">{trade.brandName} · {trade.cardType}</p>
-                              <p className="text-data-mono text-primary font-bold text-xs">{formatMoney(trade.cardValue, trade.currency)} <span className="text-on-surface-variant text-[9px]">({formatMoney(trade.payoutAmount)})</span></p>
-                            </div>
-                            <span className="h-fit shrink-0 text-[9px] font-label-caps text-status-warning px-1.5 py-0.5 bg-status-warning/10 rounded font-bold">Pending</span>
-                          </div>
-                          <p className="mt-1 break-all text-[10px] text-on-surface-variant">{trade.userName || "Unnamed user"} · {trade.userEmail || trade.uid}</p>
-                          <p className="break-all font-data-mono text-[9px] text-on-surface-variant">Trade {trade.id}</p>
-                          <p className="text-[9px] text-on-surface-variant">Rate {formatMoney(trade.rateApplied)} · {formatDate(trade.createdAt)}</p>
-                        </div>
-                      </div>
-                      {(trade.ecode || trade.comment) && (
-                        <div className="rounded-lg border border-outline-variant bg-surface-deep p-2 text-xs">
-                          {trade.ecode && <p className="break-all"><strong>E-code:</strong> {trade.ecode}</p>}
-                          {trade.comment && <p><strong>User comment:</strong> {trade.comment}</p>}
-                        </div>
-                      )}
-                      <div className="flex justify-end gap-2 pt-2 border-t border-subtle">
-                        <button disabled={processingTrade === trade.id} onClick={() => setTradeModal({ trade, action: "approve" })} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-status-success/20 text-status-success hover:bg-status-success/30 transition-colors">Approve</button>
-                        <button disabled={processingTrade === trade.id} onClick={() => setTradeModal({ trade, action: "reject" })} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-status-danger/20 text-status-danger hover:bg-status-danger/30 transition-colors">Reject</button>
-                      </div>
-                    </article>
-                  );
-                })}
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center p-3 bg-surface-container-low rounded-lg border border-subtle">
+              <div>
+                <p className="font-body-sm text-xs font-bold">Disbursement Mode</p>
+                <p className="text-[10px] text-on-surface-variant">Switch between instant API and manual approval</p>
               </div>
-            )}
-          </div>
-
-          <div className="bg-surface-bright border border-subtle rounded-xl p-3.5 md:p-4 shadow-sm flex flex-col gap-3">
-            <div className="flex justify-between items-center">
-              <h2 className="font-headline-md text-headline-md text-primary font-bold">Trade History</h2>
-              <button disabled={!history.length} onClick={exportCsv} className="flex items-center gap-1 px-3 py-1 rounded-lg border border-subtle bg-surface-container text-secondary text-xs hover:bg-surface-container-high transition-colors font-bold disabled:opacity-50">
-                <span className="material-symbols-outlined text-[14px]">download</span> Export CSV
-              </button>
+              <div className="flex bg-surface-deep p-0.5 rounded-lg border border-outline-variant">
+                {(["auto", "manual"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setPayoutMode(mode)}
+                    className={`px-3 py-1 text-[10px] rounded font-bold uppercase transition-colors ${
+                      payoutMode === mode ? "bg-secondary text-on-secondary shadow-sm" : "text-on-surface-variant hover:text-on-surface"
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
             </div>
-            <SectionState loading={tradesState.loading} error={tradesState.error} empty={!history.length} emptyText="No reviewed gift-card trades." />
-            {!tradesState.loading && !tradesState.error && history.length > 0 && (
-              <div className="overflow-x-auto border border-subtle rounded-lg">
-                <table className="w-full text-left text-body-sm">
-                  <thead className="bg-surface-container-low font-label-caps text-[10px]">
-                    <tr className="border-b border-subtle">
-                      <th className="py-2 px-3">DATE</th>
-                      <th className="py-2 px-3">TRADE ID</th>
-                      <th className="py-2 px-3">USER</th>
-                      <th className="py-2 px-3">ASSET</th>
-                      <th className="py-2 px-3">VALUE</th>
-                      <th className="py-2 px-3">PAYOUT</th>
-                      <th className="py-2 px-3">STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-subtle">
-                    {history.map((trade) => (
-                      <tr key={trade.id} className="hover:bg-surface-container transition-colors">
-                        <td className="py-2 px-3 text-on-surface-variant text-xs">{formatDate(trade.reviewedAt || trade.createdAt)}</td>
-                        <td className="py-2 px-3 font-data-mono text-[10px]">{trade.id}</td>
-                        <td className="py-2 px-3"><span className="block font-medium text-xs">{trade.userName || "—"}</span><span className="text-[10px] text-on-surface-variant font-data-mono">{trade.userEmail || trade.uid}</span></td>
-                        <td className="py-2 px-3 font-medium text-xs">{trade.brandName} ({trade.cardType})</td>
-                        <td className="py-2 px-3 font-data-mono text-xs">{formatMoney(trade.cardValue, trade.currency)}</td>
-                        <td className="py-2 px-3 text-secondary font-bold font-data-mono text-xs">{formatMoney(trade.payoutAmount)}</td>
-                        <td className="py-2 px-3"><span className={`${trade.status === "approved" ? "text-status-success" : "text-status-danger"} font-bold text-xs uppercase`}>{trade.status}</span>{(trade.rejectionReason || trade.adminComment) && <span className="block max-w-48 truncate text-[10px] text-on-surface-variant mt-0.5" title={trade.rejectionReason || trade.adminComment || ""}>{trade.rejectionReason || trade.adminComment}</span>}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+
+            <label className="flex flex-col gap-1 text-xs font-bold text-on-surface-variant">
+              PAYOUT DESTINATION / WALLET POOL
+              <input
+                className={inputClass}
+                value={payoutDestination}
+                onChange={(event) => setPayoutDestination(event.target.value)}
+                placeholder="e.g. Master Settlement Wallet ID"
+              />
+            </label>
+
+            <button
+              type="button"
+              disabled={savingSettings || !payoutMode || !payoutDestination.trim()}
+              onClick={saveSettings}
+              className="w-full py-2 rounded-lg font-bold bg-primary text-on-primary hover:opacity-90 transition-opacity disabled:opacity-50 text-xs shadow-sm"
+            >
+              {savingSettings ? "Saving…" : "Save Payout Configuration"}
+            </button>
           </div>
-        </section>
+        </div>
+      </div>
+    );
+  };
+
+  // ---------------------------------------------------------------------
+  // MAIN RENDER
+  // ---------------------------------------------------------------------
+  return (
+    <div className="w-full flex flex-col gap-3.5">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-surface-container border border-border-subtle px-3 py-1.5 rounded-xl shadow-lg font-body-sm text-xs text-on-surface">
+          {toast}
+        </div>
+      )}
+
+      {/* Global Error Banner */}
+      {actionError && (
+        <div className="flex justify-between items-center rounded-xl border border-status-danger/40 bg-status-danger/10 p-3 text-xs text-status-danger">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="font-bold underline">Dismiss</button>
+        </div>
+      )}
+
+      {/* Top Header & Metrics Bar */}
+      <div className="bg-surface-bright rounded-xl border border-subtle p-3.5 md:p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-2xl text-primary">card_giftcard</span>
+            <h1 className="font-headline-lg text-headline-lg text-primary font-bold">Giftcard Trade &amp; Rates Desk</h1>
+          </div>
+          <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-2">
+            Inspect customer gift card proofs, process instant redemptions, and manage unit rates.
+            <span className="inline-flex items-center gap-1 bg-status-success/10 text-status-success px-2 py-0.5 rounded-full text-[10px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE ENGINE
+            </span>
+          </p>
+        </div>
+
+        {/* Quick KPI stats */}
+        <div className="flex items-center gap-4 bg-surface-container-low px-3.5 py-1.5 rounded-xl border border-subtle shrink-0">
+          <div>
+            <span className="text-[9px] font-label-caps text-on-surface-variant block font-bold">TOTAL REDEEMED</span>
+            <span className="text-xs font-bold font-data-mono text-secondary">{formatMoney(totalRedeemedNaira)}</span>
+          </div>
+          <div className="border-r border-subtle h-6" />
+          <div>
+            <span className="text-[9px] font-label-caps text-on-surface-variant block font-bold">ACTIVE QUEUE</span>
+            <span className="text-xs font-bold font-data-mono text-status-danger">{pendingTrades.length} Pending</span>
+          </div>
+        </div>
       </div>
 
-      {brandModal && <Modal title={brandModal === "new" ? "Add brand" : "Edit brand"} onClose={() => setBrandModal(null)}><BrandForm brand={brandModal === "new" ? null : brandModal} onClose={() => setBrandModal(null)} /></Modal>}
-      {rateModal && <Modal title={rateModal === "new" ? "Add rate" : "Edit rate"} onClose={() => setRateModal(null)}><RateForm rate={rateModal === "new" ? null : rateModal} brands={brandsState.data} onClose={() => setRateModal(null)} /></Modal>}
-      {tradeModal && <Modal title={`${tradeModal.action === "approve" ? "Approve" : "Reject"} trade`} onClose={() => !processingTrade && setTradeModal(null)}><form onSubmit={processTrade} className="space-y-3"><p className="text-body-sm">{tradeModal.trade.brandName} · {formatMoney(tradeModal.trade.cardValue, tradeModal.trade.currency)} · {tradeModal.trade.userName || tradeModal.trade.userEmail}</p><label className="block text-body-sm">{tradeModal.action === "reject" ? "Rejection reason" : "Approval note (optional)"}<textarea name="comment" required={tradeModal.action === "reject"} className={`${inputClass} mt-1 min-h-24`} /></label><div className="flex justify-end gap-2"><button type="button" disabled={Boolean(processingTrade)} onClick={() => setTradeModal(null)} className={`${buttonClass} border border-subtle`}>Cancel</button><button type="submit" disabled={Boolean(processingTrade)} className={`${buttonClass} ${tradeModal.action === "approve" ? "bg-status-success text-white" : "bg-status-danger text-white"}`}>{processingTrade ? "Processing…" : `Confirm ${tradeModal.action}`}</button></div></form></Modal>}
+      {/* Tab Navigation Switcher */}
+      <div className="flex bg-surface-bright border border-subtle p-1 rounded-xl shadow-sm gap-1 w-fit overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("queue")}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
+            activeTab === "queue" ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px]">verified</span>
+          <span>Trade Queue &amp; Inspector</span>
+          {pendingTrades.length > 0 && (
+            <span className="ml-1 bg-status-danger text-white px-1.5 py-0.2 rounded-full text-[9px] font-bold animate-pulse">
+              {pendingTrades.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab("history")}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
+            activeTab === "history" ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+          <span>Trade Ledger &amp; History</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("rates")}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
+            activeTab === "rates" ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px]">currency_exchange</span>
+          <span>Rate Management</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("brands")}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap ${
+            activeTab === "brands" ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px]">branding_watermark</span>
+          <span>Brands &amp; Settings</span>
+        </button>
+      </div>
+
+      {/* Tab Contents */}
+      {activeTab === "queue" && renderQueueTab()}
+      {activeTab === "history" && renderHistoryTab()}
+      {activeTab === "rates" && renderRatesTab()}
+      {activeTab === "brands" && renderBrandsTab()}
+
+      {/* Modals */}
+      {brandModal && (
+        <Modal title={brandModal === "new" ? "Add Gift Card Brand" : "Edit Brand Details"} onClose={() => setBrandModal(null)}>
+          <BrandForm brand={brandModal === "new" ? null : brandModal} onClose={() => setBrandModal(null)} />
+        </Modal>
+      )}
+
+      {rateModal && (
+        <Modal title={rateModal === "new" ? "Add Exchange Rate" : "Edit Exchange Rate"} onClose={() => setRateModal(null)}>
+          <RateForm rate={rateModal === "new" ? null : rateModal} brands={brandsState.data} onClose={() => setRateModal(null)} />
+        </Modal>
+      )}
+
+      {/* Trade Approval / Rejection Modal */}
+      {tradeModal && (
+        <Modal
+          title={`${tradeModal.action === "approve" ? "Confirm Approval & Payout" : "Reject Gift Card Trade"}`}
+          onClose={() => !processingTrade && setTradeModal(null)}
+        >
+          <form onSubmit={processTrade} className="space-y-3">
+            <div className="p-3 bg-surface-container-low rounded-lg border border-subtle text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Asset:</span>
+                <span className="font-bold text-on-surface">{tradeModal.trade.brandName} ({tradeModal.trade.cardType})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Face Value:</span>
+                <span className="font-data-mono font-bold">{formatMoney(tradeModal.trade.cardValue, tradeModal.trade.currency)}</span>
+              </div>
+              <div className="flex justify-between border-t border-subtle pt-1">
+                <span className="text-on-surface-variant font-bold">Calculated Payout:</span>
+                <span className="font-data-mono font-bold text-secondary">{formatMoney(tradeModal.trade.payoutAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">User:</span>
+                <span className="font-medium truncate max-w-[220px]">{tradeModal.trade.userName || tradeModal.trade.userEmail}</span>
+              </div>
+            </div>
+
+            <label className="block text-xs font-bold text-on-surface-variant">
+              {tradeModal.action === "reject" ? "Reason for Rejection (Required)" : "Approval Note (Optional)"}
+              {tradeModal.action === "reject" && (
+                <div className="grid grid-cols-2 gap-1.5 my-2">
+                  {[
+                    "Invalid Code / PIN",
+                    "Already Redeemed",
+                    "Blurry / Unreadable Image",
+                    "Wrong Currency / Value",
+                  ].map((quickReason) => (
+                    <button
+                      key={quickReason}
+                      type="button"
+                      onClick={(e) => {
+                        const textarea = (e.currentTarget.closest("form")?.querySelector("textarea") as HTMLTextAreaElement);
+                        if (textarea) textarea.value = quickReason;
+                      }}
+                      className="px-2 py-1 bg-surface-deep hover:bg-surface-container border border-subtle rounded text-[10px] text-on-surface-variant transition-colors"
+                    >
+                      {quickReason}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <textarea
+                name="comment"
+                required={tradeModal.action === "reject"}
+                placeholder={tradeModal.action === "reject" ? "Explain why the trade is being rejected..." : "Internal approval notes..."}
+                className={`${inputClass} mt-1 min-h-20`}
+              />
+            </label>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-subtle">
+              <button
+                type="button"
+                disabled={Boolean(processingTrade)}
+                onClick={() => setTradeModal(null)}
+                className={`${buttonClass} border border-subtle bg-surface-deep`}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={Boolean(processingTrade)}
+                className={`${buttonClass} ${tradeModal.action === "approve" ? "bg-status-success text-white" : "bg-status-danger text-white"}`}
+              >
+                {processingTrade ? "Processing…" : `Confirm ${tradeModal.action === "approve" ? "Approval" : "Rejection"}`}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Full-screen High-Res Image Lightbox Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-fadeIn"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-secondary p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[24px]">close</span>
+            </button>
+            <img
+              src={previewImage}
+              alt="High-res giftcard preview"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl border border-white/20 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
