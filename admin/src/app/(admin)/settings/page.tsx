@@ -331,7 +331,7 @@ export default function SettingsPage() {
       )}
 
       <div className="px-container-padding pt-5 w-full">
-        <div className="max-w-6xl mx-auto flex flex-col gap-[24px] pb-12">
+        <div className="max-w-6xl mx-auto flex flex-col gap-[24px] pb-4">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-[16px] border-b border-outline-variant pb-4">
             <div>

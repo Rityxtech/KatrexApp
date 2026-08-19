@@ -103,8 +103,9 @@
   --spacing-stack-base: 8px;
 }
 
+html,
 body {
-  min-height: max(884px, 100dvh);
+  min-height: 100%;
 }
 
 /* Material Symbols */

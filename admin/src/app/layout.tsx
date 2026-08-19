@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
+      className={`${inter.variable} ${jetbrainsMono.variable} antialiased dark`}
     >
       <head>
         <link
@@ -36,7 +36,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full flex flex-col bg-surface-deep text-on-surface font-body-md selection:bg-secondary/30">
+      <body className="bg-surface-deep text-on-surface font-body-md selection:bg-secondary/30">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
