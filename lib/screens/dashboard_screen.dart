@@ -18,6 +18,7 @@ import '../providers/transaction_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../services/market_data_service.dart';
 import '../widgets/app_background.dart';
+import '../widgets/deposit_methods_modal.dart';
 import 'profile_screen.dart';
 import 'buy_airtime_screen.dart';
 import 'buy_data_screen.dart';
@@ -386,7 +387,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     children: [
                       Expanded(child: _walletActionBtn(icon: Icons.add_circle_rounded, label: 'Add Money', btnColor: const Color(0xFF10B981), onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const DepositScreen()));
+                        showDepositMethodsModal(context: context);
                       })),
                       const SizedBox(width: 8),
                       Expanded(child: _walletActionBtn(icon: Icons.send_rounded, label: 'Withdraw', btnColor: const Color(0xFFEF4444), onTap: () {

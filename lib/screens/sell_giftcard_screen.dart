@@ -2,8 +2,8 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -16,7 +16,6 @@ import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 import 'giftcard_trade_preview_screen.dart';
 import 'giftcard_trades_history_screen.dart';
-import 'live_rates_screen.dart';
 
 class SellGiftcardScreen extends StatefulWidget {
   const SellGiftcardScreen({super.key});
@@ -26,46 +25,129 @@ class SellGiftcardScreen extends StatefulWidget {
 }
 
 class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
-  int _currentPromoIndex = 0;
-  
-  final List<Map<String, dynamic>> _promos = [
+  String _searchQuery = '';
+  int _selectedFilterIndex = 0; // 0: All, 1: Amazon, 2: Apple, 3: Steam, etc.
+
+  final List<Map<String, dynamic>> _brands = [
     {
-      'image': 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?q=80&w=800&auto=format&fit=crop',
-      'tag': '🔥 Trending Rate',
-      'tagColor': const Color(0xFFF97316),
-      'title': 'Steam Wallet UK',
-      'subtitle': 'Trade up to ₦1,450/£',
+      'id': 'amazon',
+      'name': 'Amazon',
+      'icon': FontAwesomeIcons.amazon,
+      'color': const Color(0xFF10B981),
+      'hasGreenBorder': true,
+      'rate': 'Up to ₦1,450/\$',
+      'category': 'Shopping',
     },
     {
-      'image': 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?q=80&w=800&auto=format&fit=crop',
-      'tag': 'Exclusive',
-      'tagColor': const Color(0xFF3B82F6),
-      'title': 'Apple iTunes',
-      'subtitle': 'Highest rates guaranteed',
+      'id': 'apple',
+      'name': 'Apple',
+      'icon': FontAwesomeIcons.apple,
+      'color': const Color(0xFF60A5FA),
+      'rate': 'Up to ₦1,250/\$',
+      'category': 'Tech',
     },
     {
-      'image': 'https://images.unsplash.com/photo-1620714223084-8fcacc6dfd8d?q=80&w=800&auto=format&fit=crop',
-      'tag': 'Instant Cash',
-      'tagColor': const Color(0xFF10B981),
-      'title': 'Amazon E-Codes',
-      'subtitle': 'Fast & secure payouts',
+      'id': 'steam',
+      'name': 'Steam',
+      'icon': FontAwesomeIcons.steam,
+      'color': const Color(0xFF9CA3AF),
+      'rate': 'Up to ₦1,450/£',
+      'category': 'Gaming',
+    },
+    {
+      'id': 'googleplay',
+      'name': 'Google Play',
+      'icon': FontAwesomeIcons.googlePlay,
+      'color': const Color(0xFF34D399),
+      'rate': 'Up to ₦980/\$',
+      'category': 'Apps',
+    },
+    {
+      'id': 'itunes',
+      'name': 'iTunes',
+      'icon': FontAwesomeIcons.itunes,
+      'color': const Color(0xFFA78BFA),
+      'rate': 'Up to ₦1,200/\$',
+      'category': 'Music',
+    },
+    {
+      'id': 'walmart',
+      'name': 'Walmart',
+      'icon': Icons.store_rounded,
+      'color': const Color(0xFFF59E0B),
+      'rate': 'Up to ₦950/\$',
+      'category': 'Shopping',
+    },
+    {
+      'id': 'target',
+      'name': 'Target',
+      'icon': Icons.adjust_rounded,
+      'color': const Color(0xFFEF4444),
+      'rate': 'Up to ₦920/\$',
+      'category': 'Shopping',
+    },
+    {
+      'id': 'ebay',
+      'name': 'eBay',
+      'icon': FontAwesomeIcons.ebay,
+      'color': const Color(0xFF3B82F6),
+      'rate': 'Up to ₦900/\$',
+      'category': 'Shopping',
+    },
+    {
+      'id': 'netflix',
+      'name': 'Netflix',
+      'icon': Icons.movie_rounded,
+      'color': const Color(0xFFE50914),
+      'rate': 'Up to ₦900/\$',
+      'category': 'Streaming',
+    },
+    {
+      'id': 'spotify',
+      'name': 'Spotify',
+      'icon': FontAwesomeIcons.spotify,
+      'color': const Color(0xFF1DB954),
+      'rate': 'Up to ₦850/\$',
+      'category': 'Music',
+    },
+    {
+      'id': 'razer',
+      'name': 'Razer Gold',
+      'icon': Icons.sports_esports_rounded,
+      'color': const Color(0xFF10B981),
+      'rate': 'Up to ₦1,180/\$',
+      'category': 'Gaming',
+    },
+    {
+      'id': 'xbox',
+      'name': 'Xbox',
+      'icon': FontAwesomeIcons.xbox,
+      'color': const Color(0xFF10B981),
+      'rate': 'Up to ₦1,200/\$',
+      'category': 'Gaming',
     },
   ];
 
-  final List<Map<String, dynamic>> _brands = [
-    {'name': 'Apple', 'icon': Icons.apple, 'color': Colors.white, 'rate': 'Up to ₦1,250/\$', 'image': 'https://images.unsplash.com/photo-1621768216002-5ac171876607?q=80&w=400'},
-    {'name': 'Steam', 'icon': Icons.gamepad_rounded, 'color': const Color(0xFF9CA3AF), 'rate': 'Up to ₦1,450/£', 'image': 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?q=80&w=400'},
-    {'name': 'Amazon', 'icon': Icons.shopping_cart_rounded, 'color': const Color(0xFFF59E0B), 'rate': 'Up to ₦1,050/\$', 'image': 'https://images.unsplash.com/photo-1620714223084-8fcacc6dfd8d?q=80&w=400'},
-    {'name': 'Razer Gold', 'icon': Icons.sports_esports_rounded, 'color': const Color(0xFF10B981), 'rate': 'Up to ₦1,180/\$', 'image': 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=400'},
-    {'name': 'Google Play', 'icon': Icons.play_arrow_rounded, 'color': const Color(0xFF3B82F6), 'rate': 'Up to ₦980/\$', 'image': 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?q=80&w=400'},
-    {'name': 'Vanilla Visa', 'icon': Icons.credit_card_rounded, 'color': const Color(0xFF1D4ED8), 'rate': 'Up to ₦1,100/\$', 'image': 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=400'},
-    {'name': 'Netflix', 'icon': Icons.movie_rounded, 'color': const Color(0xFFE50914), 'rate': 'Up to ₦900/\$', 'image': 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=400'},
-    {'name': 'Spotify', 'icon': Icons.music_note_rounded, 'color': const Color(0xFF1DB954), 'rate': 'Up to ₦850/\$', 'image': 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?q=80&w=400'},
-    {'name': 'Sephora', 'icon': Icons.spa_rounded, 'color': const Color(0xFFEC4899), 'rate': 'Up to ₦1,000/\$', 'image': 'https://images.unsplash.com/photo-1596462502278-27bfdd403348?q=80&w=400'},
-    {'name': 'Xbox', 'icon': Icons.videogame_asset_rounded, 'color': const Color(0xFF10B981), 'rate': 'Up to ₦1,200/\$', 'image': 'https://images.unsplash.com/photo-1605901309584-818e25960a8f?q=80&w=400'},
-    {'name': 'PlayStation', 'icon': Icons.games_rounded, 'color': const Color(0xFF2563EB), 'rate': 'Up to ₦1,150/\$', 'image': 'https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?q=80&w=400'},
-    {'name': 'Walmart', 'icon': Icons.store_rounded, 'color': const Color(0xFFF59E0B), 'rate': 'Up to ₦950/\$', 'image': 'https://images.unsplash.com/photo-1534723452862-763ed04871a9?q=80&w=400'},
-  ];
+  List<Map<String, dynamic>> get _filteredBrands {
+    return _brands.where((brand) {
+      final name = (brand['name'] as String).toLowerCase();
+      final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+      if (_selectedFilterIndex == 0) return true;
+      final selectedFilterName = _filterChips[_selectedFilterIndex]['name'] as String;
+      return name == selectedFilterName.toLowerCase();
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get _filterChips {
+    return [
+      {'name': 'All', 'icon': null},
+      {'name': 'Amazon', 'icon': FontAwesomeIcons.amazon},
+      {'name': 'Apple', 'icon': FontAwesomeIcons.apple},
+      {'name': 'Steam', 'icon': FontAwesomeIcons.steam},
+      {'name': 'Google Play', 'icon': FontAwesomeIcons.googlePlay},
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,20 +157,21 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
         fit: StackFit.expand,
         children: [
           const AppBackground(child: SizedBox.expand()),
-          
           SafeArea(
             child: Column(
               children: [
                 _buildHeader(context),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.only(bottom: 40),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
                     children: [
-                      _buildPromoSlider(),
-                      const SizedBox(height: 16),
-                      _buildSearchPanel(),
-                      const SizedBox(height: 16),
-                      _buildQuickAccess(),
+                      _buildTopHeroCard(),
+                      const SizedBox(height: 18),
+                      _buildSearchField(),
+                      const SizedBox(height: 18),
+                      _buildSectionHeader(),
+                      const SizedBox(height: 14),
+                      _buildFilterRow(),
                       const SizedBox(height: 16),
                       _buildBrandGrid(),
                     ],
@@ -104,57 +187,39 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: const Center(
-                        child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 20),
-                      ),
-                    ),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: const Center(
+                    child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 20),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Sell Giftcards',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  Text(
-                    'Best rates guaranteed',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
+          ),
+          Text(
+            'Sell Gift Cards',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -0.2,
+            ),
           ),
           const NotificationIcon(),
         ],
@@ -162,167 +227,98 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
     );
   }
 
-  Widget _buildPromoSlider() {
-    return Column(
-      children: [
-        CarouselSlider.builder(
-          itemCount: _promos.length,
-          options: CarouselOptions(
-            height: 112,
-            viewportFraction: 0.92,
-            enlargeCenterPage: true,
-            autoPlay: true,
-            autoPlayInterval: const Duration(seconds: 4),
-            autoPlayAnimationDuration: const Duration(milliseconds: 800),
-            autoPlayCurve: Curves.fastOutSlowIn,
-            onPageChanged: (index, reason) {
-              setState(() {
-                _currentPromoIndex = index;
-              });
-            },
+  Widget _buildTopHeroCard() {
+    return GestureDetector(
+      onTap: () {
+        final amazon = _brands.firstWhere((b) => b['id'] == 'amazon', orElse: () => _brands.first);
+        _showTradeBottomSheet(amazon);
+      },
+      child: Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0F382A),
+              Color(0xFF052317),
+            ],
           ),
-          itemBuilder: (context, index, realIndex) {
-            final promo = _promos[index];
-            return Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                image: DecorationImage(
-                  image: NetworkImage(promo['image']),
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(
-                    Colors.black.withOpacity(0.45),
-                    BlendMode.darken,
+          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF10B981).withOpacity(0.12),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Faded watermark background
+            Positioned(
+              right: -10,
+              top: -5,
+              bottom: -5,
+              child: Opacity(
+                opacity: 0.15,
+                child: Center(
+                  child: Text(
+                    'chime',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 64,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -2,
+                    ),
                   ),
                 ),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: Stack(
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Positioned(
-                    top: 10,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: (promo['tagColor'] as Color).withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        promo['tag'],
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB).withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF60A5FA).withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      'Popular',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF93C5FD),
                       ),
                     ),
                   ),
-                  Positioned(
-                    bottom: 10,
-                    left: 12,
-                    right: 12,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              promo['title'],
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              promo['subtitle'],
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFD1D5DB),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                'Trade',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(width: 3),
-                              const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 10),
-                            ],
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Amazon Gift Cards',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Instant payout. Best rates',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF9CA3AF),
                     ),
                   ),
                 ],
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: _promos.asMap().entries.map((entry) {
-            final isSelected = _currentPromoIndex == entry.key;
-            return Container(
-              width: isSelected ? 14 : 4,
-              height: 3.5,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(2),
-                color: isSelected ? const Color(0xFF2563EB) : Colors.white.withOpacity(0.2),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSearchPanel() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.search_rounded, color: Color(0xFF9CA3AF), size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Search 50+ gift card brands...',
-                  hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF6B7280)),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
               ),
             ),
           ],
@@ -331,81 +327,28 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
     );
   }
 
-  Widget _buildQuickAccess() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+  Widget _buildSearchField() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
       child: Row(
         children: [
+          const Icon(Icons.search_rounded, color: Color(0xFF9CA3AF), size: 18),
+          const SizedBox(width: 10),
           Expanded(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const GiftcardTradesHistoryScreen()),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [const Color(0xFF3B82F6).withOpacity(0.15), const Color(0xFF1D4ED8).withOpacity(0.05)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32, height: 32,
-                      decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                      child: const Center(child: Icon(Icons.receipt_long_rounded, color: Color(0xFF60A5FA), size: 18)),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('My Trades', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
-                        Text('View active & past', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LiveRatesScreen(initialIsGiftcardTab: true)),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [const Color(0xFF10B981).withOpacity(0.15), const Color(0xFF047857).withOpacity(0.05)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32, height: 32,
-                      decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                      child: const Center(child: Icon(Icons.calculate_rounded, color: Color(0xFF34D399), size: 18)),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Rate Calculator', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
-                        Text('Live unit values', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                      ],
-                    ),
-                  ],
-                ),
+            child: TextField(
+              onChanged: (val) => setState(() => _searchQuery = val),
+              style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Search brands (e.g. Apple, Steam)...',
+                hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
@@ -414,57 +357,175 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
     );
   }
 
-  Widget _buildBrandGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 0.92,
+  Widget _buildSectionHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'AVAILABLE BRANDS',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF94A3B8),
+            letterSpacing: 1.0,
+          ),
         ),
-        itemCount: _brands.length,
-        itemBuilder: (context, index) {
-          final brand = _brands[index];
-          return GestureDetector(
-            onTap: () => _showTradeBottomSheet(brand),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: (brand['color'] as Color).withOpacity(0.1),
-                        border: Border.all(color: (brand['color'] as Color).withOpacity(0.2)),
-                      ),
-                      child: Center(
-                        child: Icon(brand['icon'], size: 20, color: brand['color']),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(brand['name'], style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Text(brand['rate'], style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF34D399)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
+        GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const GiftcardTradesHistoryScreen()),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.receipt_long_rounded, color: Colors.black, size: 14),
+                const SizedBox(width: 6),
+                Text(
+                  'My Trades',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterRow() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: List.generate(_filterChips.length, (index) {
+          final chip = _filterChips[index];
+          final isSelected = _selectedFilterIndex == index;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedFilterIndex = index),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF2563EB).withOpacity(0.2) : Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF2563EB) : Colors.white.withOpacity(0.08),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (chip['icon'] != null) ...[
+                    FaIcon(chip['icon'] as IconData, size: 12, color: isSelected ? const Color(0xFF60A5FA) : const Color(0xFF94A3B8)),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    chip['name'] as String,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                      color: isSelected ? const Color(0xFF60A5FA) : const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ],
               ),
             ),
           );
-        },
+        }),
       ),
+    );
+  }
+
+  Widget _buildBrandGrid() {
+    final brands = _filteredBrands;
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 0.95,
+      ),
+      itemCount: brands.length,
+      itemBuilder: (context, index) {
+        final brand = brands[index];
+        final isGreenBorder = brand['hasGreenBorder'] == true;
+        final iconData = brand['icon'];
+
+        return GestureDetector(
+          onTap: () => _showTradeBottomSheet(brand),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isGreenBorder
+                  ? const Color(0xFF0F382A).withOpacity(0.6)
+                  : const Color(0xFF0F172A).withOpacity(0.4),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isGreenBorder
+                    ? const Color(0xFF10B981)
+                    : Colors.white.withOpacity(0.08),
+                width: isGreenBorder ? 1.5 : 1,
+              ),
+              boxShadow: isGreenBorder
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF10B981).withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.06),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    ),
+                    child: Center(
+                      child: iconData is IconData
+                          ? (iconData.fontFamily?.startsWith('FontAwesome') ?? false)
+                              ? FaIcon(iconData, size: 18, color: isGreenBorder ? const Color(0xFF34D399) : Colors.white)
+                              : Icon(iconData, size: 18, color: isGreenBorder ? const Color(0xFF34D399) : Colors.white)
+                          : const Icon(Icons.card_giftcard, size: 18, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    brand['name'],
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -561,7 +622,7 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Minimum trade amount is ${currencySymbol}${_minTransactionAmount.toStringAsFixed(0)}',
+            'Minimum trade amount is $currencySymbol${_minTransactionAmount.toStringAsFixed(0)}',
             style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
           ),
           backgroundColor: const Color(0xFFEF4444),
@@ -668,7 +729,7 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
         type: TransactionType.giftcard,
         status: TransactionStatus.pending,
         amountNaira: _nairaAmount,
-        description: 'Sell $brandName - ${currencySymbol}${_cardValue.toStringAsFixed(0)} ($cardTypeStr)',
+        description: 'Sell $brandName - $currencySymbol${_cardValue.toStringAsFixed(0)} ($cardTypeStr)',
         reference: 'GC-$tradeId',
         createdAt: DateTime.now(),
         cardBrand: brandName,
@@ -743,9 +804,15 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                           width: 32, height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: (widget.brand['color'] as Color).withOpacity(0.2),
+                            color: Colors.white.withOpacity(0.1),
                           ),
-                          child: Center(child: Icon(widget.brand['icon'], size: 16, color: widget.brand['color'])),
+                          child: Center(
+                            child: widget.brand['icon'] is IconData
+                                ? ((widget.brand['icon'] as IconData).fontFamily?.startsWith('FontAwesome') ?? false)
+                                    ? FaIcon(widget.brand['icon'] as IconData, size: 16, color: Colors.white)
+                                    : Icon(widget.brand['icon'] as IconData, size: 16, color: Colors.white)
+                                : const Icon(Icons.card_giftcard, size: 16, color: Colors.white),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Text('Sell ${widget.brand['name']}', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
