@@ -49,7 +49,7 @@ function timeAgo(date: any) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function formatMoney(value: number, currency = "NGN") {
+function formatMoney(value?: number | null, currency = "NGN") {
   try {
     return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(value) || 0);
   } catch {
@@ -208,7 +208,13 @@ export default function GiftcardPage() {
   // Modals & Action states
   const [brandModal, setBrandModal] = useState<GiftcardBrand | "new" | null>(null);
   const [rateModal, setRateModal] = useState<GiftcardRate | "new" | null>(null);
-  const [tradeModal, setTradeModal] = useState<{ trade: GiftcardTrade; action: TradeAction } | null>(null);
+  const [tradeModal, setTradeModal] = useState<{
+    trade: GiftcardTrade;
+    action: TradeAction;
+    cardValue: number;
+    payoutAmount: number;
+    comment: string;
+  } | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewImageIndex, setPreviewImageIndex] = useState<number>(0);
   const [processingTrade, setProcessingTrade] = useState<string | null>(null);
@@ -375,12 +381,18 @@ export default function GiftcardPage() {
   async function processTrade(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!tradeModal) return;
-    const comment = String(new FormData(event.currentTarget).get("comment") || "").trim();
+    const comment = tradeModal.comment.trim();
     if (tradeModal.action === "reject" && !comment) return;
     setProcessingTrade(tradeModal.trade.id);
     setActionError(null);
     try {
-      await httpsCallable(functions, "processGiftcardTrade")({ tradeId: tradeModal.trade.id, action: tradeModal.action, comment });
+      await httpsCallable(functions, "processGiftcardTrade")({
+        tradeId: tradeModal.trade.id,
+        action: tradeModal.action,
+        cardValue: tradeModal.cardValue,
+        payoutAmount: tradeModal.payoutAmount,
+        comment,
+      });
       showToast(`Trade #${tradeModal.trade.id.slice(0, 8)} ${tradeModal.action === "approve" ? "Approved" : "Rejected"}`);
       setTradeModal(null);
     } catch (caught) {
@@ -599,10 +611,22 @@ export default function GiftcardPage() {
                 {/* 4-Column Key Metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                   <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
-                    <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">FACE VALUE</span>
+                    <div className="flex justify-between items-center">
+                      <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">FACE VALUE</span>
+                      {selectedTrade.cardValueAdjusted && (
+                        <span className="px-1.5 py-0.2 bg-status-warning/15 text-status-warning rounded text-[8px] font-black tracking-wider uppercase border border-status-warning/30">
+                          ADJUSTED
+                        </span>
+                      )}
+                    </div>
                     <span className="font-data-mono text-base font-bold text-on-surface mt-1">
                       {formatMoney(selectedTrade.cardValue, selectedTrade.currency)}
                     </span>
+                    {selectedTrade.cardValueAdjusted && selectedTrade.originalCardValue != null && (
+                      <span className="text-[10px] text-on-surface-variant line-through font-data-mono">
+                        Stated: {formatMoney(selectedTrade.originalCardValue, selectedTrade.currency)}
+                      </span>
+                    )}
                   </div>
                   <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
                     <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">RATE APPLIED</span>
@@ -611,10 +635,22 @@ export default function GiftcardPage() {
                     </span>
                   </div>
                   <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
-                    <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">PAYOUT AMOUNT</span>
+                    <div className="flex justify-between items-center">
+                      <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">PAYOUT AMOUNT</span>
+                      {selectedTrade.payoutAdjusted && (
+                        <span className="px-1.5 py-0.2 bg-status-warning/15 text-status-warning rounded text-[8px] font-black tracking-wider uppercase border border-status-warning/30">
+                          ADJUSTED
+                        </span>
+                      )}
+                    </div>
                     <span className="font-data-mono text-base font-bold text-status-success mt-1">
                       {formatMoney(selectedTrade.payoutAmount)}
                     </span>
+                    {selectedTrade.payoutAdjusted && selectedTrade.originalPayoutAmount != null && (
+                      <span className="text-[10px] text-on-surface-variant line-through font-data-mono">
+                        Stated: {formatMoney(selectedTrade.originalPayoutAmount)}
+                      </span>
+                    )}
                   </div>
                   <div className="bg-surface-container-low border border-subtle p-3 rounded-lg flex flex-col justify-between">
                     <span className="font-label-caps text-[9px] text-on-surface-variant font-bold uppercase">USER DETAILS</span>
@@ -720,6 +756,14 @@ export default function GiftcardPage() {
                         <span className="text-on-surface-variant text-[10px] block">Reviewer Admin:</span>
                         <span className="font-data-mono font-bold">{selectedTrade.adminId || "Platform Admin"}</span>
                       </div>
+                      {(selectedTrade.cardValueAdjusted || selectedTrade.payoutAdjusted) && (
+                        <div className="col-span-2 p-2 bg-status-warning/10 rounded border border-status-warning/30 text-[11px]">
+                          <span className="text-status-warning font-bold block">Admin Override Details:</span>
+                          <span className="text-on-surface font-data-mono">
+                            Face Value: {formatMoney(selectedTrade.originalCardValue, selectedTrade.currency)} → {formatMoney(selectedTrade.cardValue, selectedTrade.currency)} | Payout: {formatMoney(selectedTrade.originalPayoutAmount)} → {formatMoney(selectedTrade.payoutAmount)}
+                          </span>
+                        </div>
+                      )}
                       {(selectedTrade.rejectionReason || selectedTrade.adminComment) && (
                         <div className="col-span-2 mt-1 p-2 bg-surface-deep rounded border border-subtle">
                           <span className="text-on-surface-variant text-[10px] block font-bold">Admin Remark:</span>
@@ -742,18 +786,37 @@ export default function GiftcardPage() {
                   <div className="flex gap-2">
                     <button
                       disabled={processingTrade === selectedTrade.id}
-                      onClick={() => setTradeModal({ trade: selectedTrade, action: "reject" })}
+                      onClick={() =>
+                        setTradeModal({
+                          trade: selectedTrade,
+                          action: "reject",
+                          cardValue: Number(selectedTrade.cardValue) || 0,
+                          payoutAmount: Number(selectedTrade.payoutAmount) || 0,
+                          comment: "",
+                        })
+                      }
                       className="px-4 py-2 rounded-lg text-xs font-bold bg-status-danger/15 text-status-danger hover:bg-status-danger/25 border border-status-danger/30 transition-all"
                     >
                       REJECT TRADE
                     </button>
                     <button
                       disabled={processingTrade === selectedTrade.id}
-                      onClick={() => setTradeModal({ trade: selectedTrade, action: "approve" })}
+                      onClick={() => {
+                        const cVal = Number(selectedTrade.cardValue) || 0;
+                        const rVal = Number(selectedTrade.rateApplied) || 0;
+                        const pVal = Number(selectedTrade.payoutAmount) || Math.round(cVal * rVal);
+                        setTradeModal({
+                          trade: selectedTrade,
+                          action: "approve",
+                          cardValue: cVal,
+                          payoutAmount: pVal,
+                          comment: "",
+                        });
+                      }}
                       className="px-5 py-2 rounded-lg text-xs font-bold bg-status-success text-white hover:opacity-90 transition-opacity shadow-sm flex items-center gap-1.5"
                     >
-                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                      APPROVE &amp; PAYOUT
+                      <span className="material-symbols-outlined text-[16px]">tune</span>
+                      VERIFY &amp; APPROVE
                     </button>
                   </div>
                 </div>
@@ -1283,63 +1346,200 @@ export default function GiftcardPage() {
         </Modal>
       )}
 
-      {/* Trade Approval / Rejection Modal */}
+      {/* Trade Approval / Modification / Rejection Modal */}
       {tradeModal && (
         <Modal
-          title={`${tradeModal.action === "approve" ? "Confirm Approval & Payout" : "Reject Gift Card Trade"}`}
+          title={
+            tradeModal.action === "approve"
+              ? tradeModal.cardValue !== tradeModal.trade.cardValue || tradeModal.payoutAmount !== tradeModal.trade.payoutAmount
+                ? "Modify & Approve Gift Card Trade"
+                : "Confirm Trade Approval & Payout"
+              : "Reject Gift Card Trade"
+          }
           onClose={() => !processingTrade && setTradeModal(null)}
         >
-          <form onSubmit={processTrade} className="space-y-3">
-            <div className="p-3 bg-surface-container-low rounded-lg border border-subtle text-xs space-y-1">
+          <form onSubmit={processTrade} className="space-y-3.5">
+            {/* Top Summary Box */}
+            <div className="p-3 bg-surface-container-low rounded-xl border border-subtle text-xs space-y-1.5">
               <div className="flex justify-between">
-                <span className="text-on-surface-variant">Asset:</span>
+                <span className="text-on-surface-variant">Asset Brand &amp; Type:</span>
                 <span className="font-bold text-on-surface">{tradeModal.trade.brandName} ({tradeModal.trade.cardType})</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-on-surface-variant">Face Value:</span>
+                <span className="text-on-surface-variant">User Stated Face Value:</span>
                 <span className="font-data-mono font-bold">{formatMoney(tradeModal.trade.cardValue, tradeModal.trade.currency)}</span>
               </div>
-              <div className="flex justify-between border-t border-subtle pt-1">
-                <span className="text-on-surface-variant font-bold">Calculated Payout:</span>
-                <span className="font-data-mono font-bold text-secondary">{formatMoney(tradeModal.trade.payoutAmount)}</span>
-              </div>
               <div className="flex justify-between">
-                <span className="text-on-surface-variant">User:</span>
+                <span className="text-on-surface-variant">Exchange Rate:</span>
+                <span className="font-data-mono font-bold text-status-info">
+                  {formatMoney(tradeModal.trade.rateApplied)} / {tradeModal.trade.currency || "USD"}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-subtle pt-1.5">
+                <span className="text-on-surface-variant">User / Account:</span>
                 <span className="font-medium truncate max-w-[220px]">{tradeModal.trade.userName || tradeModal.trade.userEmail}</span>
               </div>
             </div>
 
-            <label className="block text-xs font-bold text-on-surface-variant">
-              {tradeModal.action === "reject" ? "Reason for Rejection (Required)" : "Approval Note (Optional)"}
-              {tradeModal.action === "reject" && (
-                <div className="grid grid-cols-2 gap-1.5 my-2">
-                  {[
-                    "Invalid Code / PIN",
-                    "Already Redeemed",
-                    "Blurry / Unreadable Image",
-                    "Wrong Currency / Value",
-                  ].map((quickReason) => (
-                    <button
-                      key={quickReason}
-                      type="button"
-                      onClick={(e) => {
-                        const textarea = (e.currentTarget.closest("form")?.querySelector("textarea") as HTMLTextAreaElement);
-                        if (textarea) textarea.value = quickReason;
-                      }}
-                      className="px-2 py-1 bg-surface-deep hover:bg-surface-container border border-subtle rounded text-[10px] text-on-surface-variant transition-colors"
-                    >
-                      {quickReason}
-                    </button>
-                  ))}
+            {/* Approval Mode: Verified Values and Adjustments */}
+            {tradeModal.action === "approve" ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-xs font-bold text-on-surface">
+                      <span>Verified Card Value</span>
+                      {tradeModal.cardValue !== tradeModal.trade.cardValue && (
+                        <span className="px-1.5 py-0.2 bg-status-warning/15 text-status-warning rounded text-[9px] font-black tracking-wider uppercase">
+                          MODIFIED
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={tradeModal.cardValue}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const rate = Number(tradeModal.trade.rateApplied) || 0;
+                          const autoPayout = Math.round(val * rate);
+                          setTradeModal({
+                            ...tradeModal,
+                            cardValue: val,
+                            payoutAmount: autoPayout,
+                          });
+                        }}
+                        className={`${inputClass} font-data-mono font-bold`}
+                        required
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-on-surface-variant pointer-events-none">
+                        {tradeModal.trade.currency || "USD"}
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-xs font-bold text-on-surface">
+                      <span>Final Payout (NGN)</span>
+                      {tradeModal.payoutAmount !== tradeModal.trade.payoutAmount && (
+                        <span className="px-1.5 py-0.2 bg-status-warning/15 text-status-warning rounded text-[9px] font-black tracking-wider uppercase">
+                          MODIFIED
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={tradeModal.payoutAmount}
+                        onChange={(e) => {
+                          const pVal = parseFloat(e.target.value) || 0;
+                          setTradeModal({
+                            ...tradeModal,
+                            payoutAmount: pVal,
+                          });
+                        }}
+                        className={`${inputClass} font-data-mono font-bold text-status-success`}
+                        required
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-on-surface-variant pointer-events-none">
+                        ₦ NGN
+                      </span>
+                    </div>
+                  </label>
                 </div>
-              )}
-              <textarea
-                name="comment"
-                required={tradeModal.action === "reject"}
-                placeholder={tradeModal.action === "reject" ? "Explain why the trade is being rejected..." : "Internal approval notes..."}
-                className={`${inputClass} mt-1 min-h-20`}
-              />
-            </label>
+
+                {/* Modification Alert Box if adjusted */}
+                {(tradeModal.cardValue !== tradeModal.trade.cardValue || tradeModal.payoutAmount !== tradeModal.trade.payoutAmount) && (
+                  <div className="p-2.5 bg-status-warning/10 border border-status-warning/30 rounded-xl flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-status-warning text-[18px] shrink-0 mt-0.5">warning</span>
+                    <div className="text-[11px] text-on-surface">
+                      <p className="font-bold text-status-warning">Amount Override Notice</p>
+                      <p className="text-on-surface-variant mt-0.5 leading-relaxed">
+                        User indicated {formatMoney(tradeModal.trade.cardValue, tradeModal.trade.currency)} (expected {formatMoney(tradeModal.trade.payoutAmount)}), but will be credited {formatMoney(tradeModal.payoutAmount)} based on verified value of {formatMoney(tradeModal.cardValue, tradeModal.trade.currency)}.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Presets for Adjustments */}
+                {(tradeModal.cardValue !== tradeModal.trade.cardValue || tradeModal.payoutAmount !== tradeModal.trade.payoutAmount) && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">QUICK ADJUSTMENT NOTE:</span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        "Partial card balance verified",
+                        "Card denomination discrepancy",
+                        "Platform service fee adjustment",
+                        "Balance verified via issuer portal",
+                      ].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setTradeModal({ ...tradeModal, comment: preset })}
+                          className="px-2 py-1 bg-surface-deep hover:bg-surface-container border border-subtle rounded text-[10px] text-on-surface-variant transition-colors text-left truncate"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <label className="block text-xs font-bold text-on-surface-variant">
+                  <span>
+                    {tradeModal.cardValue !== tradeModal.trade.cardValue || tradeModal.payoutAmount !== tradeModal.trade.payoutAmount
+                      ? "Adjustment Reason / Note (Sent to user in notification)"
+                      : "Approval Remark (Optional)"}
+                  </span>
+                  <textarea
+                    name="comment"
+                    value={tradeModal.comment}
+                    onChange={(e) => setTradeModal({ ...tradeModal, comment: e.target.value })}
+                    placeholder={
+                      tradeModal.cardValue !== tradeModal.trade.cardValue
+                        ? "e.g. Card balance was verified to be only $50 instead of $100."
+                        : "Internal remarks or approval comments..."
+                    }
+                    className={`${inputClass} mt-1 min-h-16`}
+                  />
+                </label>
+              </div>
+            ) : (
+              /* Rejection Mode */
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-on-surface-variant">
+                  Reason for Rejection (Required)
+                  <div className="grid grid-cols-2 gap-1.5 my-2">
+                    {[
+                      "Invalid Code / PIN",
+                      "Already Redeemed / Used",
+                      "Blurry / Unreadable Image",
+                      "Wrong Currency / Card Brand",
+                    ].map((quickReason) => (
+                      <button
+                        key={quickReason}
+                        type="button"
+                        onClick={() => setTradeModal({ ...tradeModal, comment: quickReason })}
+                        className="px-2 py-1 bg-surface-deep hover:bg-surface-container border border-subtle rounded text-[10px] text-on-surface-variant transition-colors text-left"
+                      >
+                        {quickReason}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    name="comment"
+                    value={tradeModal.comment}
+                    onChange={(e) => setTradeModal({ ...tradeModal, comment: e.target.value })}
+                    required
+                    placeholder="Explain clearly to the user why this trade is rejected..."
+                    className={`${inputClass} mt-1 min-h-20`}
+                  />
+                </label>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-2 border-t border-subtle">
               <button
@@ -1352,10 +1552,16 @@ export default function GiftcardPage() {
               </button>
               <button
                 type="submit"
-                disabled={Boolean(processingTrade)}
-                className={`${buttonClass} ${tradeModal.action === "approve" ? "bg-status-success text-white" : "bg-status-danger text-white"}`}
+                disabled={Boolean(processingTrade) || (tradeModal.action === "reject" && !tradeModal.comment.trim())}
+                className={`${buttonClass} ${tradeModal.action === "approve" ? "bg-status-success text-white hover:opacity-90" : "bg-status-danger text-white hover:opacity-90"}`}
               >
-                {processingTrade ? "Processing…" : `Confirm ${tradeModal.action === "approve" ? "Approval" : "Rejection"}`}
+                {processingTrade
+                  ? "Processing…"
+                  : tradeModal.action === "approve"
+                  ? tradeModal.cardValue !== tradeModal.trade.cardValue || tradeModal.payoutAmount !== tradeModal.trade.payoutAmount
+                    ? `Confirm Adjusted Payout (${formatMoney(tradeModal.payoutAmount)})`
+                    : `Confirm Payout (${formatMoney(tradeModal.payoutAmount)})`
+                  : "Confirm Rejection"}
               </button>
             </div>
           </form>

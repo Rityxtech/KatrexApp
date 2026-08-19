@@ -3,11 +3,37 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../widgets/app_background.dart';
 
 class GiftcardTradePreviewScreen extends StatefulWidget {
-  const GiftcardTradePreviewScreen({super.key});
+  final String? tradeId;
+  final String? brandName;
+  final double? cardValue;
+  final String? currency;
+  final double? rateApplied;
+  final double? payoutAmount;
+  final String? cardType;
+  final List<String>? cardImageUrls;
+  final String? ecode;
+  final String? status;
+  final DateTime? createdAt;
+
+  const GiftcardTradePreviewScreen({
+    super.key,
+    this.tradeId,
+    this.brandName,
+    this.cardValue,
+    this.currency,
+    this.rateApplied,
+    this.payoutAmount,
+    this.cardType,
+    this.cardImageUrls,
+    this.ecode,
+    this.status,
+    this.createdAt,
+  });
 
   @override
   State<GiftcardTradePreviewScreen> createState() => _GiftcardTradePreviewScreenState();
@@ -42,8 +68,17 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
     super.dispose();
   }
 
+  String get _displayTradeId {
+    if (widget.tradeId != null && widget.tradeId!.isNotEmpty) {
+      return widget.tradeId!.length > 10
+          ? 'KTRX-${widget.tradeId!.substring(0, 8).toUpperCase()}'
+          : 'KTRX-${widget.tradeId!.toUpperCase()}';
+    }
+    return 'KTRX-99482';
+  }
+
   void _copyId() {
-    Clipboard.setData(const ClipboardData(text: 'KTRX-99482'));
+    Clipboard.setData(ClipboardData(text: _displayTradeId));
     setState(() => _showToast = true);
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) setState(() => _showToast = false);
@@ -75,11 +110,11 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                       children: [
                         _buildStatusCard(),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         _buildSummaryReceipt(),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         _buildUploadedAssets(),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         _buildInfoText(),
                       ],
                     ),
@@ -123,7 +158,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
             ),
           ),
           Text(
-            'Trade #109482',
+            'Trade #$_displayTradeId',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w900,
@@ -132,7 +167,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
             ),
           ),
           GestureDetector(
-            onTap: () {},
+            onTap: () => Navigator.pop(context),
             child: Container(
               width: 36,
               height: 36,
@@ -146,7 +181,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                   child: const Center(
-                    child: Icon(Icons.history, color: Colors.white, size: 16),
+                    child: Icon(Icons.close_rounded, color: Colors.white, size: 16),
                   ),
                 ),
               ),
@@ -158,6 +193,8 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
   }
 
   Widget _buildStatusCard() {
+    final payout = widget.payoutAmount ?? 125000.0;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -186,17 +223,18 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF59E0B).withOpacity(0.1),
-                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.2)),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildPulseDot(),
                     const SizedBox(width: 4),
                     Text(
-                      'PROCESSING',
+                      'UNDER REVIEW',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9,
+                        fontSize: 8,
                         fontWeight: FontWeight.w900,
                         color: const Color(0xFFF59E0B),
                         letterSpacing: 1,
@@ -226,7 +264,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
           ),
           const SizedBox(height: 2),
           Text(
-            '₦125,000',
+            '₦${NumberFormat('#,##0').format(payout)}',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -299,6 +337,14 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
   }
 
   Widget _buildSummaryReceipt() {
+    final brand = widget.brandName ?? 'Apple';
+    final cardVal = widget.cardValue ?? 100.0;
+    final curr = widget.currency ?? 'USD';
+    final sym = curr == 'USD' ? '\$' : curr == 'GBP' ? '£' : '€';
+    final rate = widget.rateApplied ?? 1250.0;
+    final typeStr = widget.cardType == 'ecode' ? 'E-Code / Digital PIN' : 'Physical Card';
+    final dateStr = DateFormat('MMM d, hh:mm a').format(widget.createdAt ?? DateTime.now());
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -335,10 +381,8 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.apple, color: Color(0xFF09090B), size: 11),
-                    const SizedBox(width: 4),
                     Text(
-                      'Apple iTunes (\$100)',
+                      '$brand ($sym${cardVal.toStringAsFixed(0)})',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
@@ -357,7 +401,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    'Physical Card',
+                    typeStr,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
@@ -369,7 +413,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
               _buildReceiptRow(
                 label: 'Exchange Rate',
                 child: Text(
-                  '₦1,250 / \$1',
+                  '₦${NumberFormat('#,##0').format(rate)} / $sym1',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -385,7 +429,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'KTRX-99482',
+                        _displayTradeId,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w900,
@@ -401,7 +445,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
               _buildReceiptRow(
                 label: 'Submitted',
                 child: Text(
-                  'Oct 24, 10:45 AM',
+                  dateStr,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -442,13 +486,58 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
   }
 
   Widget _buildUploadedAssets() {
+    final images = widget.cardImageUrls ?? [];
+    final ecode = widget.ecode;
+
+    if (widget.cardType == 'ecode' || (ecode != null && ecode.isNotEmpty)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              'SUBMITTED E-CODE PIN',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF9CA3AF),
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: Text(
+              ecode ?? 'No code provided',
+              style: GoogleFonts.robotoMono(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF34D399),
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (images.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
-            'UPLOADED ASSETS',
+            'UPLOADED ASSETS (${images.length})',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 9,
               fontWeight: FontWeight.w900,
@@ -460,11 +549,10 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
-            children: [
-              _buildAssetThumb('https://images.unsplash.com/photo-1621768216002-5ac171876607?q=80&w=200'),
-              const SizedBox(width: 8),
-              _buildAssetThumb('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=200'),
-            ],
+            children: images.map((url) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _buildAssetThumb(url),
+            )).toList(),
           ),
         ),
       ],
@@ -473,8 +561,8 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
 
   Widget _buildAssetThumb(String imageUrl) {
     return Container(
-      width: 64,
-      height: 48,
+      width: 72,
+      height: 54,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withOpacity(0.3)),
@@ -496,7 +584,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
               child: const Center(
-                child: Icon(Icons.zoom_in_rounded, color: Colors.white, size: 8),
+                child: Icon(Icons.zoom_in_rounded, color: Colors.white, size: 10),
               ),
             ),
           ),
@@ -561,29 +649,17 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.home_rounded, color: Colors.white, size: 12),
+                    const Icon(Icons.home_rounded, color: Colors.white, size: 14),
                     const SizedBox(width: 6),
                     Text(
                       'Return to Dashboard',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              child: Text(
-                'Cancel Trade',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFFEF4444),
                 ),
               ),
             ),

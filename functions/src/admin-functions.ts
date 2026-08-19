@@ -269,20 +269,27 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
 async function handleProcessGiftcardTrade(adminUid: string, data: Record<string, unknown>) {
   const admin = await requireAdmin(adminUid);
   const tradeId = requiredString(data.tradeId, "tradeId", 128);
-  const tradeAction = requiredString(data.tradeAction, "tradeAction", 20).toLowerCase();
+  const rawAction = String(data.tradeAction || data.action || "").toLowerCase().trim();
+  if (!["approve", "reject", "processing"].includes(rawAction)) {
+    throw new HttpsError("invalid-argument", "tradeAction must be approve, reject, or processing.");
+  }
+  const action = rawAction;
   const comment = optionalString(data.comment, "comment", 1000);
-  // Optional payout override — admin can adjust the amount the user receives.
+
+  // Optional card value override — admin can adjust card face value if card balance is less than stated.
+  const cardValueOverride = typeof data.cardValue === "number" && !Number.isNaN(data.cardValue) && data.cardValue > 0
+    ? data.cardValue
+    : null;
+
+  // Optional payout override — admin can adjust the final amount the user receives.
   const payoutOverride = typeof data.payoutAmount === "number" && !Number.isNaN(data.payoutAmount) && data.payoutAmount >= 0
     ? data.payoutAmount
     : null;
-  if (!["approve", "reject", "processing"].includes(tradeAction)) {
-    throw new HttpsError("invalid-argument", "tradeAction must be approve, reject, or processing.");
-  }
-  const action = tradeAction;
+
   if (action === "reject" && !comment) {
     throw new HttpsError("invalid-argument", "A rejection reason is required.");
   }
-  logger.info(`processGiftcardTrade: admin=${adminUid} trade=${tradeId} action=${action}`);
+  logger.info(`processGiftcardTrade: admin=${adminUid} trade=${tradeId} action=${action} cardValueOverride=${cardValueOverride} payoutOverride=${payoutOverride}`);
 
   const tradeRef = db.collection("giftcard_trades").doc(tradeId);
   const transactionRef = db.collection("transactions").doc(`GIFT_${tradeId}`);
@@ -340,8 +347,19 @@ async function handleProcessGiftcardTrade(adminUid: string, data: Record<string,
 
     const now = FieldValue.serverTimestamp();
     if (action === "approve") {
-      // Use admin override if provided, otherwise use the original payout amount.
-      const finalPayout = payoutOverride != null ? payoutOverride : Number(trade.payoutAmount);
+      // Determine final card value and final payout amount
+      const origCardValue = Number(trade.cardValue) || 0;
+      const finalCardValue = cardValueOverride != null ? cardValueOverride : origCardValue;
+      const rateApplied = Number(trade.rateApplied) || (Number(trade.payoutAmount) / (origCardValue || 1));
+      
+      const origPayout = Number(trade.payoutAmount) || (origCardValue * rateApplied);
+      const finalPayout = payoutOverride != null
+        ? payoutOverride
+        : (cardValueOverride != null ? Math.round(finalCardValue * rateApplied) : origPayout);
+
+      const isAdjusted = (cardValueOverride != null && cardValueOverride !== origCardValue) ||
+                         (payoutOverride != null && payoutOverride !== origPayout);
+
       const walletRef = db.collection("wallets").doc(trade.uid);
       const walletSnap = await txn.get(walletRef);
 
@@ -360,6 +378,7 @@ async function handleProcessGiftcardTrade(adminUid: string, data: Record<string,
           updatedAt: now,
         });
       }
+
       txn.set(transactionRef, {
         id: transactionRef.id,
         uid: trade.uid,
@@ -368,35 +387,48 @@ async function handleProcessGiftcardTrade(adminUid: string, data: Record<string,
         amountNaira: finalPayout,
         amountCoin: null,
         coinSymbol: null,
-        description: `${trade.brandName} gift card trade`,
+        description: `${trade.brandName} gift card trade${isAdjusted ? " (Adjusted)" : ""}`,
         reference: transactionRef.id,
         paymentMethod: "giftcard",
         cardBrand: trade.brandName,
-        originalPayoutAmount: Number(trade.payoutAmount),
+        cardValue: finalCardValue,
+        originalCardValue: origCardValue,
+        cardValueAdjusted: cardValueOverride != null && cardValueOverride !== origCardValue,
+        originalPayoutAmount: origPayout,
         payoutAmount: finalPayout,
-        payoutAdjusted: payoutOverride != null && payoutOverride !== Number(trade.payoutAmount),
+        payoutAdjusted: isAdjusted,
+        adminComment: comment || null,
         createdAt: now,
         completedAt: now,
       });
+
       txn.update(tradeRef, {
         status: "approved",
         adminId: adminUid,
-        adminComment: comment,
+        adminComment: comment || null,
         rejectionReason: null,
         reviewedAt: now,
         transactionId: transactionRef.id,
         walletCreditedAt: now,
+        cardValue: finalCardValue,
+        originalCardValue: origCardValue,
+        cardValueAdjusted: cardValueOverride != null && cardValueOverride !== origCardValue,
         payoutAmount: finalPayout,
-        originalPayoutAmount: Number(trade.payoutAmount),
-        payoutAdjusted: payoutOverride != null && payoutOverride !== Number(trade.payoutAmount),
+        originalPayoutAmount: origPayout,
+        payoutAdjusted: isAdjusted,
         updatedAt: now,
       });
+
+      const notificationBody = isAdjusted
+        ? `Your ${trade.brandName} trade was adjusted to ${trade.currency || "$"}${finalCardValue} (\u20A6${finalPayout.toLocaleString()}) and credited to your wallet.${comment ? ` Reason: ${comment}` : ""}`
+        : `Your ${trade.brandName} trade was approved and \u20A6${finalPayout.toLocaleString()} was credited to your wallet.${comment ? ` Note: ${comment}` : ""}`;
+
       txn.set(notificationRef, {
         id: notificationRef.id,
         uid: trade.uid,
         type: "trade",
-        title: "Gift Card Trade Approved",
-        body: `Your ${trade.brandName} trade was approved and \u20A6${finalPayout.toLocaleString()} was credited to your wallet.`,
+        title: isAdjusted ? "Gift Card Trade Approved (Adjusted)" : "Gift Card Trade Approved",
+        body: notificationBody,
         preview: "Gift card payout credited",
         isRead: false,
         createdAt: now,
@@ -430,8 +462,15 @@ async function handleProcessGiftcardTrade(adminUid: string, data: Record<string,
       action: action === "approve" ? "giftcard_trade_approved" : "giftcard_trade_rejected",
       resourceType: "giftcard_trade",
       resourceId: tradeId,
-      before: {status: trade.status},
-      after: {status: action === "approve" ? "approved" : "rejected", comment},
+      before: {status: trade.status, cardValue: trade.cardValue, payoutAmount: trade.payoutAmount},
+      after: {
+        status: action === "approve" ? "approved" : "rejected",
+        comment,
+        ...(action === "approve" ? {
+          cardValue: cardValueOverride ?? trade.cardValue,
+          payoutAmount: payoutOverride ?? trade.payoutAmount,
+        } : {}),
+      },
       createdAt: now,
     });
   });

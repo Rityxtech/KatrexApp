@@ -1,13 +1,17 @@
+import 'dart:io';
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 import 'giftcard_trade_preview_screen.dart';
@@ -98,29 +102,58 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                  child: const Center(child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 18)),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: const Center(
+                        child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sell Giftcards',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  Text(
+                    'Best rates guaranteed',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          Text('Sell Gift Cards', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
           const NotificationIcon(),
         ],
       ),
@@ -128,90 +161,235 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
   }
 
   Widget _buildPromoSlider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          CarouselSlider(
-            options: CarouselOptions(
-              height: 102,
-              viewportFraction: 1.0,
-              autoPlay: true,
-              autoPlayInterval: const Duration(seconds: 4),
-              onPageChanged: (index, reason) {
-                setState(() => _currentPromoIndex = index);
-              },
-            ),
-            items: _promos.map((promo) {
-              return Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: Colors.black,
-                  image: DecorationImage(
-                    image: NetworkImage(promo['image']),
-                    fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken),
+    return Column(
+      children: [
+        CarouselSlider.builder(
+          itemCount: _promos.length,
+          options: CarouselOptions(
+            height: 140,
+            viewportFraction: 0.92,
+            enlargeCenterPage: true,
+            autoPlay: true,
+            autoPlayInterval: const Duration(seconds: 4),
+            autoPlayAnimationDuration: const Duration(milliseconds: 800),
+            autoPlayCurve: Curves.fastOutSlowIn,
+            onPageChanged: (index, reason) {
+              setState(() {
+                _currentPromoIndex = index;
+              });
+            },
+          ),
+          itemBuilder: (context, index, realIndex) {
+            final promo = _promos[index];
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                image: DecorationImage(
+                  image: NetworkImage(promo['image']),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withOpacity(0.45),
+                    BlendMode.darken,
                   ),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: LinearGradient(
-                      colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: (promo['tagColor'] as Color).withOpacity(0.2),
-                          border: Border.all(color: (promo['tagColor'] as Color).withOpacity(0.3)),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          promo['tag'],
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            color: promo['tagColor'],
-                            letterSpacing: 0.5,
-                          ),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 14,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: (promo['tagColor'] as Color).withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        promo['tag'],
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(promo['title'], style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1)),
-                      const SizedBox(height: 4),
-                      Text(promo['subtitle'], style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white70)),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 14,
+                    left: 16,
+                    right: 16,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              promo['title'],
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              promo['subtitle'],
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFD1D5DB),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Trade',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 10),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: _promos.asMap().entries.map((entry) {
+            final isSelected = _currentPromoIndex == entry.key;
+            return Container(
+              width: isSelected ? 16 : 4,
+              height: 4,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(2),
+                color: isSelected ? const Color(0xFF2563EB) : Colors.white.withOpacity(0.2),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchPanel() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.search_rounded, color: Color(0xFF9CA3AF), size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Search 50+ gift card brands...',
+                  hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF6B7280)),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickAccess() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF3B82F6).withOpacity(0.15), const Color(0xFF1D4ED8).withOpacity(0.05)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                    child: const Center(child: Icon(Icons.bolt_rounded, color: Color(0xFF60A5FA), size: 18)),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Instant Trade', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
+                      Text('Auto 2-min payout', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
                     ],
                   ),
-                ),
-              );
-            }).toList(),
+                ],
+              ),
+            ),
           ),
-          Positioned(
-            bottom: 12,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: _promos.asMap().entries.map((entry) {
-                return Container(
-                  width: _currentPromoIndex == entry.key ? 16.0 : 6.0,
-                  height: 6.0,
-                  margin: const EdgeInsets.symmetric(horizontal: 2.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(3),
-                    color: _currentPromoIndex == entry.key ? Colors.white : Colors.white.withOpacity(0.3),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF10B981).withOpacity(0.15), const Color(0xFF047857).withOpacity(0.05)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                    child: const Center(child: Icon(Icons.calculate_rounded, color: Color(0xFF34D399), size: 18)),
                   ),
-                );
-              }).toList(),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Rate Calculator', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
+                      Text('Live unit values', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -219,130 +397,9 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
     );
   }
 
-  Widget _buildSearchPanel() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
-        ),
-        child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search_rounded, color: Colors.white54, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          style: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.white, fontWeight: FontWeight.w600),
-                          decoration: InputDecoration(
-                            hintText: 'Search brands (e.g. Apple, Steam)...',
-                            hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.white30, fontWeight: FontWeight.w600),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(height: 1, color: Colors.white.withOpacity(0.05)),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'AVAILABLE BRANDS',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w900, color: const Color(0xFF6B7280), letterSpacing: 1.5),
-                    ),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {},
-                          child: Row(
-                            children: [
-                              Text('Sort', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white70)),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.sort_rounded, color: Colors.white54, size: 14),
-                            ],
-                          ),
-                        ),
-                        Container(width: 1, height: 12, color: Colors.white.withOpacity(0.1), margin: const EdgeInsets.symmetric(horizontal: 10)),
-                        GestureDetector(
-                          onTap: () {},
-                          child: Row(
-                            children: [
-                              const Icon(Icons.tune_rounded, color: Color(0xFF60A5FA), size: 14),
-                              const SizedBox(width: 4),
-                              Text('Filter', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF60A5FA))),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-      ),
-    );
-  }
-
-  Widget _buildQuickAccess() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: _brands.map((brand) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => _showTradeBottomSheet(brand),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 20, height: 20,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: (brand['color'] as Color).withOpacity(0.2),
-                      ),
-                      child: Center(child: Icon(brand['icon'], size: 10, color: brand['color'])),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(brand['name'], style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
   Widget _buildBrandGrid() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -350,7 +407,7 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
           crossAxisCount: 3,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
-          childAspectRatio: 1.3,
+          childAspectRatio: 0.92,
         ),
         itemCount: _brands.length,
         itemBuilder: (context, index) {
@@ -359,44 +416,29 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
             onTap: () => _showTradeBottomSheet(brand),
             child: Container(
               decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.03),
                 borderRadius: BorderRadius.circular(16),
-                image: DecorationImage(
-                  image: NetworkImage(brand['image']),
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
-                ),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.black.withOpacity(0.2), Colors.black.withOpacity(0.8)],
-                  ),
-                ),
+              child: Padding(
                 padding: const EdgeInsets.all(8),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 28, height: 28,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.1),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        color: (brand['color'] as Color).withOpacity(0.1),
+                        border: Border.all(color: (brand['color'] as Color).withOpacity(0.2)),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                          child: Center(child: Icon(brand['icon'], size: 14, color: Colors.white)),
-                        ),
+                      child: Center(
+                        child: Icon(brand['icon'], size: 20, color: brand['color']),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(brand['name'], style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(brand['name'], style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
                     Text(brand['rate'], style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF34D399)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
@@ -434,55 +476,215 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
   int _currencyIndex = 0; // 0: USD, 1: GBP, 2: EUR
   int _typeIndex = 0; // 0: Physical, 1: E-Code
   final TextEditingController _cardValueController = TextEditingController();
+  final TextEditingController _ecodeController = TextEditingController();
+  final List<File> _selectedImageFiles = [];
+  final ImagePicker _imagePicker = ImagePicker();
   bool _isProcessing = false;
+  String _uploadStatusText = '';
 
   static const _rates = [1550.0, 1750.0, 1680.0]; // NGN per unit for USD, GBP, EUR
   static const _currencySymbols = ['\$', '£', '€'];
+  static const _currencyCodes = ['USD', 'GBP', 'EUR'];
+  static const double _minTransactionAmount = 25.0;
 
-  double get _cardValue => double.tryParse(_cardValueController.text.replaceAll(',', '')) ?? 0;
+  double get _cardValue => double.tryParse(_cardValueController.text.replaceAll(',', '').trim()) ?? 0;
   double get _nairaAmount => _cardValue * _rates[_currencyIndex];
+
+  @override
+  void initState() {
+    super.initState();
+    _cardValueController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
     _cardValueController.dispose();
+    _ecodeController.dispose();
     super.dispose();
   }
 
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile> picked = await _imagePicker.pickMultiImage(
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+      if (picked.isNotEmpty) {
+        setState(() {
+          for (final x in picked) {
+            _selectedImageFiles.add(File(x.path));
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open image picker: $e', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImageFiles.removeAt(index);
+    });
+  }
+
   Future<void> _submitTrade() async {
-    if (_cardValue <= 0) {
+    final currencySymbol = _currencySymbols[_currencyIndex];
+    
+    // 1. Minimum Amount Validation ($25 equivalent)
+    if (_cardValue < _minTransactionAmount) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Enter a card value', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFFEF4444)),
+        SnackBar(
+          content: Text(
+            'Minimum trade amount is ${currencySymbol}${_minTransactionAmount.toStringAsFixed(0)}',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
       );
       return;
     }
 
-    setState(() => _isProcessing = true);
+    // 2. Physical Card Image Upload Validation
+    if (_typeIndex == 0 && _selectedImageFiles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please tap and upload at least one image of your gift card proof or receipt.',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    // 3. E-Code / PIN Validation
+    if (_typeIndex == 1 && _ecodeController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enter your gift card e-code PIN or voucher code.',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isProcessing = true;
+      _uploadStatusText = _typeIndex == 0 ? 'Uploading card proof...' : 'Submitting trade...';
+    });
 
     try {
-      final uid = context.read<AuthProvider>().firebaseUser!.uid;
+      final authProvider = context.read<AuthProvider>();
+      final uid = authProvider.firebaseUser!.uid;
+      final userName = authProvider.userModel?.fullName ?? authProvider.firebaseUser?.displayName ?? 'App User';
+      final userEmail = authProvider.userModel?.email ?? authProvider.firebaseUser?.email ?? '';
+
+      // Upload images if physical
+      final List<String> uploadedUrls = [];
+      if (_typeIndex == 0 && _selectedImageFiles.isNotEmpty) {
+        for (int i = 0; i < _selectedImageFiles.length; i++) {
+          final file = _selectedImageFiles[i];
+          final ext = file.path.split('.').last;
+          final fileName = 'gift_${DateTime.now().millisecondsSinceEpoch}_$i.$ext';
+          
+          setState(() {
+            _uploadStatusText = 'Uploading image ${i + 1}/${_selectedImageFiles.length}...';
+          });
+
+          final url = await StorageService().uploadGiftcardImage(
+            uid: uid,
+            filePath: file.path,
+            fileName: fileName,
+          );
+          uploadedUrls.add(url);
+        }
+      }
+
+      setState(() {
+        _uploadStatusText = 'Finalizing trade ticket...';
+      });
+
+      final cardTypeStr = _typeIndex == 0 ? 'physical' : 'ecode';
+      final currencyCode = _currencyCodes[_currencyIndex];
+      final brandName = widget.brand['name'] as String? ?? 'Giftcard';
+      final rate = _rates[_currencyIndex];
+      final ecodeText = _typeIndex == 1 ? _ecodeController.text.trim() : null;
+
+      // Create Firestore trade doc
+      final tradeData = {
+        'uid': uid,
+        'userName': userName,
+        'userEmail': userEmail,
+        'brandName': brandName,
+        'brandId': (widget.brand['id'] ?? brandName).toString().toLowerCase(),
+        'currency': currencyCode,
+        'cardType': cardTypeStr,
+        'cardValue': _cardValue,
+        'rateApplied': rate,
+        'payoutAmount': _nairaAmount,
+        'cardImageUrls': uploadedUrls,
+        'ecode': ecodeText,
+        'comment': null,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      final tradeId = await FirestoreService().createGiftcardTrade(tradeData);
+
+      // Create transaction history record
       final tx = TransactionModel(
         id: '',
         uid: uid,
         type: TransactionType.giftcard,
         status: TransactionStatus.pending,
         amountNaira: _nairaAmount,
-        description: 'Sell ${widget.brand['name']} - ${_currencySymbols[_currencyIndex]}${_cardValue.toStringAsFixed(0)}',
-        reference: 'GC-${DateTime.now().millisecondsSinceEpoch}',
+        description: 'Sell $brandName - ${currencySymbol}${_cardValue.toStringAsFixed(0)} ($cardTypeStr)',
+        reference: 'GC-$tradeId',
         createdAt: DateTime.now(),
-        cardBrand: widget.brand['name'] as String?,
+        cardBrand: brandName,
       );
-
       await FirestoreService().createTransaction(tx);
+
       if (mounted) {
         Navigator.pop(context);
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const GiftcardTradePreviewScreen()),
+          MaterialPageRoute(
+            builder: (_) => GiftcardTradePreviewScreen(
+              tradeId: tradeId,
+              brandName: brandName,
+              cardValue: _cardValue,
+              currency: currencyCode,
+              rateApplied: rate,
+              payoutAmount: _nairaAmount,
+              cardType: cardTypeStr,
+              cardImageUrls: uploadedUrls,
+              ecode: ecodeText,
+              status: 'pending',
+              createdAt: DateTime.now(),
+            ),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Trade failed: $e', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFFEF4444)),
+          SnackBar(
+            content: Text('Trade submission failed: $e', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
         );
       }
     } finally {
@@ -493,6 +695,7 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final currencySymbol = _currencySymbols[_currencyIndex];
     
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -564,18 +767,34 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                 // Type Toggle
                 Row(
                   children: [
-                    Expanded(child: _typeTab(0, Icons.credit_card_rounded, 'Physical')),
+                    Expanded(child: _typeTab(0, Icons.credit_card_rounded, 'Physical Card')),
                     const SizedBox(width: 12),
-                    Expanded(child: _typeTab(1, Icons.qr_code_rounded, 'E-Code')),
+                    Expanded(child: _typeTab(1, Icons.qr_code_rounded, 'E-Code / PIN')),
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                // Amount Input
+                // Amount Input with Min $25 indication
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Card Value', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF))),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Card Face Value', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF))),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2563EB).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Min. ${currencySymbol}25',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF60A5FA)),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -586,16 +805,16 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                       ),
                       child: Row(
                         children: [
-                          Text('\$', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                          Text(currencySymbol, style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextField(
                               controller: _cardValueController,
-                              keyboardType: TextInputType.number,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                               decoration: InputDecoration(
-                                hintText: '100',
-                                hintStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white30),
+                                hintText: 'Min. ${currencySymbol}25 (e.g. 100)',
+                                hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white30),
                                 border: InputBorder.none,
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -607,30 +826,194 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // Image Upload Box
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.02),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.1), style: BorderStyle.solid), // In a real app we could draw a dashed border, using solid for now
-                  ),
-                  child: Column(
+                // Physical: Interactive Upload Box with Multi-Image Support
+                if (_typeIndex == 0) ...[
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(0.1), shape: BoxShape.circle),
-                        child: const Center(child: Icon(Icons.cloud_upload_rounded, color: Color(0xFF60A5FA), size: 18)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Card Images & Proof', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF))),
+                          if (_selectedImageFiles.isNotEmpty)
+                            Text(
+                              '${_selectedImageFiles.length} photo(s) selected',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF34D399)),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 8),
-                      Text('Tap to upload card images', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+
+                      if (_selectedImageFiles.isEmpty)
+                        GestureDetector(
+                          onTap: _pickImages,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 22),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.02),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 44, height: 44,
+                                  decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(0.15), shape: BoxShape.circle),
+                                  child: const Center(child: Icon(Icons.cloud_upload_rounded, color: Color(0xFF60A5FA), size: 22)),
+                                ),
+                                const SizedBox(height: 10),
+                                Text('Tap to upload card images & receipt', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+                                const SizedBox(height: 2),
+                                Text('Select front, back, or purchase slip', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF))),
+                              ],
+                            ),
+                          ),
+                        )
+                      else ...[
+                        // Horizontal scrollable preview strip of selected files
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    ...List.generate(_selectedImageFiles.length, (index) {
+                                      final file = _selectedImageFiles[index];
+                                      return Container(
+                                        width: 80,
+                                        height: 64,
+                                        margin: const EdgeInsets.only(right: 8),
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                          image: DecorationImage(
+                                            image: FileImage(file),
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                              top: 2,
+                                              right: 2,
+                                              child: GestureDetector(
+                                                onTap: () => _removeImage(index),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(2),
+                                                  decoration: const BoxDecoration(
+                                                    color: Colors.black87,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              bottom: 2,
+                                              left: 2,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black.withOpacity(0.7),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  '#${index + 1}',
+                                                  style: GoogleFonts.plusJakartaSans(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.white),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                    GestureDetector(
+                                      onTap: _pickImages,
+                                      child: Container(
+                                        width: 64,
+                                        height: 64,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.05),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.4)),
+                                        ),
+                                        child: const Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.add_photo_alternate_rounded, color: Color(0xFF60A5FA), size: 20),
+                                            SizedBox(height: 2),
+                                            Text('+ Add', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF60A5FA))),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
+                ] else ...[
+                  // E-Code: Compact Textarea (No Image Upload)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('E-Code / PIN / Voucher Digits', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF))),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'DIGITAL CODE',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w900, color: const Color(0xFF34D399)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: TextField(
+                          controller: _ecodeController,
+                          maxLines: 3,
+                          minLines: 2,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Enter gift card e-code, PIN, or digital redemption voucher digits...',
+                            hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white30),
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
 
                 // Calculator Result
                 Container(
@@ -643,7 +1026,13 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('You will receive', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF))),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('You will receive', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF))),
+                          Text('Rate: ₦${NumberFormat('#,##0').format(_rates[_currencyIndex])}/$currencySymbol', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280))),
+                        ],
+                      ),
                       Builder(builder: (_) => Text(
                         '\u20A6${NumberFormat('#,##0').format(_nairaAmount)}',
                         style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: const Color(0xFF60A5FA)),
@@ -651,7 +1040,7 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Submit Button
                 GestureDetector(
@@ -666,7 +1055,17 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                     ),
                     child: Center(
                       child: _isProcessing
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                                const SizedBox(width: 10),
+                                Text(
+                                  _uploadStatusText.isNotEmpty ? _uploadStatusText : 'Submitting Trade...',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                                ),
+                              ],
+                            )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -715,29 +1114,31 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
 
   Widget _typeTab(int index, IconData icon, String label) {
     final isActive = _typeIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _typeIndex = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF2563EB).withOpacity(0.1) : Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isActive ? const Color(0xFF2563EB).withOpacity(0.5) : Colors.white.withOpacity(0.1)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 14, color: isActive ? const Color(0xFF60A5FA) : const Color(0xFF9CA3AF)),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: isActive ? const Color(0xFF60A5FA) : const Color(0xFF9CA3AF),
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _typeIndex = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFF2563EB).withOpacity(0.15) : Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: isActive ? const Color(0xFF2563EB) : Colors.white.withOpacity(0.08)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 15, color: isActive ? const Color(0xFF60A5FA) : const Color(0xFF9CA3AF)),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: isActive ? const Color(0xFF60A5FA) : const Color(0xFF9CA3AF),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -141,6 +141,10 @@ export interface GiftcardTrade {
   adminId: string;
   adminComment: string | null;
   rejectionReason: string | null;
+  originalCardValue?: number;
+  cardValueAdjusted?: boolean;
+  originalPayoutAmount?: number;
+  payoutAdjusted?: boolean;
   createdAt: unknown;
   reviewedAt: unknown;
 }

@@ -41,6 +41,7 @@ dependencies:
   cached_network_image: ^3.4.0
   local_auth: ^3.0.2
   shared_preferences: ^2.5.5
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
