@@ -14,6 +14,7 @@ import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
+import '../widgets/universal_icon.dart';
 import 'giftcard_trade_preview_screen.dart';
 import 'giftcard_trades_history_screen.dart';
 
@@ -426,7 +427,7 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (chip['icon'] != null) ...[
-                    FaIcon(chip['icon'] as IconData, size: 12, color: isSelected ? const Color(0xFF60A5FA) : const Color(0xFF94A3B8)),
+                    UniversalIcon(chip['icon'], size: 12, color: isSelected ? const Color(0xFF60A5FA) : const Color(0xFF94A3B8)),
                     const SizedBox(width: 6),
                   ],
                   Text(
@@ -501,11 +502,11 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
                       border: Border.all(color: Colors.white.withOpacity(0.12)),
                     ),
                     child: Center(
-                      child: iconData is IconData
-                          ? (iconData.fontFamily?.startsWith('FontAwesome') ?? false)
-                              ? FaIcon(iconData, size: 18, color: isGreenBorder ? const Color(0xFF34D399) : Colors.white)
-                              : Icon(iconData, size: 18, color: isGreenBorder ? const Color(0xFF34D399) : Colors.white)
-                          : const Icon(Icons.card_giftcard, size: 18, color: Colors.white),
+                      child: UniversalIcon(
+                        iconData,
+                        size: 18,
+                        color: isGreenBorder ? const Color(0xFF34D399) : Colors.white,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -807,11 +808,7 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                             color: Colors.white.withOpacity(0.1),
                           ),
                           child: Center(
-                            child: widget.brand['icon'] is IconData
-                                ? ((widget.brand['icon'] as IconData).fontFamily?.startsWith('FontAwesome') ?? false)
-                                    ? FaIcon(widget.brand['icon'] as IconData, size: 16, color: Colors.white)
-                                    : Icon(widget.brand['icon'] as IconData, size: 16, color: Colors.white)
-                                : const Icon(Icons.card_giftcard, size: 16, color: Colors.white),
+                            child: UniversalIcon(widget.brand['icon'], size: 16, color: Colors.white),
                           ),
                         ),
                         const SizedBox(width: 12),
