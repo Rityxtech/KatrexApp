@@ -422,76 +422,79 @@ export default function SettingsPage() {
               TAB 1: GENERAL & SYSTEM
           ───────────────────────────────────────────────────────────── */}
           {activeTab === "general" && (
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-fadeIn">
-              {/* System Maintenance & Kill Switch */}
-              <div className="md:col-span-6 bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="material-symbols-outlined text-secondary">power_settings_new</span>
-                    <h2 className="font-headline-md text-headline-md text-on-surface">Ecosystem Maintenance</h2>
-                  </div>
-                  <p className="font-body-sm text-on-surface-variant mb-4">
-                    Instantly restrict end-user application access for scheduled maintenance or emergency upgrades.
-                  </p>
-                </div>
-
-                <div className="p-4 bg-surface-container-low rounded-lg border border-outline-variant/50 flex items-center justify-between">
+            <div className="space-y-6 animate-fadeIn">
+              {/* Row 1: Maintenance & Base Currency */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* System Maintenance & Kill Switch */}
+                <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between">
                   <div>
-                    <span className="font-bold font-body-md text-on-surface block">App-wide Lock</span>
-                    <span
-                      className={`text-xs font-bold font-label-caps ${
-                        maintenanceMode ? "text-status-danger" : "text-status-success"
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="material-symbols-outlined text-secondary">power_settings_new</span>
+                      <h2 className="font-headline-md text-headline-md text-on-surface">Ecosystem Maintenance</h2>
+                    </div>
+                    <p className="font-body-sm text-on-surface-variant mb-4">
+                      Instantly restrict end-user application access for scheduled maintenance or emergency upgrades.
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-surface-container-low rounded-lg border border-outline-variant/50 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold font-body-md text-on-surface block">App-wide Lock</span>
+                      <span
+                        className={`text-xs font-bold font-label-caps ${
+                          maintenanceMode ? "text-status-danger" : "text-status-success"
+                        }`}
+                      >
+                        {maintenanceMode ? "ACTIVE (ACCESS BLOCKED)" : "ONLINE (NORMAL ACCESS)"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={toggleMaintenance}
+                      className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
+                        maintenanceMode ? "bg-status-danger" : "bg-outline-variant"
                       }`}
                     >
-                      {maintenanceMode ? "ACTIVE (ACCESS BLOCKED)" : "ONLINE (NORMAL ACCESS)"}
-                    </span>
+                      <span
+                        className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                          maintenanceMode ? "translate-x-6" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
                   </div>
-                  <button
-                    onClick={toggleMaintenance}
-                    className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
-                      maintenanceMode ? "bg-status-danger" : "bg-outline-variant"
-                    }`}
-                  >
-                    <span
-                      className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                        maintenanceMode ? "translate-x-6" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
+                </div>
+
+                {/* Global Default Currency */}
+                <div className="bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="material-symbols-outlined text-secondary">monetization_on</span>
+                      <h2 className="font-headline-md text-headline-md text-on-surface">Base Currency</h2>
+                    </div>
+                    <p className="font-body-sm text-on-surface-variant mb-4">
+                      Default fiat denomination for wallet valuation, order calculation and fee summaries.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-label-caps text-[11px] text-on-surface-variant uppercase">
+                      Primary Display Currency
+                    </label>
+                    <select
+                      className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 font-body-md text-on-surface focus:border-secondary outline-none cursor-pointer"
+                      value={defaultCurrency}
+                      onChange={(e) => setDefaultCurrency(e.target.value)}
+                    >
+                      <option value="NGN">NGN — Nigerian Naira (₦)</option>
+                      <option value="USD">USD — United States Dollar ($)</option>
+                      <option value="EUR">EUR — Euro (€)</option>
+                      <option value="GBP">GBP — British Pound (£)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* Global Default Currency */}
-              <div className="md:col-span-6 bg-surface-container p-5 rounded-xl border border-outline-variant flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="material-symbols-outlined text-secondary">monetization_on</span>
-                    <h2 className="font-headline-md text-headline-md text-on-surface">Base Currency</h2>
-                  </div>
-                  <p className="font-body-sm text-on-surface-variant mb-4">
-                    Default fiat denomination for wallet valuation, order calculation and fee summaries.
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-label-caps text-[11px] text-on-surface-variant uppercase">
-                    Primary Display Currency
-                  </label>
-                  <select
-                    className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 font-body-md text-on-surface focus:border-secondary outline-none cursor-pointer"
-                    value={defaultCurrency}
-                    onChange={(e) => setDefaultCurrency(e.target.value)}
-                  >
-                    <option value="NGN">NGN — Nigerian Naira (₦)</option>
-                    <option value="USD">USD — United States Dollar ($)</option>
-                    <option value="EUR">EUR — Euro (€)</option>
-                    <option value="GBP">GBP — British Pound (£)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Version Management */}
-              <div className="md:col-span-12 bg-surface-container p-5 rounded-xl border border-outline-variant space-y-4">
+              {/* Row 2: Version Management (Full Width Card) */}
+              <div className="w-full bg-surface-container p-5 rounded-xl border border-outline-variant space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-secondary">system_update</span>
                   <h2 className="font-headline-md text-headline-md text-on-surface">Mobile Client Version Enforcement</h2>
