@@ -162,23 +162,24 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     setState(() => _isLoading = true);
 
-    final auth = context.read<AuthProvider>();
-    final success = await auth.register(
-      fullName: _nameController.text,
-      username: _usernameController.text,
-      email: _emailController.text,
-      password: _pass1Controller.text,
-      phone: _phoneController.text,
-    );
+    try {
+      final auth = context.read<AuthProvider>();
+      final success = await auth.register(
+        fullName: _nameController.text.trim(),
+        username: _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _pass1Controller.text,
+        phone: _phoneController.text.trim(),
+      );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
+      if (!mounted) return;
+
       if (success) {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (_) => OtpVerificationScreen(
-              email: auth.firebaseUser?.email,
+              email: auth.firebaseUser?.email ?? _emailController.text.trim(),
             ),
           ),
           (route) => route.isFirst,
@@ -193,6 +194,19 @@ class _RegisterScreenState extends State<RegisterScreen>
           ),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration error: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

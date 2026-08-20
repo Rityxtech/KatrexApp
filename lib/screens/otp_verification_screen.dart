@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +24,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   int _resendSeconds = 60;
   bool _canResend = false;
+  Timer? _resendTimer;
 
   @override
   void initState() {
@@ -32,6 +34,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     for (final c in _controllers) {
       c.dispose();
     }
@@ -42,18 +45,25 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   void _startResendTimer() {
+    _resendTimer?.cancel();
     setState(() {
       _canResend = false;
       _resendSeconds = 60;
     });
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return false;
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       setState(() {
-        _resendSeconds--;
-        if (_resendSeconds <= 0) _canResend = true;
+        if (_resendSeconds > 1) {
+          _resendSeconds--;
+        } else {
+          _resendSeconds = 0;
+          _canResend = true;
+          timer.cancel();
+        }
       });
-      return _resendSeconds > 0;
     });
   }
 
