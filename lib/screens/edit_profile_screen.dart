@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-
+import 'package:image_picker/image_picker.dart';
 import '../providers/auth_provider.dart';
+import '../services/storage_service.dart';
+import '../widgets/app_avatar.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -15,6 +17,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   bool _isSaving = false;
+  bool _isUploadingAvatar = false;
 
   @override
   void initState() {
@@ -82,6 +85,61 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _pickAndUploadAvatar() async {
+    if (_isUploadingAvatar) return;
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 512,
+        maxHeight: 512,
+      );
+
+      if (pickedFile == null) return;
+
+      setState(() => _isUploadingAvatar = true);
+
+      final auth = context.read<AuthProvider>();
+      final uid = auth.firebaseUser!.uid;
+
+      final downloadUrl = await StorageService().uploadAvatar(
+        uid: uid,
+        filePath: pickedFile.path,
+      );
+
+      final user = auth.userModel;
+      if (user != null) {
+        await auth.updateUserProfileDirect(
+          user.copyWith(
+            avatarUrl: downloadUrl,
+            updatedAt: DateTime.now(),
+          ),
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Avatar updated successfully', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload avatar: $e', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().userModel;
@@ -112,41 +170,54 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 80, height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withOpacity(0.15), width: 2),
-                            ),
-                            child: ClipOval(
-                              child: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-                                  ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
-                                  : Container(
-                                      color: const Color(0xFF2563EB).withOpacity(0.2),
-                                      child: Center(
-                                        child: Text(
-                                          (user?.fullName ?? 'U')[0].toUpperCase(),
-                                          style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white),
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0, right: 0,
-                            child: Container(
-                              width: 28, height: 28,
+                      child: GestureDetector(
+                        onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 80, height: 80,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: const Color(0xFF2563EB),
-                                border: Border.all(color: const Color(0xFF0A0F1F), width: 3),
+                                border: Border.all(color: Colors.white.withOpacity(0.15), width: 2),
                               ),
-                              child: const Center(child: Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12)),
+                              child: ClipOval(
+                                child: _isUploadingAvatar
+                                    ? const Center(
+                                        child: SizedBox(
+                                          width: 24, height: 24,
+                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        ),
+                                      )
+                                    : AppAvatar(
+                                        avatarUrl: user?.avatarUrl,
+                                        size: 80,
+                                        fallback: Container(
+                                          color: const Color(0xFF2563EB).withOpacity(0.2),
+                                          child: Center(
+                                            child: Text(
+                                              (user?.fullName ?? 'U')[0].toUpperCase(),
+                                              style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                              ),
                             ),
-                          ),
-                        ],
+                            if (!_isUploadingAvatar)
+                              Positioned(
+                                bottom: 0, right: 0,
+                                child: Container(
+                                  width: 28, height: 28,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF2563EB),
+                                    border: Border.all(color: const Color(0xFF0A0F1F), width: 3),
+                                  ),
+                                  child: const Center(child: Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12)),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),

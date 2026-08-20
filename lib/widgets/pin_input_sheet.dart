@@ -43,13 +43,25 @@ class PinInputSheet extends StatefulWidget {
     return verified;
   }
 
+  /// Shows the PIN verification sheet and returns true if the user
+  /// successfully verified their PIN, false if they cancelled.
+  static Future<bool> verify(BuildContext context) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const PinInputSheet(mode: PinMode.verify),
+    );
+    return result == true;
+  }
+
   /// Show the PIN sheet and return `true` if the action succeeded.
   static Future<bool> show(BuildContext context, {required PinMode mode}) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      isDismissible: mode != PinMode.setup,
-      enableDrag: mode != PinMode.setup,
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) => PinInputSheet(mode: mode),
     ).then((v) => v ?? false);
@@ -403,11 +415,10 @@ class _PinInputSheetState extends State<PinInputSheet> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(_title, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
-            if (widget.mode != PinMode.setup)
-              GestureDetector(
-                onTap: () => Navigator.pop(context, false),
-                child: Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Color(0xFF9CA3AF), size: 18)),
-              ),
+            GestureDetector(
+              onTap: () => Navigator.pop(context, false),
+              child: Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Color(0xFF9CA3AF), size: 18)),
+            ),
           ],
         ),
         const SizedBox(height: 8),

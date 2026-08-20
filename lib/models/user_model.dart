@@ -17,6 +17,9 @@ class UserModel {
 
   /// KYC verification tier: 0 = unverified, 1 = basic, 2 = full.
   final int kycTier;
+  final String? kycStatus;
+  final DateTime? kycSubmittedAt;
+  final String? kycRejectionReason;
   final bool isEmailVerified;
   final bool isPhoneVerified;
 
@@ -47,6 +50,8 @@ class UserModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+  final bool isAdmin;
+  final bool pushNotificationsEnabled;
 
   UserModel({
     required this.uid,
@@ -60,6 +65,9 @@ class UserModel {
     this.gender,
     this.address,
     this.kycTier = 0,
+    this.kycStatus,
+    this.kycSubmittedAt,
+    this.kycRejectionReason,
     this.isEmailVerified = false,
     this.isPhoneVerified = false,
     required this.referralCode,
@@ -75,6 +83,8 @@ class UserModel {
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
+    this.isAdmin = false,
+    this.pushNotificationsEnabled = true,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -90,6 +100,9 @@ class UserModel {
       gender: map['gender'] as String?,
       address: map['address'] as String?,
       kycTier: (map['kycTier'] as num?)?.toInt() ?? 0,
+      kycStatus: map['kycStatus'] as String?,
+      kycSubmittedAt: (map['kycSubmittedAt'] as Timestamp?)?.toDate(),
+      kycRejectionReason: map['kycRejectionReason'] as String?,
       isEmailVerified: map['isEmailVerified'] as bool? ?? false,
       isPhoneVerified: map['isPhoneVerified'] as bool? ?? false,
       referralCode: map['referralCode'] as String,
@@ -105,6 +118,8 @@ class UserModel {
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: map['isActive'] as bool? ?? true,
+      isAdmin: map['isAdmin'] as bool? ?? false,
+      pushNotificationsEnabled: map['pushNotificationsEnabled'] as bool? ?? true,
     );
   }
 
@@ -121,6 +136,9 @@ class UserModel {
       'gender': gender,
       'address': address,
       'kycTier': kycTier,
+      'kycStatus': kycStatus,
+      'kycSubmittedAt': kycSubmittedAt != null ? Timestamp.fromDate(kycSubmittedAt!) : null,
+      'kycRejectionReason': kycRejectionReason,
       'isEmailVerified': isEmailVerified,
       'isPhoneVerified': isPhoneVerified,
       'referralCode': referralCode,
@@ -136,6 +154,8 @@ class UserModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isActive': isActive,
+      'isAdmin': isAdmin,
+      'pushNotificationsEnabled': pushNotificationsEnabled,
     };
   }
 
@@ -149,6 +169,9 @@ class UserModel {
     String? gender,
     String? address,
     int? kycTier,
+    String? kycStatus,
+    DateTime? kycSubmittedAt,
+    String? kycRejectionReason,
     bool? isEmailVerified,
     bool? isPhoneVerified,
     String? referredBy,
@@ -162,6 +185,8 @@ class UserModel {
     List<Map<String, dynamic>>? savedCards,
     DateTime? updatedAt,
     bool? isActive,
+    bool? isAdmin,
+    bool? pushNotificationsEnabled,
   }) {
     return UserModel(
       uid: uid,
@@ -175,6 +200,9 @@ class UserModel {
       gender: gender ?? this.gender,
       address: address ?? this.address,
       kycTier: kycTier ?? this.kycTier,
+      kycStatus: kycStatus ?? this.kycStatus,
+      kycSubmittedAt: kycSubmittedAt ?? this.kycSubmittedAt,
+      kycRejectionReason: kycRejectionReason ?? this.kycRejectionReason,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
       referralCode: referralCode,
@@ -190,6 +218,8 @@ class UserModel {
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
+      isAdmin: isAdmin ?? this.isAdmin,
+      pushNotificationsEnabled: pushNotificationsEnabled ?? this.pushNotificationsEnabled,
     );
   }
 }

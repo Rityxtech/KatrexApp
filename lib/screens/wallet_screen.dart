@@ -17,6 +17,7 @@ import 'marketplace_screen.dart';
 import 'sell_giftcard_screen.dart';
 import 'trade_screen.dart';
 import 'withdraw_screen.dart';
+import '../widgets/deposit_methods_modal.dart';
 
 class WalletScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSwitch;
@@ -103,9 +104,15 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildQuickActionsGrid() {
     final actions = [
-      {'label': 'Add Money', 'icon': Icons.add_circle_rounded, 'color': const Color(0xFF10B981), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DepositScreen()))},
+      {'label': 'Add Money', 'icon': Icons.add_circle_rounded, 'color': const Color(0xFF10B981), 'onTap': () => showDepositMethodsModal(context: context)},
       {'label': 'Withdraw', 'icon': Icons.arrow_upward_rounded, 'color': const Color(0xFFEF4444), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WithdrawScreen()))},
-      {'label': 'Trade', 'icon': Icons.swap_horiz_rounded, 'color': const Color(0xFF8B5CF6), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TradeScreen()))},
+      {'label': 'Trade', 'icon': Icons.swap_horiz_rounded, 'color': const Color(0xFF8B5CF6), 'onTap': () {
+        if (widget.onTabSwitch != null) {
+          widget.onTabSwitch!(2);
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const TradeScreen()));
+        }
+      }},
       {'label': 'Airtime', 'icon': Icons.phone_iphone_rounded, 'color': const Color(0xFF2563EB), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BuyAirtimeScreen()))},
       {'label': 'Data', 'icon': Icons.wifi_rounded, 'color': const Color(0xFF06B6D4), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BuyDataScreen()))},
       {'label': 'Giftcards', 'icon': Icons.card_giftcard_rounded, 'color': const Color(0xFFF59E0B), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SellGiftcardScreen()))},

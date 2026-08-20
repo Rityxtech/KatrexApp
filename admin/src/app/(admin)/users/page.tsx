@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import { useUsers, useWallets } from "@/hooks/useAdminData";
@@ -8,12 +8,20 @@ import UserTable from "@/components/UserTable";
 import TableFooter from "@/components/TableFooter";
 import UserEditDrawer from "@/components/UserEditDrawer";
 import MessageUserDrawer from "@/components/MessageUserDrawer";
+import ConfirmModal from "@/components/ConfirmModal";
 
 const PAGE_SIZE = 25;
 
 export default function UsersPage() {
-  const { data: users, loading } = useUsers(1000);
+  const { data: rawUsers, loading: usersLoading } = useUsers(1000);
   const { data: wallets } = useWallets();
+
+  // Toast / notification state
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   // Build wallet lookup map: uid → wallet data
   const walletMap = useMemo(() => {
@@ -41,13 +49,31 @@ export default function UsersPage() {
   const [adding, setAdding] = useState(false);
   const [addMsg, setAddMsg] = useState<string | null>(null);
 
+  // ─── Confirm modal state ───────────────────────────────────────
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    isDanger?: boolean;
+    requireReason?: boolean;
+    reasonPlaceholder?: string;
+    loading?: boolean;
+    onConfirm: (reason?: string) => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
   // ─── Action menu ───────────────────────────────────────────────
   const [menuUserId, setMenuUserId] = useState<string | null>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // ─── Filtered users (enriched with wallet balance) ────────────
   const filtered = useMemo(() => {
-    let list = users.map((u: any) => {
+    let list = rawUsers.map((u: any) => {
       const wallet = walletMap.get(u.id);
       return { ...u, nairaBalance: wallet?.nairaBalance || 0 };
     });
@@ -67,27 +93,22 @@ export default function UsersPage() {
     if (statusFilter !== "all") {
       list = list.filter((u: any) => {
         const kycTierNum = u.kycTier ?? 0;
-        const s = u.isActive === false ? "suspended"
-          : kycTierNum >= 1 ? "verified"
-          : "pending";
-        if (statusFilter === "verified") return s === "verified";
-        if (statusFilter === "pending") return s === "pending";
-        if (statusFilter === "suspended") return s === "suspended" || u.isActive === false;
+        const isDeleted = Boolean(u.deletedAt);
+        const isActive = u.isActive ?? true;
+
+        if (statusFilter === "deleted") return isDeleted;
+        if (statusFilter === "suspended") return !isActive && !isDeleted;
+        if (statusFilter === "verified") return isActive && !isDeleted && kycTierNum >= 1;
+        if (statusFilter === "pending") return isActive && !isDeleted && kycTierNum < 1;
         return true;
       });
     }
     return list;
-  }, [users, walletMap, search, kycFilter, statusFilter]);
+  }, [rawUsers, walletMap, search, kycFilter, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
   const paged = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
-
-  // ─── Wallet lookup (for edit drawer) ───────────────────────────
-  const getWalletForUser = (user: any) => {
-    // UserEditDrawer expects a wallet object; we pass user's own wallet fields
-    return user;
-  };
 
   // ─── Selection helpers ─────────────────────────────────────────
   const toggleSelect = (id: string) => {
@@ -116,70 +137,77 @@ export default function UsersPage() {
 
   // ─── Shared helpers ─────────────────────────────────────────────
   const getStatus = (u: any) => {
-    const t = u.kycTier ?? 0;
-    return u.isActive === false ? "suspended" : t >= 1 ? "verified" : "pending";
+    if (u.deletedAt) return "deleted";
+    if (u.isActive === false) return "suspended";
+    return (u.kycTier ?? 0) >= 1 ? "verified" : "pending";
   };
 
-  // ─── CSV Export ────────────────────────────────────────────────
-  const exportCsv = () => {
-    const escape = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-    const header = ["Name", "Email", "UID", "Status", "KYC Tier", "Balance (NGN)", "Joined"].map(escape).join(",");
-    const rows = filtered.map((u: any) =>
-      [
-        u.fullName || u.displayName || u.name || "",
-        u.email || "",
-        u.id || "",
-        getStatus(u),
-        `Tier ${u.kycTier ?? 0}`,
-        u.nairaBalance || 0,
-        u.createdAt?.toDate ? u.createdAt.toDate().toISOString() : u.createdAt || "",
-      ].map(escape).join(",")
-    );
-    const blob = new Blob([[header, ...rows].join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `katrex-users-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // ─── Server CSV Export ──────────────────────────────────────────
+  const exportCsv = async () => {
+    try {
+      showToast("Generating production CSV export...");
+      const adminApi = httpsCallable(functions, "adminApi");
+      const res: any = await adminApi({
+        action: "exportUsersCsv",
+        filters: { kycTier: kycFilter, status: statusFilter, search },
+      });
+      const csvContent = res.data?.result?.csv || res.data?.csv || res?.result?.csv;
+      if (!csvContent) {
+        throw new Error("No CSV data returned from server");
+      }
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `katrex-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("CSV export completed");
+    } catch (e: any) {
+      showToast(e?.message || "CSV export failed", "error");
+    }
   };
 
   // ─── PDF Export ────────────────────────────────────────────────
   const exportPdf = async () => {
-    // Dynamic import to avoid SSR issues
-    const { default: jsPDF } = await import("jspdf" as any);
-    const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text("Katrex Users", 14, 16);
-    doc.setFontSize(8);
-    doc.text(`Exported ${new Date().toLocaleString()} — ${filtered.length} users`, 14, 22);
+    try {
+      showToast("Generating PDF report...");
+      const { default: jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      doc.setFontSize(14);
+      doc.text("Katrex Users Report", 14, 16);
+      doc.setFontSize(8);
+      doc.text(`Generated ${new Date().toLocaleString()} — ${filtered.length} users`, 14, 22);
 
-    const headers = ["Name", "Email", "Status", "Tier", "Balance"];
-    const data = filtered.slice(0, 200).map((u: any) => [
-      (u.fullName || u.displayName || u.name || "Unknown").slice(0, 25),
-      (u.email || "").slice(0, 30),
-      getStatus(u),
-      `Tier ${u.kycTier ?? 0}`,
-      `\u20a6${(u.nairaBalance || 0).toLocaleString()}`,
-    ]);
+      const headers = ["Name", "Email", "Status", "Tier", "Balance"];
+      const data = filtered.slice(0, 200).map((u: any) => [
+        (u.fullName || u.displayName || u.name || "Unknown").slice(0, 25),
+        (u.email || "").slice(0, 30),
+        getStatus(u),
+        `Tier ${u.kycTier ?? 0}`,
+        `\u20a6${(u.nairaBalance || 0).toLocaleString()}`,
+      ]);
 
-    let y = 30;
-    // Header row
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
-    headers.forEach((h, i) => doc.text(h, 14 + i * 38, y));
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    data.forEach((row) => {
-      if (y > 280) {
-        doc.addPage();
-        y = 14;
-      }
-      row.forEach((cell, i) => doc.text(String(cell), 14 + i * 38, y));
-      y += 4.5;
-    });
+      let y = 30;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      headers.forEach((h, i) => doc.text(h, 14 + i * 38, y));
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      data.forEach((row) => {
+        if (y > 280) {
+          doc.addPage();
+          y = 14;
+        }
+        row.forEach((cell, i) => doc.text(String(cell), 14 + i * 38, y));
+        y += 4.5;
+      });
 
-    doc.save(`katrex-users-${new Date().toISOString().slice(0, 10)}.pdf`);
+      doc.save(`katrex-users-${new Date().toISOString().slice(0, 10)}.pdf`);
+      showToast("PDF report exported");
+    } catch (e: any) {
+      showToast(e?.message || "PDF export failed", "error");
+    }
   };
 
   // ─── Add User ──────────────────────────────────────────────────
@@ -200,10 +228,11 @@ export default function UsersPage() {
       });
       setAddMsg("User created successfully!");
       setAddForm({ email: "", displayName: "", password: "" });
+      showToast("New user account created");
       setTimeout(() => {
         setShowAddModal(false);
         setAddMsg(null);
-      }, 1500);
+      }, 1200);
     } catch (e: any) {
       setAddMsg(e?.message || "Failed to create user.");
     } finally {
@@ -211,54 +240,165 @@ export default function UsersPage() {
     }
   };
 
-  // ─── Bulk Actions ──────────────────────────────────────────────
-  const handleBulkBlock = async () => {
+  // ─── Bulk Block / Suspend ──────────────────────────────────────
+  const handleBulkBlock = () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Suspend ${selectedIds.size} selected user(s)?`)) return;
-    setBulkActionLoading(true);
-    try {
-      const adminApi = httpsCallable(functions, "adminApi");
-      for (const uid of selectedIds) {
-        await adminApi({ action: "suspendUser", targetUid: uid }).catch(() => {});
-      }
-      setSelectedIds(new Set());
-    } catch (e) {
-      console.error("Bulk block failed:", e);
-    } finally {
-      setBulkActionLoading(false);
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: "Bulk Suspend Users",
+      message: `Are you sure you want to suspend ${selectedIds.size} selected user account(s)? Suspended users will not be able to log in or transact.`,
+      confirmText: "Suspend Users",
+      isDanger: true,
+      requireReason: true,
+      reasonPlaceholder: "Enter compliance reason for bulk suspension...",
+      onConfirm: async (reason) => {
+        setConfirmConfig((prev) => ({ ...prev, loading: true }));
+        try {
+          const adminApi = httpsCallable(functions, "adminApi");
+          await adminApi({
+            action: "bulkSuspendUsers",
+            targetUids: Array.from(selectedIds),
+            reason,
+          });
+          setSelectedIds(new Set());
+          showToast(`Successfully suspended ${selectedIds.size} users`);
+        } catch (e: any) {
+          showToast(e?.message || "Bulk suspension failed", "error");
+        } finally {
+          setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));
+        }
+      },
+    });
   };
 
-  const handleBulkDelete = async () => {
+  // ─── Bulk Delete (Soft Delete) ─────────────────────────────────
+  const handleBulkDelete = () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`DELETE ${selectedIds.size} user(s)? This cannot be undone.`)) return;
-    setBulkActionLoading(true);
-    try {
-      const adminApi = httpsCallable(functions, "adminApi");
-      for (const uid of selectedIds) {
-        await adminApi({ action: "deleteUser", targetUid: uid }).catch(() => {});
-      }
-      setSelectedIds(new Set());
-    } catch (e) {
-      console.error("Bulk delete failed:", e);
-    } finally {
-      setBulkActionLoading(false);
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: "Bulk Delete Users",
+      message: `Are you sure you want to soft-delete ${selectedIds.size} user account(s)? Accounts can be restored later by an admin.`,
+      confirmText: "Soft Delete Users",
+      isDanger: true,
+      requireReason: true,
+      reasonPlaceholder: "Enter audit reason for bulk soft-deletion...",
+      onConfirm: async (reason) => {
+        setConfirmConfig((prev) => ({ ...prev, loading: true }));
+        try {
+          const adminApi = httpsCallable(functions, "adminApi");
+          await adminApi({
+            action: "bulkDeleteUsers",
+            targetUids: Array.from(selectedIds),
+            reason,
+          });
+          setSelectedIds(new Set());
+          showToast(`Successfully soft-deleted ${selectedIds.size} users`);
+        } catch (e: any) {
+          showToast(e?.message || "Bulk deletion failed", "error");
+        } finally {
+          setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));
+        }
+      },
+    });
   };
 
-  // ─── Row-level actions ─────────────────────────────────────────
-  const handleSuspendUser = async (uid: string) => {
-    try {
-      const adminApi = httpsCallable(functions, "adminApi");
-      await adminApi({ action: "suspendUser", targetUid: uid });
-    } catch (e) {
-      console.error("Suspend failed:", e);
-    }
-    setMenuUserId(null);
+  // ─── Row Action: Suspend / Unsuspend ───────────────────────────
+  const handleToggleSuspendUser = (uid: string, currentActive: boolean) => {
+    const actionName = currentActive ? "Suspend" : "Unsuspend";
+    setConfirmConfig({
+      isOpen: true,
+      title: `${actionName} User Account`,
+      message: `Are you sure you want to ${actionName.toLowerCase()} user ${uid}?`,
+      confirmText: actionName,
+      isDanger: currentActive,
+      requireReason: true,
+      reasonPlaceholder: `Enter reason to ${actionName.toLowerCase()} user...`,
+      onConfirm: async (reason) => {
+        setConfirmConfig((prev) => ({ ...prev, loading: true }));
+        try {
+          const adminApi = httpsCallable(functions, "adminApi");
+          if (currentActive) {
+            await adminApi({ action: "suspendUser", targetUid: uid, reason });
+            showToast("User account suspended");
+          } else {
+            await adminApi({ action: "bulkUnsuspendUsers", targetUids: [uid], reason });
+            showToast("User account unsuspended");
+          }
+        } catch (e: any) {
+          showToast(e?.message || `Failed to ${actionName.toLowerCase()} user`, "error");
+        } finally {
+          setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));
+        }
+      },
+    });
+  };
+
+  // ─── Row Action: Soft Delete ───────────────────────────────────
+  const handleDeleteUser = (uid: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Soft Delete User Account",
+      message: `Are you sure you want to soft-delete user ${uid}? The user will be hidden from standard operations but can be restored by a superadmin.`,
+      confirmText: "Soft Delete",
+      isDanger: true,
+      requireReason: true,
+      reasonPlaceholder: "Enter audit reason for user deletion...",
+      onConfirm: async (reason) => {
+        setConfirmConfig((prev) => ({ ...prev, loading: true }));
+        try {
+          const adminApi = httpsCallable(functions, "adminApi");
+          await adminApi({ action: "deleteUser", targetUid: uid, reason });
+          showToast("User account soft-deleted");
+        } catch (e: any) {
+          showToast(e?.message || "Failed to delete user", "error");
+        } finally {
+          setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));
+        }
+      },
+    });
+  };
+
+  // ─── Row Action: Restore User ─────────────────────────────────
+  const handleRestoreUser = (uid: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Restore Soft-Deleted User",
+      message: `Are you sure you want to restore user ${uid}? This will reactivate the user document.`,
+      confirmText: "Restore Account",
+      isDanger: false,
+      requireReason: true,
+      reasonPlaceholder: "Enter audit reason for restoring user...",
+      onConfirm: async (reason) => {
+        setConfirmConfig((prev) => ({ ...prev, loading: true }));
+        try {
+          const adminApi = httpsCallable(functions, "adminApi");
+          await adminApi({ action: "restoreUser", targetUid: uid, reason });
+          showToast("User account restored successfully");
+        } catch (e: any) {
+          showToast(e?.message || "Failed to restore user", "error");
+        } finally {
+          setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));
+        }
+      },
+    });
   };
 
   return (
-    <div className="w-full flex flex-col gap-3.5">
+    <div className="w-full flex flex-col gap-3.5 relative">
+      {/* Toast Alert */}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-lg text-white font-medium text-xs flex items-center gap-2 shadow-2xl transition-all animate-bounce ${
+            toast.type === "error" ? "bg-status-danger" : "bg-status-success"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">
+            {toast.type === "error" ? "error" : "check_circle"}
+          </span>
+          {toast.message}
+        </div>
+      )}
+
       {/* ── Main User Workspace Card ── */}
       <div className="w-full bg-surface-bright rounded-xl border border-subtle overflow-hidden shadow-sm flex flex-col">
         {/* ── Header ──────────────────────────────────────────────── */}
@@ -266,8 +406,8 @@ export default function UsersPage() {
           <div>
             <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold">User Management</h1>
             <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
-              Manage total {loading ? "..." : filtered.length.toLocaleString()} platform users
-              {!loading && <span className="flex items-center gap-1 text-[10px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE</span>}
+              Manage total {usersLoading ? "..." : filtered.length.toLocaleString()} platform users
+              {!usersLoading && <span className="flex items-center gap-1 text-[10px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" /> LIVE</span>}
             </p>
           </div>
           <div className="flex items-center gap-2.5 overflow-x-auto pb-1 md:pb-0">
@@ -326,6 +466,7 @@ export default function UsersPage() {
               <option value="verified">Verified</option>
               <option value="pending">Pending</option>
               <option value="suspended">Suspended</option>
+              <option value="deleted">Deleted</option>
             </select>
           </div>
           <div className="md:col-span-3 flex justify-end gap-2">
@@ -341,13 +482,15 @@ export default function UsersPage() {
         {/* ── Table ───────────────────────────────────────────────── */}
         <UserTable
           users={paged}
-          loading={loading}
+          loading={usersLoading}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           onSelectAll={toggleSelectAll}
           onViewUser={(u) => setEditingUser(u)}
           onMessageUser={(u) => setMessagingUser(u)}
-          onSuspendUser={handleSuspendUser}
+          onSuspendUser={handleToggleSuspendUser}
+          onDeleteUser={handleDeleteUser}
+          onRestoreUser={handleRestoreUser}
           menuUserId={menuUserId}
           onToggleMenu={(id) => setMenuUserId(menuUserId === id ? null : id)}
         />
@@ -365,10 +508,10 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* ── Floating Add User ───────────────────────────────────── */}
+      {/* ── Floating Add User Button ────────────────────────────── */}
       <button
         onClick={() => setShowAddModal(true)}
-        className="fixed right-8 bottom-8 w-14 h-14 bg-secondary text-on-secondary-container rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-50"
+        className="fixed right-8 bottom-8 w-14 h-14 bg-secondary text-on-secondary-container rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40"
       >
         <span className="material-symbols-outlined text-[24px]">person_add</span>
       </button>
@@ -377,8 +520,9 @@ export default function UsersPage() {
       {editingUser && (
         <UserEditDrawer
           user={editingUser}
-          wallet={getWalletForUser(editingUser)}
+          wallet={editingUser}
           onClose={() => setEditingUser(null)}
+          onRefresh={() => showToast("User profile refreshed")}
         />
       )}
 
@@ -390,67 +534,87 @@ export default function UsersPage() {
         />
       )}
 
+      {/* ── Confirm Modal ───────────────────────────────────────── */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        isDanger={confirmConfig.isDanger}
+        requireReason={confirmConfig.requireReason}
+        reasonPlaceholder={confirmConfig.reasonPlaceholder}
+        loading={confirmConfig.loading}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
+
       {/* ── Add User Modal ──────────────────────────────────────── */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !adding && setShowAddModal(false)}>
-          <div className="bg-surface-bright border border-subtle rounded-xl p-5 max-w-sm w-full space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface-bright border border-subtle rounded-xl p-5 max-w-sm w-full space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center">
-              <h3 className="font-headline-md text-headline-md text-primary">Create New User</h3>
+              <h3 className="font-headline-md text-headline-md text-primary font-bold">Create New User</h3>
               <button onClick={() => !adding && setShowAddModal(false)} className="text-on-surface-variant hover:text-on-surface">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-body-sm text-on-surface-variant mb-1">Display Name</label>
-                <input
-                  className="w-full h-9 bg-surface-container-low border border-subtle rounded-md px-3 text-body-sm text-on-surface focus:border-secondary outline-none"
-                  type="text"
-                  placeholder="John Doe"
-                  value={addForm.displayName}
-                  onChange={(e) => setAddForm({ ...addForm, displayName: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-body-sm text-on-surface-variant mb-1">Email</label>
-                <input
-                  className="w-full h-9 bg-surface-container-low border border-subtle rounded-md px-3 text-body-sm text-on-surface focus:border-secondary outline-none"
-                  type="email"
-                  placeholder="user@example.com"
-                  value={addForm.email}
-                  onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-body-sm text-on-surface-variant mb-1">Password (min 6 chars)</label>
-                <input
-                  className="w-full h-9 bg-surface-container-low border border-subtle rounded-md px-3 text-body-sm text-on-surface focus:border-secondary outline-none"
-                  type="password"
-                  placeholder="••••••••"
-                  value={addForm.password}
-                  onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
-                />
-              </div>
-            </div>
+
             {addMsg && (
-              <div className={`text-body-sm font-medium px-3 py-2 rounded ${addMsg.includes("success") ? "bg-status-success/10 text-status-success" : "bg-status-danger/10 text-status-danger"}`}>
+              <div className={`p-2.5 rounded-lg text-xs font-medium ${addMsg.includes("successfully") ? "bg-status-success/10 text-status-success" : "bg-status-danger/10 text-status-danger"}`}>
                 {addMsg}
               </div>
             )}
-            <div className="flex gap-2">
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] text-on-surface-variant mb-1">Display / Full Name</label>
+                <input
+                  type="text"
+                  className="w-full h-9 bg-surface-container-low border border-subtle rounded-md px-3 text-body-sm text-on-surface focus:border-secondary focus:ring-0 outline-none"
+                  value={addForm.displayName}
+                  onChange={(e) => setAddForm({ ...addForm, displayName: e.target.value })}
+                  placeholder="e.g. John Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-on-surface-variant mb-1">Email Address</label>
+                <input
+                  type="email"
+                  className="w-full h-9 bg-surface-container-low border border-subtle rounded-md px-3 text-body-sm text-on-surface focus:border-secondary focus:ring-0 outline-none"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+                  placeholder="e.g. user@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-on-surface-variant mb-1">Initial Password</label>
+                <input
+                  type="password"
+                  className="w-full h-9 bg-surface-container-low border border-subtle rounded-md px-3 text-body-sm text-on-surface focus:border-secondary focus:ring-0 outline-none"
+                  value={addForm.password}
+                  onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+                  placeholder="Min 6 characters"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-subtle">
               <button
-                onClick={() => setShowAddModal(false)}
+                type="button"
                 disabled={adding}
-                className="flex-1 py-2 bg-surface-container-high text-on-surface rounded-lg text-body-sm font-bold hover:bg-surface-container-highest transition-colors disabled:opacity-50"
+                onClick={() => setShowAddModal(false)}
+                className="px-3.5 py-2 text-xs font-bold text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleAddUser}
+                type="button"
                 disabled={adding}
-                className="flex-1 py-2 bg-secondary text-on-secondary-container rounded-lg text-body-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                onClick={handleAddUser}
+                className="px-4 py-2 text-xs font-bold bg-secondary text-on-secondary-container rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5"
               >
-                {adding ? "Creating..." : "Create User"}
+                {adding && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                Create Account
               </button>
             </div>
           </div>

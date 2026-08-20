@@ -8,7 +8,10 @@ import 'providers/auth_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
+import 'providers/p2p_provider.dart';
+import 'providers/referral_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'services/hd_wallet_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/trade_fee_service.dart';
@@ -40,6 +43,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WalletProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => P2PProvider()),
+        ChangeNotifierProvider(create: (_) => ReferralProvider()),
       ],
       child: MaterialApp(
         title: 'KatrexApp',
@@ -56,6 +61,7 @@ class MyApp extends StatelessWidget {
         ),
         routes: {
           '/login': (_) => const LoginScreen(),
+          '/reset-password': (_) => const ResetPasswordScreen(),
         },
       ),
     );

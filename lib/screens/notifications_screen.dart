@@ -8,6 +8,8 @@ import '../models/notification_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/app_background.dart';
+import 'withdraw_screen.dart';
+import 'trade_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -321,7 +323,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Expanded(
                     flex: 2,
                     child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        Navigator.pop(context);
+                        final route = n.ctaRoute;
+                        if (route == null || route.isEmpty) return;
+                        switch (route) {
+                          case 'deposit':
+                            // Let the user tap from Dashboard
+                            break;
+                          case 'withdraw':
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const WithdrawScreen()));
+                            break;
+                          case 'trade':
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const TradeScreen()));
+                            break;
+                          default:
+                            break;
+                        }
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(color: ctaColor, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: ctaColor.withOpacity(0.4), blurRadius: 15)]),

@@ -9,6 +9,8 @@ import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
+import '../widgets/transaction_details_modal.dart';
+import 'giftcard_trades_history_screen.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSwitch;
@@ -177,7 +179,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             color: Colors.white,
           ),
         ),
-        const NotificationIcon(),
+        Row(
+          children: [
+            _buildIconButton(
+              icon: Icons.card_giftcard_rounded,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GiftcardTradesHistoryScreen()),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const NotificationIcon(),
+          ],
+        ),
       ],
     );
   }
@@ -433,7 +446,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     }
 
     return GestureDetector(
-      onTap: () {},
+      onTap: () => TransactionDetailsModal.show(context, t),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         color: Colors.transparent,
@@ -613,7 +626,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   String _statusLabel(TransactionStatus status) {
     switch (status) {
-      case TransactionStatus.pending: return 'Processing';
+      case TransactionStatus.pending: return 'Pending';
+      case TransactionStatus.processing: return 'Processing';
       case TransactionStatus.completed: return 'Completed';
       case TransactionStatus.failed: return 'Failed';
       case TransactionStatus.cancelled: return 'Cancelled';

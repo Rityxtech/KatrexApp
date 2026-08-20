@@ -1,9 +1,9 @@
 "use client";
-// v2 — typed props interface
 
 function formatDate(date: any) {
-  if (!date) return "\u2014";
+  if (!date) return "—";
   const d = date?.toDate ? date.toDate() : new Date(date);
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "2-digit" });
 }
 
@@ -20,7 +20,9 @@ interface Props {
   onSelectAll: () => void;
   onViewUser: (user: any) => void;
   onMessageUser: (user: any) => void;
-  onSuspendUser: (uid: string) => void;
+  onSuspendUser: (uid: string, currentActive: boolean) => void;
+  onDeleteUser: (uid: string) => void;
+  onRestoreUser: (uid: string) => void;
   menuUserId: string | null;
   onToggleMenu: (id: string) => void;
 }
@@ -34,6 +36,8 @@ export default function UserTable({
   onViewUser,
   onMessageUser,
   onSuspendUser,
+  onDeleteUser,
+  onRestoreUser,
   menuUserId,
   onToggleMenu,
 }: Props) {
@@ -41,9 +45,9 @@ export default function UserTable({
 
   return (
     <div className="flex-1 overflow-x-auto bg-surface-deep">
-      <div className="min-w-[900px]">
+      <div className="min-w-[950px]">
         {/* Header */}
-        <div className="grid grid-cols-[40px_2fr_1fr_1fr_1fr_1fr_80px] px-container-padding py-2 bg-surface-container-low border-b border-subtle items-center">
+        <div className="grid grid-cols-[40px_2fr_1fr_1fr_1fr_1fr_90px] px-container-padding py-2 bg-surface-container-low border-b border-subtle items-center">
           <div className="flex items-center justify-center">
             <input
               className="w-3.5 h-3.5 rounded border-outline-variant bg-surface-container-highest text-secondary focus:ring-0 cursor-pointer"
@@ -68,33 +72,33 @@ export default function UserTable({
             ))}
           </div>
         ) : users.length === 0 ? (
-          <div className="p-8 text-center text-on-surface-variant text-body-sm">No users match your filters</div>
+          <div className="p-8 text-center text-on-surface-variant text-body-sm">No users match your criteria</div>
         ) : (
           <div className="divide-y divide-subtle">
             {users.map((user: any) => {
+              const isDeleted = Boolean(user.deletedAt);
+              const isActive = user.isActive ?? true;
               const kycTierNum = user.kycTier ?? 0;
-              let status: string;
-              if (user.isActive === false) {
-                status = "suspended";
-              } else if (kycTierNum >= 1) {
-                status = "verified";
-              } else {
-                status = "pending";
-              }
+              
+              let status = "pending";
+              if (isDeleted) status = "deleted";
+              else if (!isActive) status = "suspended";
+              else if (kycTierNum >= 1) status = "verified";
+
               const badgeClass =
-                status === "verified" || status === "completed"
+                status === "verified"
                   ? "bg-status-success/10 text-status-success border-status-success/20"
                   : status === "pending"
                   ? "bg-status-warning/10 text-status-warning border-status-warning/20"
-                  : status === "suspended" || status === "rejected"
-                  ? "bg-status-danger/10 text-status-danger border-status-danger/20"
-                  : "bg-surface-container-high text-on-surface-variant border-outline-variant";
+                  : "bg-status-danger/10 text-status-danger border-status-danger/20";
+
               const dotClass =
-                status === "verified" || status === "completed"
+                status === "verified"
                   ? "bg-status-success"
                   : status === "pending"
                   ? "bg-status-warning"
                   : "bg-status-danger";
+
               const tier = `Tier ${kycTierNum}`;
               const balance = user.nairaBalance || 0;
               const isSelected = selectedIds.has(user.id);
@@ -102,7 +106,9 @@ export default function UserTable({
               return (
                 <div
                   key={user.id}
-                  className={`grid grid-cols-[40px_2fr_1fr_1fr_1fr_1fr_80px] px-container-padding py-2 hover:bg-surface-container-high transition-colors items-center ${isSelected ? "bg-secondary/5" : ""}`}
+                  className={`grid grid-cols-[40px_2fr_1fr_1fr_1fr_1fr_90px] px-container-padding py-2 hover:bg-surface-container-high transition-colors items-center ${
+                    isSelected ? "bg-secondary/5" : ""
+                  } ${isDeleted ? "opacity-60 bg-surface-container-low" : ""}`}
                 >
                   <div className="flex items-center justify-center">
                     <input
@@ -112,16 +118,14 @@ export default function UserTable({
                       onChange={() => onToggleSelect(user.id)}
                     />
                   </div>
-                  <div
-                    className="flex items-center gap-3 cursor-pointer"
-                    onClick={() => onViewUser(user)}
-                  >
+                  <div className="flex items-center gap-3 cursor-pointer" onClick={() => onViewUser(user)}>
                     <div className="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center text-secondary border border-outline-variant text-[12px] font-bold">
                       {getInitials(user.fullName || user.displayName || user.name || user.email || "")}
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="font-body-md text-on-surface font-semibold truncate">
+                      <span className="font-body-md text-on-surface font-semibold truncate flex items-center gap-1.5">
                         {user.fullName || user.displayName || user.name || "Unknown"}
+                        {isDeleted && <span className="text-[9px] bg-status-danger/20 text-status-danger px-1 rounded font-mono">DELETED</span>}
                       </span>
                       <span className="font-body-sm text-on-surface-variant text-[11px] truncate">
                         {user.email || ""} &bull; ID: {user.id?.slice(0, 8)}
@@ -129,9 +133,7 @@ export default function UserTable({
                     </div>
                   </div>
                   <div>
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${badgeClass}`}
-                    >
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${badgeClass}`}>
                       <span className={`w-1 h-1 rounded-full ${dotClass}`}></span> {status}
                     </span>
                   </div>
@@ -148,14 +150,14 @@ export default function UserTable({
                   <div className="flex justify-end gap-1 relative">
                     <button
                       onClick={() => onViewUser(user)}
-                      className="p-1 hover:bg-surface-container-highest rounded transition-colors material-symbols-outlined text-outline"
+                      className="p-1 hover:bg-surface-container-highest rounded transition-colors material-symbols-outlined text-outline text-[18px]"
                       title="View / Edit user"
                     >
                       visibility
                     </button>
                     <button
                       onClick={() => onToggleMenu(user.id)}
-                      className="p-1 hover:bg-surface-container-highest rounded transition-colors material-symbols-outlined text-outline"
+                      className="p-1 hover:bg-surface-container-highest rounded transition-colors material-symbols-outlined text-outline text-[18px]"
                       title="More actions"
                     >
                       more_vert
@@ -165,7 +167,7 @@ export default function UserTable({
                     {menuUserId === user.id && (
                       <>
                         <div className="fixed inset-0 z-30" onClick={() => onToggleMenu(user.id)} />
-                        <div className="absolute right-0 top-8 z-40 w-44 bg-surface-bright border border-subtle rounded-lg shadow-xl py-1">
+                        <div className="absolute right-0 top-8 z-40 w-48 bg-surface-bright border border-subtle rounded-lg shadow-xl py-1">
                           <button
                             onClick={() => { onViewUser(user); onToggleMenu(user.id); }}
                             className="w-full px-3 py-2 text-left text-body-sm hover:bg-surface-container-high transition-colors flex items-center gap-2"
@@ -180,13 +182,37 @@ export default function UserTable({
                             <span className="material-symbols-outlined text-[16px]">mail</span>
                             Send Email
                           </button>
-                          <button
-                            onClick={() => { onSuspendUser(user.id); }}
-                            className="w-full px-3 py-2 text-left text-body-sm hover:bg-surface-container-high transition-colors flex items-center gap-2 text-status-danger"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">block</span>
-                            Suspend User
-                          </button>
+                          
+                          {isDeleted ? (
+                            <button
+                              onClick={() => { onRestoreUser(user.id); onToggleMenu(user.id); }}
+                              className="w-full px-3 py-2 text-left text-body-sm hover:bg-surface-container-high transition-colors flex items-center gap-2 text-status-success font-medium"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">restore_from_trash</span>
+                              Restore Account
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => { onSuspendUser(user.id, isActive); onToggleMenu(user.id); }}
+                                className={`w-full px-3 py-2 text-left text-body-sm hover:bg-surface-container-high transition-colors flex items-center gap-2 ${
+                                  isActive ? "text-status-warning" : "text-status-success"
+                                }`}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">
+                                  {isActive ? "block" : "check_circle"}
+                                </span>
+                                {isActive ? "Suspend User" : "Unsuspend User"}
+                              </button>
+                              <button
+                                onClick={() => { onDeleteUser(user.id); onToggleMenu(user.id); }}
+                                className="w-full px-3 py-2 text-left text-body-sm hover:bg-surface-container-high transition-colors flex items-center gap-2 text-status-danger"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                                Delete User
+                              </button>
+                            </>
+                          )}
                         </div>
                       </>
                     )}

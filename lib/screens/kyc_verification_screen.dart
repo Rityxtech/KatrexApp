@@ -43,8 +43,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _resolveView());
   }
 
-  void _resolveView() {
-    final user = context.read<AuthProvider>().userModel;
+  void _resolveView() async {
+    final auth = context.read<AuthProvider>();
+    await auth.reloadUserProfile();
+    if (!mounted) return;
+
+    final user = auth.userModel;
     if (user == null) {
       setState(() => _view = _KycView.unverified);
       return;
@@ -56,8 +60,8 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
     _bvnController.text = user.bvn ?? '';
     _selectedGender = user.gender;
 
-    final status = user.kycStatus;
-    if (user.kycTier >= 1 || status == 'verified') {
+    final status = (user.kycStatus ?? '').toLowerCase();
+    if (user.kycTier >= 1 || status == 'verified' || status == 'approved') {
       _view = _KycView.verified;
     } else if (status == 'pending') {
       _view = _KycView.pending;
@@ -130,6 +134,22 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
         gender: _selectedGender!,
         address: address,
       );
+
+      final auth = context.read<AuthProvider>();
+      if (auth.userModel != null) {
+        final updated = auth.userModel!.copyWith(
+          bvn: bvn,
+          phone: phone,
+          dateOfBirth: dob,
+          gender: _selectedGender,
+          address: address,
+          kycStatus: 'pending',
+          kycSubmittedAt: DateTime.now(),
+        );
+        await auth.updateUserProfileDirect(updated);
+      }
+      await auth.reloadUserProfile();
+
       if (mounted) {
         setState(() => _view = _KycView.pending);
         ScaffoldMessenger.of(context).showSnackBar(

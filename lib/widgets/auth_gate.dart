@@ -5,6 +5,8 @@ import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/wallet_provider.dart';
+import '../providers/p2p_provider.dart';
+import '../providers/referral_provider.dart';
 import '../screens/login_screen.dart';
 import '../screens/main_shell.dart';
 import '../screens/otp_verification_screen.dart';
@@ -57,6 +59,8 @@ class AuthGate extends StatelessWidget {
     context.read<WalletProvider>().init(uid);
     context.read<TransactionProvider>().init(uid);
     context.read<NotificationProvider>().init(uid);
+    context.read<P2PProvider>().load(uid);
+    context.read<ReferralProvider>().load(uid);
 
     // Register or update the FCM token to Firestore
     PushNotificationService.instance.registerToken();

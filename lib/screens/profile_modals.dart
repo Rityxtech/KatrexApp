@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart' as app_auth;
+import '../services/cloud_functions_service.dart';
+import '../widgets/pin_input_sheet.dart';
 
 class _ModalShell extends StatelessWidget {
   final String title;
@@ -338,9 +340,24 @@ class _SecuritySettingsModalState extends State<SecuritySettingsModal> {
             title: 'PIN for Transactions',
             subtitle: 'Require PIN for transfers & trades',
             value: _pinEnabled,
-            onChanged: (v) {
-              setState(() => _pinEnabled = v);
-              _saveToggles();
+            onChanged: (v) async {
+              if (v) {
+                final passed = await PinInputSheet.ensurePinRequired(context);
+                if (passed) {
+                  setState(() => _pinEnabled = true);
+                  await _saveToggles();
+                } else {
+                  setState(() => _pinEnabled = false);
+                }
+              } else {
+                final passed = await PinInputSheet.verify(context);
+                if (passed) {
+                  setState(() => _pinEnabled = false);
+                  await _saveToggles();
+                } else {
+                  setState(() => _pinEnabled = true);
+                }
+              }
             },
             showDivider: false,
           ),
@@ -360,53 +377,22 @@ class PaymentMethodsModal extends StatefulWidget {
 }
 
 class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
-  List<Map<String, dynamic>> _methods = [];
-  bool _isLoading = true;
+  bool _isLoading = false;
 
-  static const _iconMap = {
-    'bank': Icons.account_balance_outlined,
-    'card': Icons.credit_card_outlined,
-  };
-
-  static const _colorMap = {
-    'bank': Color(0xFF3B82F6),
-    'card': Color(0xFFF59E0B),
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    final user = context.read<app_auth.AuthProvider>().userModel;
-    _methods = List<Map<String, dynamic>>.from(user?.paymentMethods ?? []);
-    _isLoading = false;
-  }
-
-  Future<void> _removeMethod(int index) async {
-    final removed = _methods[index];
-    setState(() {
-      _methods.removeAt(index);
-      _isLoading = true;
-    });
+  Future<void> _removeMethod(Map<String, dynamic> method) async {
+    setState(() => _isLoading = true);
+    final accountNumber = method['accountNumber'] as String? ?? '';
     try {
-      final auth = context.read<app_auth.AuthProvider>();
-      final user = auth.userModel;
-      if (user == null) return;
-      await auth.updateUserProfileDirect(
-        user.copyWith(
-          paymentMethods: List<Map<String, dynamic>>.from(_methods),
-          updatedAt: DateTime.now(),
-        ),
-      );
+      await CloudFunctionsService.removeBankAccount(accountNumber: accountNumber);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment method removed', style: GoogleFonts.plusJakartaSans()),
+            content: Text('Bank account removed', style: GoogleFonts.plusJakartaSans()),
             backgroundColor: const Color(0xFF10B981),
           ),
         );
       }
     } catch (e) {
-      setState(() => _methods.insert(index, removed));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -422,34 +408,36 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<app_auth.AuthProvider>().userModel;
+    final methods = List<Map<String, dynamic>>.from(user?.paymentMethods ?? []);
+
     return _ModalShell(
       title: 'Payment Methods',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionLabel('Linked Accounts & Cards'),
-          if (_methods.isEmpty && !_isLoading)
+          _sectionLabel('Linked Bank Accounts'),
+          if (methods.isEmpty && !_isLoading)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: Text(
-                  'No payment methods linked yet',
+                  'No bank accounts linked yet',
                   style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
                 ),
               ),
             )
           else
-            ..._methods.asMap().entries.map((entry) {
-              final m = entry.value;
-              final type = m['type'] as String? ?? 'bank';
-              final icon = _iconMap[type] ?? Icons.account_balance_outlined;
-              final color = _colorMap[type] ?? const Color(0xFF3B82F6);
+            ...methods.map((m) {
+              final bankName = m['bankName'] as String? ?? 'Bank Account';
+              final accountNumber = m['accountNumber'] as String? ?? '';
+              final accountName = m['accountName'] as String? ?? '';
               return _paymentItem(
-                icon,
-                color,
-                m['label'] as String? ?? 'Payment Method',
-                m['detail'] as String? ?? '',
-                () => _removeMethod(entry.key),
+                Icons.account_balance_outlined,
+                const Color(0xFF3B82F6),
+                bankName,
+                '$accountNumber ($accountName)',
+                () => _removeMethod(m),
               );
             }),
           const SizedBox(height: 16),
@@ -468,7 +456,7 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
                 children: [
                   const Icon(Icons.add_rounded, color: Color(0xFF2563EB), size: 18),
                   const SizedBox(width: 8),
-                  Text('Add Payment Method', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF2563EB))),
+                  Text('Add Bank Account', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF2563EB))),
                 ],
               ),
             ),
@@ -479,9 +467,9 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
   }
 
   void _showAddDialog(BuildContext context) {
-    final labelController = TextEditingController();
-    final detailController = TextEditingController();
-    String selectedType = 'bank';
+    final bankNameController = TextEditingController();
+    final accountNumberController = TextEditingController();
+    final accountNameController = TextEditingController();
 
     showDialog(
       context: context,
@@ -489,37 +477,41 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF0A0F1F),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Add Payment Method', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+          title: Text('Add Bank Account', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  _typeChip('Bank', 'bank', selectedType, (v) => setDialogState(() => selectedType = v)),
-                  const SizedBox(width: 8),
-                  _typeChip('Card', 'card', selectedType, (v) => setDialogState(() => selectedType = v)),
-                ],
-              ),
-              const SizedBox(height: 16),
               TextField(
-                controller: labelController,
+                controller: bankNameController,
                 style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'e.g. GTBank Savings',
+                  hintText: 'Bank Name (e.g. GTBank)',
                   hintStyle: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.white38),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: const Color(0xFF2563EB))),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: detailController,
+                controller: accountNumberController,
+                keyboardType: TextInputType.number,
                 style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'e.g. ****4521',
+                  hintText: 'Account Number',
                   hintStyle: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.white38),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: const Color(0xFF2563EB))),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: accountNameController,
+                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Account Name',
+                  hintStyle: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.white38),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: const Color(0xFF2563EB))),
                 ),
               ),
             ],
@@ -531,34 +523,25 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
             ),
             TextButton(
               onPressed: () async {
-                final label = labelController.text.trim();
-                final detail = detailController.text.trim();
-                if (label.isEmpty) return;
+                final bankName = bankNameController.text.trim();
+                final accountNumber = accountNumberController.text.trim();
+                final accountName = accountNameController.text.trim();
+                if (bankName.isEmpty || accountNumber.isEmpty || accountName.isEmpty) return;
 
                 Navigator.pop(dialogContext);
                 setState(() => _isLoading = true);
 
-                _methods.add({
-                  'type': selectedType,
-                  'label': label,
-                  'detail': detail,
-                });
-
                 final messenger = ScaffoldMessenger.of(context);
                 try {
-                  final auth = context.read<app_auth.AuthProvider>();
-                  final user = auth.userModel;
-                  if (user == null) return;
-                  await auth.updateUserProfileDirect(
-                    user.copyWith(
-                      paymentMethods: List<Map<String, dynamic>>.from(_methods),
-                      updatedAt: DateTime.now(),
-                    ),
+                  await CloudFunctionsService.saveBankAccount(
+                    bankName: bankName,
+                    accountNumber: accountNumber,
+                    accountName: accountName,
                   );
                   if (mounted) {
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text('Payment method added', style: GoogleFonts.plusJakartaSans()),
+                        content: Text('Bank account added', style: GoogleFonts.plusJakartaSans()),
                         backgroundColor: const Color(0xFF10B981),
                       ),
                     );
@@ -580,22 +563,6 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _typeChip(String label, String value, String selected, ValueChanged<String> onSelect) {
-    final isSelected = selected == value;
-    return GestureDetector(
-      onTap: () => onSelect(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2563EB).withOpacity(0.15) : Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? const Color(0xFF2563EB) : Colors.white.withOpacity(0.08)),
-        ),
-        child: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF9CA3AF))),
       ),
     );
   }

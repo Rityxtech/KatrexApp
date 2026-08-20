@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../services/p2p_service.dart';
 import '../widgets/app_background.dart';
 import 'dispute_screen.dart';
 
@@ -463,15 +464,20 @@ class _OrderScreenState extends State<OrderScreen> {
                   GestureDetector(
                     onTap: () {
                       if (_chatController.text.trim().isNotEmpty) {
+                        final text = _chatController.text.trim();
                         setState(() {
                           _messages.add({
                             'type': 'buyer',
-                            'text': _chatController.text.trim(),
+                            'text': text,
                             'time': 'Now',
                             'read': false,
                           });
                           _chatController.clear();
                         });
+                        final tradeId = widget.item['tradeId'] as String?;
+                        if (tradeId != null) {
+                          P2PService.sendMessage(tradeId: tradeId, text: text).catchError((_) {});
+                        }
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (_scrollController.hasClients) {
                             _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
@@ -876,9 +882,9 @@ class _OrderScreenState extends State<OrderScreen> {
               padding: const EdgeInsets.only(bottom: 32),
               child: GestureDetector(
                 onTap: () {
+                  final dynamicOrderId = widget.item['tradeId'] ?? widget.item['orderId'] ?? widget.item['id'] ?? '8841';
                   Navigator.pop(context);
-                  Navigator.pop(context);
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const DisputeScreen(orderId: '8841')));
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => DisputeScreen(orderId: dynamicOrderId.toString())));
                 },
                 child: Container(
                   width: double.infinity,

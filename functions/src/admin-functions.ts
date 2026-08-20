@@ -21,6 +21,17 @@ import {initializeApp} from "firebase-admin/app";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {getAuth} from "firebase-admin/auth";
 import * as https from "https";
+import {
+  handleListUsers,
+  handleUpdateUserProfile,
+  handleUpdateUserFlags,
+  handleAdjustUserBalance,
+  handleBulkSuspendUsers,
+  handleBulkUnsuspendUsers,
+  handleBulkDeleteUsers,
+  handleRestoreUser,
+  handleExportUsersCsv,
+} from "./admin-user-handlers.js";
 
 const FROM_EMAIL = "KatrexApp <noreply@katrexapp.com>";
 
@@ -1489,6 +1500,15 @@ const HANDLERS: Record<string, (uid: string, data: Record<string, unknown>) => P
   createUser: handleCreateUser,
   sendUserEmail: handleSendUserEmail,
   reviewKyc: handleReviewKyc,
+  listUsers: handleListUsers,
+  updateUserProfile: handleUpdateUserProfile,
+  updateUserFlags: handleUpdateUserFlags,
+  adjustUserBalance: handleAdjustUserBalance,
+  bulkSuspendUsers: handleBulkSuspendUsers,
+  bulkUnsuspendUsers: handleBulkUnsuspendUsers,
+  bulkDeleteUsers: handleBulkDeleteUsers,
+  restoreUser: handleRestoreUser,
+  exportUsersCsv: handleExportUsersCsv,
 };
 
 const adminAuth = getAuth();

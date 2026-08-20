@@ -18,6 +18,7 @@ import '../services/network_fee_service.dart';
 import '../services/trade_fee_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
+import 'transaction_history_screen.dart';
 
 class CoinPreviewScreen extends StatefulWidget {
   final CoinMarketData? initialData;
@@ -492,7 +493,13 @@ class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Recent Activity', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-              GestureDetector(onTap: () {}, child: Text('View all', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)))),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TransactionHistoryScreen()),
+                ),
+                child: Text('View all', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -1489,6 +1496,14 @@ class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Fee (${TradeFeeService.sellFeePercent}%)', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                    Text('\u2248 ${(double.tryParse(sellController.text.replaceAll(RegExp(r'[^\d.]'), '')) != null ? (double.tryParse(sellController.text.replaceAll(RegExp(r'[^\d.]'), ''))! * TradeFeeService.sellFeePercent / 100).toStringAsFixed(8) : '0.00')} ${widget.coinSymbol}', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 GestureDetector(
                   onTap: canSell && !isProcessing ? onExecute : null,
@@ -1608,8 +1623,8 @@ class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Network Fee', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                  Text('${TradeFeeService.swapFeePercent}%', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                  Text('Fee (${TradeFeeService.swapFeePercent}%)', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                  Text('\u2248 ${(toAmount * TradeFeeService.swapFeePercent / 100).toStringAsFixed(8)} $toCoin', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
                 ],
               ),
               const SizedBox(height: 8),

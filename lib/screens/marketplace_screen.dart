@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../services/p2p_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 import 'order_screen.dart';
@@ -455,9 +456,28 @@ class _CheckoutSheet extends StatelessWidget {
             ),
           ),
           GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (context) => OrderScreen(item: item)));
+            onTap: () async {
+              final listingId = item['id'] as String?;
+              if (listingId != null && listingId.isNotEmpty) {
+                try {
+                  final tradeId = await P2PService.buyListing(listingId: listingId);
+                  final orderItem = Map<String, dynamic>.from(item);
+                  orderItem['tradeId'] = tradeId;
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => OrderScreen(item: orderItem)));
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error buying listing: $e'), backgroundColor: const Color(0xFFEF4444)),
+                    );
+                  }
+                }
+              } else {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => OrderScreen(item: item)));
+              }
             },
             child: Container(
               width: double.infinity,
@@ -490,6 +510,75 @@ class _CreateListingSheetState extends State<_CreateListingSheet> {
   final List<String> _platforms = ['Instagram', 'TikTok', 'YouTube', 'X', 'WhatsApp'];
   final List<dynamic> _icons = [FontAwesomeIcons.instagram, FontAwesomeIcons.tiktok, FontAwesomeIcons.youtube, FontAwesomeIcons.xTwitter, FontAwesomeIcons.whatsapp];
 
+  final _handleController = TextEditingController();
+  final _followersController = TextEditingController();
+  final _nicheController = TextEditingController();
+  final _priceController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _handleController.dispose();
+    _followersController.dispose();
+    _nicheController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitListing() async {
+    if (_isSubmitting) return;
+
+    final handle = _handleController.text.trim();
+    final followersText = _followersController.text.trim();
+    final niche = _nicheController.text.trim();
+    final priceText = _priceController.text.trim();
+
+    if (handle.isEmpty || priceText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter account handle and price')),
+      );
+      return;
+    }
+
+    final priceNaira = double.tryParse(priceText) ?? 0;
+    int followersCount = int.tryParse(followersText.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1000;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final res = await P2PService.createListing(
+        platform: _selectedPlatform,
+        handle: handle.startsWith('@') ? handle : '@$handle',
+        title: '$_selectedPlatform Account ($handle)',
+        niche: niche.isNotEmpty ? niche : 'General',
+        followers: followersCount,
+        verified: false,
+        priceNaira: priceNaira,
+        priceType: 'fixed',
+      );
+
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Listing submitted for review! ID: ${res['listingId'] ?? ''}'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit listing: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return _BottomSheetWrapper(
@@ -509,18 +598,18 @@ class _CreateListingSheetState extends State<_CreateListingSheet> {
                 const SizedBox(height: 20),
                 _sectionTitle('Account Handle'),
                 const SizedBox(height: 10),
-                _inputField('@username'),
+                _inputField('@username', _handleController),
                 const SizedBox(height: 20),
                 _sectionTitle('Follower Count'),
                 const SizedBox(height: 10),
-                _inputField('e.g. 12.5k'),
+                _inputField('e.g. 12500', _followersController, TextInputType.number),
                 const SizedBox(height: 20),
                 _sectionTitle('Niche / Category'),
                 const SizedBox(height: 10),
-                _inputField('e.g. Fashion'),
+                _inputField('e.g. Fashion', _nicheController),
                 const SizedBox(height: 20),
                 Row(children: [
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_sectionTitle('Price'), const SizedBox(height: 10), _inputField('₦0.00')])),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_sectionTitle('Price (₦)'), const SizedBox(height: 10), _inputField('0.00', _priceController, TextInputType.number)])),
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_sectionTitle('Pricing'), const SizedBox(height: 10), _inputField('Fixed')])),
                 ]),
@@ -534,12 +623,16 @@ class _CreateListingSheetState extends State<_CreateListingSheet> {
             ),
           ),
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: _submitListing,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 4))]),
-              child: Center(child: Text('Submit Listing', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white))),
+              child: Center(
+                child: _isSubmitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text('Submit Listing', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+              ),
             ),
           ),
         ],
@@ -560,11 +653,20 @@ class _CreateListingSheetState extends State<_CreateListingSheet> {
     );
   }
 
-  Widget _inputField(String hint) {
+  Widget _inputField(String hint, [TextEditingController? controller, TextInputType keyboardType = TextInputType.text]) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.1))),
-      child: Text(hint, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280))),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)),
+          border: InputBorder.none,
+        ),
+      ),
     );
   }
 }

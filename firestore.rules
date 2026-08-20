@@ -2,10 +2,109 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Temporarily allow all authenticated reads/writes for development.
-    // TODO: Restore proper security rules before production.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // ────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ────────────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
     }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    // Custom claims set via Admin SDK on admin sign-in.
+    // Custom claim shape: { admin: bool, role: 'superadmin'|'admin'|'support'|'compliance' }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.role == 'superadmin';
+    }
+
+    // Default deny: any collection not explicitly allowed below is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Users
+    //   • A user can read their own document.
+    //   • An admin (custom claim) can read any user document.
+    //   • No client can write a user document directly — all writes go
+    //     through the adminApi Cloud Function (which uses Admin SDK and
+    //     bypasses these rules). This guarantees audit logging and
+    //     authorization cannot be bypassed by editing the client.
+    // ────────────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Wallets
+    //   • Self read; admin read; no client writes.
+    // ────────────────────────────────────────────────────────────────────
+    match /wallets/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Transactions
+    //   • Self read for own txs; admin read; no client writes.
+    // ────────────────────────────────────────────────────────────────────
+    match /transactions/{txId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Notifications
+    //   • Self read; admin read; no client writes.
+    // ────────────────────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Audit logs — server-only writes; admin read.
+    // ────────────────────────────────────────────────────────────────────
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Operational / config collections — admin only.
+    // ────────────────────────────────────────────────────────────────────
+    match /giftcard_brands/{id}    { allow read, write: if isAdmin(); }
+    match /giftcard_rates/{id}     { allow read, write: if isAdmin(); }
+    match /giftcard_trades/{id}    { allow read: if isAdmin(); allow write: if false; }
+    match /giftcard_promos/{id}    { allow read, write: if isAdmin(); }
+    match /giftcard_categories/{id}{ allow read, write: if isAdmin(); }
+    match /homepage_promos/{id}    { allow read, write: if isAdmin(); }
+    match /app_settings/{id}       { allow read, write: if isAdmin(); }
+    match /app_config/{id}         { allow read, write: if isAdmin(); }
+    match /pricing_config/{id}     { allow read, write: if isAdmin(); }
+    match /giftcard_settings/{id}  { allow read, write: if isAdmin(); }
+    match /p2p_settings/{id}       { allow read, write: if isAdmin(); }
+    match /p2p_listings/{id}       { allow read: if isAdmin(); allow write: if false; }
+    match /p2p_trades/{id}         { allow read: if isAdmin(); allow write: if false; }
+    match /p2p_disputes/{id}       { allow read: if isAdmin(); allow write: if false; }
+    match /support_tickets/{id}    { allow read: if isAdmin(); allow write: if false; }
+    match /referrals/{id}          { allow read: if isAdmin(); allow write: if false; }
+    match /referral_config/{id}    { allow read: if isAdmin(); allow write: if false; }
+    match /market_data/{id}        { allow read: if isSignedIn(); allow write: if false; }
+    match /fcm_tokens/{uid}        { allow read, write: if isSelf(uid); }
+    match /crypto_deposits/{uid}   { allow read: if isSelf(uid) || isAdmin(); allow write: if false; }
+    match /virtualAccounts/{uid}   { allow read: if isSelf(uid) || isAdmin(); allow write: if false; }
+    match /email_codes/{uid}       { allow read, write: if false; }
+    match /webhook_logs/{id}       { allow read: if isAdmin(); allow write: if false; }
+    match /push_campaigns/{id}     { allow read: if isAdmin(); allow write: if false; }
+
+    // Rate-limit & idempotency buckets — server-only.
+    match /rate_limits/{id}        { allow read, write: if false; }
+    match /idempotency/{id}        { allow read, write: if false; }
   }
 }

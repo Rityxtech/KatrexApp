@@ -1,15 +1,26 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../providers/auth_provider.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
+import '../services/storage_service.dart';
+import '../services/push_notification_service.dart';
 import 'edit_profile_screen.dart';
+import 'kyc_verification_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_modals.dart';
+import 'help_center_screen.dart';
+import 'terms_screen.dart';
+import '../widgets/profile_completion_modal.dart';
+import '../widgets/right_slide_panel.dart';
+import '../widgets/app_avatar.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSwitch;
@@ -22,6 +33,126 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _pushNotifications = true;
   bool _biometricLogin = false;
+  bool _isUploadingAvatar = false;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<AuthProvider>().userModel;
+    if (user != null) {
+      _pushNotifications = user.pushNotificationsEnabled;
+      _biometricLogin = user.biometricEnabled;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ProfileCompletionModal.maybeShow(context);
+      }
+    });
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    if (_isUploadingAvatar) return;
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 512,
+        maxHeight: 512,
+      );
+
+      if (pickedFile == null) return;
+
+      setState(() => _isUploadingAvatar = true);
+
+      final auth = context.read<AuthProvider>();
+      final uid = auth.firebaseUser!.uid;
+
+      final downloadUrl = await StorageService().uploadAvatar(
+        uid: uid,
+        filePath: pickedFile.path,
+      );
+
+      final user = auth.userModel;
+      if (user != null) {
+        await auth.updateUserProfileDirect(
+          user.copyWith(
+            avatarUrl: downloadUrl,
+            updatedAt: DateTime.now(),
+          ),
+        );
+      }
+
+      if (mounted) {
+        _showSuccess('Avatar updated successfully');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Failed to upload avatar: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
+  }
+
+  Future<void> _toggleBiometrics(bool enable) async {
+    if (enable) {
+      try {
+        final canCheck = await _localAuth.canCheckBiometrics;
+        final isSupported = await _localAuth.isDeviceSupported();
+        if (!canCheck && !isSupported) {
+          _showError('Biometric authentication is not supported on this device.');
+          return;
+        }
+
+        final authenticated = await _localAuth.authenticate(
+          localizedReason: 'Enable biometric login for your account',
+          biometricOnly: true,
+        );
+
+        if (authenticated) {
+          setState(() => _biometricLogin = true);
+          final auth = context.read<AuthProvider>();
+          final u = auth.userModel;
+          if (u != null) {
+            await auth.updateUserProfileDirect(u.copyWith(biometricEnabled: true));
+            _showSuccess('Biometric login enabled');
+          }
+        } else {
+          _showError('Biometric verification failed.');
+        }
+      } catch (e) {
+        _showError('Failed to enable biometric login: $e');
+      }
+    } else {
+      setState(() => _biometricLogin = false);
+      final auth = context.read<AuthProvider>();
+      final u = auth.userModel;
+      if (u != null) {
+        await auth.updateUserProfileDirect(u.copyWith(biometricEnabled: false));
+        _showSuccess('Biometric login disabled');
+      }
+    }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.plusJakartaSans()),
+        backgroundColor: const Color(0xFFEF4444),
+      ),
+    );
+  }
+
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.plusJakartaSans()),
+        backgroundColor: const Color(0xFF10B981),
+      ),
+    );
+  }
 
   String _currencySymbol(String code) {
     switch (code) {
@@ -168,12 +299,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildProfileBanner(),
-                  const SizedBox(height: 140),
+                        const SizedBox(height: 16),
                   _sectionTitle('Account & Security'),
                   _glassCard(
                     child: Column(
@@ -212,68 +343,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ),
-                        _menuItem(
-                          icon: Icons.badge_outlined,
-                          iconColor: const Color(0xFF10B981),
-                          bgColor: const Color(0xFF10B981),
-                          title: 'KYC Verification',
-                          subtitle: 'Increase transaction limits',
-                          showDivider: false,
-                        ),
+                        Builder(builder: (context) {
+                          final isVerified = (user?.kycTier ?? 0) > 0;
+                          final badgeColor = isVerified ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+                          return _menuItem(
+                            icon: Icons.badge_outlined,
+                            iconColor: badgeColor,
+                            bgColor: badgeColor,
+                            title: 'KYC Verification',
+                            subtitle: isVerified ? 'Tier ${user?.kycTier} Verified' : 'Increase transaction limits',
+                            showDivider: false,
+                            onTap: () => RightSlidePanel.show(
+                              context,
+                              title: 'KYC Verification',
+                              child: const KycVerificationScreen(),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: badgeColor.withOpacity(0.25)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isVerified ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                                        color: badgeColor,
+                                        size: 13,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isVerified ? 'Tier ${user?.kycTier}' : 'Unverified',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: badgeColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 14),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _sectionTitle('Finance'),
-                  _glassCard(
-                    child: Column(
-                      children: [
-                        _menuItem(
-                          icon: Icons.account_balance_outlined,
-                          iconColor: const Color(0xFFF59E0B),
-                          bgColor: const Color(0xFFF59E0B),
-                          title: 'Payment Methods',
-                          subtitle: 'Bank accounts & cards',
-                          onTap: () => showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => const PaymentMethodsModal(),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('${user?.paymentMethods.length ?? 0} Added', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 14),
-                            ],
-                          ),
-                        ),
-                        _menuItem(
-                          icon: Icons.trending_up_rounded,
-                          iconColor: const Color(0xFF3B82F6),
-                          bgColor: const Color(0xFF3B82F6),
-                          title: 'Default Currency',
-                          subtitle: 'Primary display currency',
-                          showDivider: false,
-                          onTap: () => showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => const DefaultCurrencyModal(),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('${user?.defaultCurrency ?? 'NGN'} ($currencySymbol)', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 14),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+
                   const SizedBox(height: 16),
                   _sectionTitle('Preferences'),
                   _glassCard(
@@ -287,7 +411,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           subtitle: 'Updates on trades & deposits',
                           trailing: _toggle(
                             value: _pushNotifications,
-                            onChanged: (v) => setState(() => _pushNotifications = v),
+                            onChanged: (v) async {
+                              setState(() => _pushNotifications = v);
+                              final auth = context.read<AuthProvider>();
+                              final u = auth.userModel;
+                              if (u != null) {
+                                await auth.updateUserProfileDirect(u.copyWith(pushNotificationsEnabled: v));
+                                await PushNotificationService.instance.setPushEnabled(v);
+                              }
+                            },
                           ),
                         ),
                         _menuItem(
@@ -299,7 +431,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           showDivider: false,
                           trailing: _toggle(
                             value: _biometricLogin,
-                            onChanged: (v) => setState(() => _biometricLogin = v),
+                            onChanged: _toggleBiometrics,
                           ),
                         ),
                       ],
@@ -315,12 +447,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           iconColor: const Color(0xFF9CA3AF),
                           bgColor: const Color(0xFFFFFFFF),
                           title: 'Help Center',
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterScreen())),
                         ),
                         _menuItem(
                           icon: Icons.description_outlined,
                           iconColor: const Color(0xFF9CA3AF),
                           bgColor: const Color(0xFFFFFFFF),
                           title: 'Terms of Service',
+                          showDivider: false,
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen())),
                         ),
                         Material(
                           color: const Color(0xFFEF4444).withOpacity(0.05),
@@ -389,70 +524,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileBanner() {
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.topCenter,
-      children: [
-        _glassCard(
-          radius: 20,
-          child: Container(
-            height: 80,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF3B82F6).withOpacity(0.15),
-                  const Color(0xFFA855F7).withOpacity(0.1),
+    return SizedBox(
+      height: 200,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          _glassCard(
+            radius: 20,
+            child: Container(
+              height: 80,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF3B82F6).withOpacity(0.15),
+                    const Color(0xFFA855F7).withOpacity(0.1),
+                  ],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(top: -20, right: -20, child: Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.3), shape: BoxShape.circle), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), child: Container(color: Colors.transparent)))),
+                  Positioned(bottom: -20, left: -20, child: Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFFA855F7).withOpacity(0.2), shape: BoxShape.circle), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), child: Container(color: Colors.transparent)))),
                 ],
               ),
             ),
-            child: Stack(
-              children: [
-                Positioned(top: -20, right: -20, child: Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.3), shape: BoxShape.circle), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), child: Container(color: Colors.transparent)))),
-                Positioned(bottom: -20, left: -20, child: Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFFA855F7).withOpacity(0.2), shape: BoxShape.circle), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), child: Container(color: Colors.transparent)))),
-              ],
-            ),
           ),
-        ),
-        Positioned(
-          top: 38,
+          Positioned(
+            top: 38,
+            left: 0,
+            right: 0,
           child: Column(
             children: [
-              Stack(
-                children: [
-                  Container(
-                    width: 84, height: 84,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF000000), width: 3),
-                      color: const Color(0xFF0A0F1F),
-                    ),
-                    child: ClipOval(
-                      child: (context.watch<AuthProvider>().userModel?.avatarUrl != null &&
-                              context.watch<AuthProvider>().userModel!.avatarUrl!.isNotEmpty)
-                          ? Image.network(
-                              context.watch<AuthProvider>().userModel!.avatarUrl!,
-                              width: 84, height: 84, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 36),
-                            )
-                          : const Icon(Icons.person, color: Colors.white, size: 36),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0, right: 0,
-                    child: Container(
-                      width: 28, height: 28,
+              GestureDetector(
+                onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 84, height: 84,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB),
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF000000), width: 2.5),
+                        border: Border.all(color: const Color(0xFF000000), width: 3),
+                        color: const Color(0xFF0A0F1F),
                       ),
-                      child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
+                      child: ClipOval(
+                        child: _isUploadingAvatar
+                            ? const Center(
+                                child: SizedBox(
+                                  width: 24, height: 24,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                ),
+                              )
+                            : AppAvatar(
+                                avatarUrl: context.watch<AuthProvider>().userModel?.avatarUrl,
+                                size: 84,
+                                fallback: const Icon(Icons.person, color: Colors.white, size: 36),
+                              ),
+                      ),
                     ),
-                  ),
-                ],
+                    if (!_isUploadingAvatar)
+                      Positioned(
+                        bottom: 0, right: 0,
+                        child: Container(
+                          width: 28, height: 28,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2563EB),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFF000000), width: 2.5),
+                          ),
+                          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
+                        ),
+                      ),
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -465,58 +612,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
               ),
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
+              Builder(builder: (context) {
+                final kycTier = context.watch<AuthProvider>().userModel?.kycTier ?? 0;
+                final isVerified = kycTier > 0;
+                final statusColor = isVerified ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+                final statusText = kycTier == 2
+                    ? 'Tier 2 Verified'
+                    : kycTier == 1
+                        ? 'Tier 1 Verified'
+                        : 'Unverified';
+                final statusIcon = isVerified ? Icons.check_circle_rounded : Icons.cancel_rounded;
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: statusColor.withOpacity(0.25)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 12),
+                          const SizedBox(width: 4),
+                          Text(
+                            statusText,
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: statusColor),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 11),
-                        const SizedBox(width: 4),
-                        Text(
-                          context.watch<AuthProvider>().userModel?.kycTier == 2
-                              ? 'Tier 2 Verified'
-                              : context.watch<AuthProvider>().userModel?.kycTier == 1
-                                  ? 'Tier 1 Verified'
-                                  : 'Unverified',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          context.watch<AuthProvider>().userModel?.referralCode ?? 'KAT-XXX',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF)),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.copy_rounded, color: Color(0xFF6B7280), size: 11),
-                      ],
+                    const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      final code = context.read<AuthProvider>().userModel?.referralCode ?? '';
+                      if (code.isNotEmpty) {
+                        Clipboard.setData(ClipboardData(text: code));
+                        _showSuccess('Referral code copied!');
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            context.watch<AuthProvider>().userModel?.referralCode ?? 'KAT-XXX',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF)),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.copy_rounded, color: Color(0xFF6B7280), size: 11),
+                        ],
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ],
-          ),
+              );
+            }),
+          ],
         ),
+      ),
       ],
+      ),
     );
   }
 }

@@ -95,12 +95,14 @@ class FirestoreService {
         notifType = NotificationType.withdrawal;
         title = tx.status == TransactionStatus.failed
             ? 'Withdrawal Failed'
-            : tx.status == TransactionStatus.pending
+            : tx.status == TransactionStatus.processing
                 ? 'Withdrawal Processing'
-                : 'Withdrawal Successful';
+                : tx.status == TransactionStatus.pending
+                    ? 'Withdrawal Initiated'
+                    : 'Withdrawal Successful';
         body = tx.status == TransactionStatus.failed
             ? 'Your withdrawal of \u20A6${_fmtAmount(amount)} could not be completed.'
-            : 'Your withdrawal of \u20A6${_fmtAmount(amount)} is ${tx.status == TransactionStatus.pending ? "being processed" : "completed"}.';
+            : 'Your withdrawal of \u20A6${_fmtAmount(amount)} is ${tx.status == TransactionStatus.processing || tx.status == TransactionStatus.pending ? "being processed" : "completed"}.';
         break;
       case TransactionType.airtime:
       case TransactionType.data:
@@ -126,8 +128,12 @@ class FirestoreService {
         notifType = NotificationType.trade;
         title = tx.status == TransactionStatus.failed
             ? 'Transaction Failed'
-            : 'Transaction ${tx.status.name[0].toUpperCase()}${tx.status.name.substring(1)}';
-        body = '${typeStr[0].toUpperCase()}${typeStr.substring(1)} of \u20A6${_fmtAmount(amount)} ${tx.status == TransactionStatus.failed ? "failed" : "completed"}.';
+            : tx.status == TransactionStatus.processing
+                ? 'Transaction Processing'
+                : 'Transaction ${tx.status.name[0].toUpperCase()}${tx.status.name.substring(1)}';
+        body = tx.status == TransactionStatus.processing
+            ? '${typeStr[0].toUpperCase()}${typeStr.substring(1)} of ${tx.amountCoin != null ? tx.amountCoin! + " " + (tx.coinSymbol ?? "") : "\u20A6" + _fmtAmount(amount)} is processing.'
+            : '${typeStr[0].toUpperCase()}${typeStr.substring(1)} of \u20A6${_fmtAmount(amount)} ${tx.status == TransactionStatus.failed ? "failed" : "completed"}.';
     }
 
     await createNotification(
@@ -543,7 +549,7 @@ class FirestoreService {
     });
   }
 
-  /// Request to send crypto to external wallet. Saved as pending for admin.
+  /// Request to send crypto to external wallet. Saved as processing for admin.
   /// Fee is deducted from the user's coin balance alongside the send amount.
   Future<String> requestSend({
     required String uid,
@@ -585,7 +591,7 @@ class FirestoreService {
           id: txRef.id,
           uid: uid,
           type: TransactionType.send,
-          status: TransactionStatus.pending,
+          status: TransactionStatus.processing,
           amountNaira: 0,
           amountCoin: coinAmount.toStringAsFixed(8),
           coinSymbol: coinSymbol,
@@ -598,5 +604,154 @@ class FirestoreService {
       );
     });
     return txRef.id;
+  }
+
+  /// Request an NGN withdrawal to a saved bank account.
+  /// Deducts NGN balance atomically and creates a processing transaction.
+  /// Admin must manually execute the bank transfer.
+  Future<String> requestWithdrawal({
+    required String uid,
+    required double amount,
+    required String bankName,
+    required String accountNumber,
+    required String accountName,
+    String? bankCode,
+  }) async {
+    const fee = 50.0; // flat withdrawal fee
+    final totalDeduct = amount + fee;
+
+    final walletRef = _db.collection(FirestoreCollections.wallets).doc(uid);
+    final txRef = _db.collection(FirestoreCollections.transactions).doc();
+
+    await _db.runTransaction((txn) async {
+      final snap = await txn.get(walletRef);
+      if (!snap.exists) throw Exception('Wallet not found');
+      final wallet = WalletModel.fromMap(snap.data()!);
+      if (wallet.nairaBalance < totalDeduct) {
+        throw Exception('Insufficient balance (need ₦${totalDeduct.toStringAsFixed(2)} including ₦$fee fee)');
+      }
+
+      txn.set(
+        walletRef,
+        wallet.copyWith(
+          nairaBalance: wallet.nairaBalance - totalDeduct,
+          updatedAt: DateTime.now(),
+        ).toMap(),
+        SetOptions(merge: true),
+      );
+
+      txn.set(
+        txRef,
+        TransactionModel(
+          id: txRef.id,
+          uid: uid,
+          type: TransactionType.withdrawal,
+          status: TransactionStatus.processing,
+          amountNaira: amount,
+          description: 'Withdrawal to $bankName ($accountNumber) — $accountName',
+          reference: 'WD-${DateTime.now().millisecondsSinceEpoch}',
+          createdAt: DateTime.now(),
+          recipient: accountNumber,
+          paymentMethod: bankName,
+          feeAmount: fee,
+          feeSymbol: 'NGN',
+        ).toMap(),
+      );
+    });
+
+    // Notify
+    await createNotification(
+      uid: uid,
+      type: NotificationType.withdrawal,
+      title: 'Withdrawal Processing',
+      body: 'Your withdrawal of ₦${amount.toStringAsFixed(2)} to $bankName is being processed.',
+      preview: 'Withdrawal of ₦${amount.toStringAsFixed(2)} queued',
+    );
+
+    return txRef.id;
+  }
+
+  /// Stream all transactions with status=processing across all users.
+  /// Only accessible by admin. The admin Firestore rules will enforce this.
+  Stream<List<TransactionModel>> watchAdminProcessingQueue() {
+    return _db
+        .collection(FirestoreCollections.transactions)
+        .where('status', isEqualTo: 'processing')
+        .orderBy('createdAt', descending: true)
+        .limit(200)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TransactionModel.fromMap(doc.data()))
+            .toList());
+  }
+
+  /// Admin: mark a processing transaction as completed.
+  Future<void> adminCompleteTransaction(String txId, {String? adminNote}) async {
+    final data = <String, dynamic>{
+      'status': TransactionStatus.completed.value,
+      'completedAt': Timestamp.fromDate(DateTime.now()),
+      if (adminNote != null) 'adminNote': adminNote,
+    };
+    await _db.collection(FirestoreCollections.transactions).doc(txId).update(data);
+  }
+
+  /// Admin: mark a processing transaction as failed and refund the user.
+  Future<void> adminFailTransaction(String txId, String reason) async {
+    final txSnap = await _db.collection(FirestoreCollections.transactions).doc(txId).get();
+    if (!txSnap.exists) return;
+    final tx = TransactionModel.fromMap(txSnap.data()!);
+
+    final walletRef = _db.collection(FirestoreCollections.wallets).doc(tx.uid);
+
+    await _db.runTransaction((txn) async {
+      final walletSnap = await txn.get(walletRef);
+      if (!walletSnap.exists) return;
+      final wallet = WalletModel.fromMap(walletSnap.data()!);
+
+      // Refund: for withdrawal, add NGN back. For send, add crypto back.
+      if (tx.type == TransactionType.withdrawal) {
+        final refundAmount = tx.amountNaira + (tx.feeAmount ?? 0);
+        txn.set(
+          walletRef,
+          wallet.copyWith(
+            nairaBalance: wallet.nairaBalance + refundAmount,
+            updatedAt: DateTime.now(),
+          ).toMap(),
+          SetOptions(merge: true),
+        );
+      } else if (tx.type == TransactionType.send && tx.coinSymbol != null && tx.amountCoin != null) {
+        final coinAmount = double.tryParse(tx.amountCoin!) ?? 0;
+        final feeCoin = TradeFeeService.calculateSendFee(coinAmount);
+        final refundCoin = coinAmount + feeCoin;
+        final newCrypto = Map<String, double>.from(wallet.cryptoBalances);
+        newCrypto[tx.coinSymbol!] = (newCrypto[tx.coinSymbol!] ?? 0) + refundCoin;
+        txn.set(
+          walletRef,
+          wallet.copyWith(
+            cryptoBalances: newCrypto,
+            updatedAt: DateTime.now(),
+          ).toMap(),
+          SetOptions(merge: true),
+        );
+      }
+
+      txn.update(
+        _db.collection(FirestoreCollections.transactions).doc(txId),
+        {
+          'status': TransactionStatus.failed.value,
+          'completedAt': Timestamp.fromDate(DateTime.now()),
+          'adminNote': reason,
+        },
+      );
+    });
+
+    // Notify user of failure
+    await createNotification(
+      uid: tx.uid,
+      type: tx.type == TransactionType.withdrawal ? NotificationType.withdrawal : NotificationType.general,
+      title: tx.type == TransactionType.withdrawal ? 'Withdrawal Failed' : 'Send Failed',
+      body: 'Your ${tx.type == TransactionType.withdrawal ? 'withdrawal' : 'send'} request was declined. Reason: $reason. Your funds have been refunded.',
+      preview: 'Transaction failed: $reason',
+    );
   }
 }

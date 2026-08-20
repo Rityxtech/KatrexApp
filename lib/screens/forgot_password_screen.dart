@@ -85,6 +85,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: 24),
           _buildSendButton(),
           const SizedBox(height: 16),
+          _buildHaveCodeLink(),
+          const SizedBox(height: 16),
           _buildBackToLogin(),
         ],
       ),
@@ -201,6 +203,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(width: 8),
             const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 13),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHaveCodeLink() {
+    return Center(
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pushNamed('/reset-password'),
+        child: Text(
+          'Already have a reset code or link? Reset Password',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF3B82F6),
+          ),
         ),
       ),
     );

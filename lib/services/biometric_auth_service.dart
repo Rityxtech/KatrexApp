@@ -1,15 +1,7 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Manages secure storage of login credentials for biometric login.
-///
-/// When a user enables biometric login, their email and password are
-/// stored securely (encrypted by the OS keychain/keystore). When they
-/// return to the app and tap the fingerprint button on the login screen,
-/// we retrieve the credentials and sign them in automatically after
-/// biometric verification succeeds.
 class BiometricAuthService {
-  static const _storage = FlutterSecureStorage();
-
   static const _keyEmail = 'biometric_email';
   static const _keyPassword = 'biometric_password';
   static const _keyEnabled = 'biometric_login_enabled';
@@ -19,32 +11,37 @@ class BiometricAuthService {
     required String email,
     required String password,
   }) async {
-    await _storage.write(key: _keyEmail, value: email);
-    await _storage.write(key: _keyPassword, value: password);
-    await _storage.write(key: _keyEnabled, value: 'true');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyEmail, email);
+    await prefs.setString(_keyPassword, password);
+    await prefs.setBool(_keyEnabled, true);
   }
 
-  /// Get the saved email (for pre-filling the login form).
+  /// Get the saved email.
   static Future<String?> getSavedEmail() async {
-    return await _storage.read(key: _keyEmail);
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyEmail);
   }
 
-  /// Get the saved password (for auto-login after biometric auth).
+  /// Get the saved password.
   static Future<String?> getSavedPassword() async {
-    return await _storage.read(key: _keyPassword);
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyPassword);
   }
 
   /// Check if biometric login has saved credentials.
   static Future<bool> hasSavedCredentials() async {
-    final email = await _storage.read(key: _keyEmail);
-    final password = await _storage.read(key: _keyPassword);
-    return email != null && password != null;
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString(_keyEmail);
+    final password = prefs.getString(_keyPassword);
+    return email != null && email.isNotEmpty && password != null && password.isNotEmpty;
   }
 
-  /// Clear saved credentials (when biometric login is disabled).
+  /// Clear saved credentials.
   static Future<void> clearCredentials() async {
-    await _storage.delete(key: _keyEmail);
-    await _storage.delete(key: _keyPassword);
-    await _storage.delete(key: _keyEnabled);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyEmail);
+    await prefs.remove(_keyPassword);
+    await prefs.remove(_keyEnabled);
   }
 }

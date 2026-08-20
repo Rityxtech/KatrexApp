@@ -16,6 +16,7 @@ enum TransactionType {
 
 enum TransactionStatus {
   pending,
+  processing,
   completed,
   failed,
   cancelled,
@@ -66,6 +67,7 @@ extension TransactionStatusX on TransactionStatus {
   String get value {
     switch (this) {
       case TransactionStatus.pending: return 'pending';
+      case TransactionStatus.processing: return 'processing';
       case TransactionStatus.completed: return 'completed';
       case TransactionStatus.failed: return 'failed';
       case TransactionStatus.cancelled: return 'cancelled';

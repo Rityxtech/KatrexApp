@@ -431,6 +431,87 @@ class SupportTicketScreen extends StatefulWidget {
 
 class _SupportTicketScreenState extends State<SupportTicketScreen> {
   String _selectedCategory = 'Deposit / Withdrawal Issue';
+  final _subjectController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _subjectController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitTicket() async {
+    if (_isSubmitting) return;
+
+    final subject = _subjectController.text.trim();
+    final description = _descriptionController.text.trim();
+
+    if (subject.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please enter a subject', style: GoogleFonts.plusJakartaSans()),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please enter a description', style: GoogleFonts.plusJakartaSans()),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final res = await SupportService.createTicket(
+        category: _selectedCategory,
+        subject: subject,
+        description: description,
+      );
+
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      if (res['success'] == true || res['ticketId'] != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ticket created successfully!', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['error'] ?? 'Failed to create ticket', style: GoogleFonts.plusJakartaSans()),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error submitting ticket: $e', style: GoogleFonts.plusJakartaSans()),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   final List<String> _categories = [
     'Deposit / Withdrawal Issue',
@@ -508,7 +589,7 @@ class _SupportTicketScreenState extends State<SupportTicketScreen> {
                     const SizedBox(height: 16),
                     _field('CATEGORY', _select(_selectedCategory, _showCategoryModal)),
                     const SizedBox(height: 12),
-                    _field('SUBJECT', _input('E.g. Bank transfer not reflecting')),
+                    _field('SUBJECT', _input('E.g. Bank transfer not reflecting', _subjectController)),
                     const SizedBox(height: 12),
                     _field(
                       'DESCRIPTION',
@@ -526,6 +607,7 @@ class _SupportTicketScreenState extends State<SupportTicketScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(10),
                               child: TextField(
+                                controller: _descriptionController,
                                 maxLines: null, expands: true,
                                 style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white),
                                 decoration: InputDecoration(
@@ -576,7 +658,7 @@ class _SupportTicketScreenState extends State<SupportTicketScreen> {
                     ),
                     const SizedBox(height: 16),
                     GestureDetector(
-                      onTap: () {},
+                      onTap: _submitTicket,
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         decoration: BoxDecoration(
@@ -585,14 +667,16 @@ class _SupportTicketScreenState extends State<SupportTicketScreen> {
                           boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 4))],
                         ),
                         child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Submit Ticket', style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.send_rounded, color: Colors.white, size: 16),
-                            ],
-                          ),
+                          child: _isSubmitting
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('Submit Ticket', style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                                    const SizedBox(width: 8),
+                                    const Icon(Icons.send_rounded, color: Colors.white, size: 16),
+                                  ],
+                                ),
                         ),
                       ),
                     ),
@@ -642,7 +726,7 @@ class _SupportTicketScreenState extends State<SupportTicketScreen> {
     ),
   );
 
-  Widget _input(String h) => Container(
+  Widget _input(String h, [TextEditingController? c]) => Container(
     decoration: BoxDecoration(
       color: Colors.white.withOpacity(0.03),
       borderRadius: BorderRadius.circular(10),
@@ -655,6 +739,7 @@ class _SupportTicketScreenState extends State<SupportTicketScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
           child: TextField(
+            controller: c,
             style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
             decoration: InputDecoration(
               hintText: h, hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white30),

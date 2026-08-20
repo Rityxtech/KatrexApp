@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../services/biometric_auth_service.dart';
 import '../utils/validators.dart';
 import '../widgets/app_background.dart';
 import 'forgot_password_screen.dart';
@@ -37,6 +38,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    _checkSavedBiometrics();
     _emailController.addListener(_onFieldChanged);
     _passController.addListener(_onFieldChanged);
     _floatA = AnimationController(vsync: this, duration: const Duration(seconds: 6));
@@ -62,6 +64,51 @@ class _LoginScreenState extends State<LoginScreen>
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) _sheetCtrl.forward();
     });
+  }
+
+  void _checkSavedBiometrics() async {
+    final savedEmail = await BiometricAuthService.getSavedEmail();
+    if (savedEmail != null && mounted && _emailController.text.isEmpty) {
+      _emailController.text = savedEmail;
+    }
+  }
+
+  void _handleBiometricLogin() async {
+    if (_isLoading) return;
+    final hasCreds = await BiometricAuthService.hasSavedCredentials();
+    if (!hasCreds) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No biometric credentials saved yet. Log in with your password first to enable biometric login.'),
+          backgroundColor: const Color(0xFF3B82F6),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    final savedEmail = await BiometricAuthService.getSavedEmail();
+    final savedPassword = await BiometricAuthService.getSavedPassword();
+    if (savedEmail == null || savedPassword == null) return;
+
+    setState(() => _isLoading = true);
+    final auth = context.read<AuthProvider>();
+    final success = await auth.signIn(email: savedEmail, password: savedPassword);
+
+    if (!mounted) return;
+    if (!success) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage ?? 'Biometric login failed. Please try manual login.'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   void _onFieldChanged() {
@@ -117,7 +164,12 @@ class _LoginScreenState extends State<LoginScreen>
       password: _passController.text,
     );
 
-    if (!success && mounted) {
+    if (success) {
+      await BiometricAuthService.saveCredentials(
+        email: _emailController.text.trim(),
+        password: _passController.text,
+      );
+    } else if (mounted) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -689,7 +741,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(width: 12),
         GestureDetector(
-          onTap: () {},
+          onTap: _handleBiometricLogin,
           child: Container(
             width: 52,
             height: 50,

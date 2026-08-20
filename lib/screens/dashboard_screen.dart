@@ -18,7 +18,6 @@ import '../providers/transaction_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../services/market_data_service.dart';
 import '../widgets/app_background.dart';
-import '../widgets/deposit_methods_modal.dart';
 import 'profile_screen.dart';
 import 'buy_airtime_screen.dart';
 import 'buy_data_screen.dart';
@@ -32,6 +31,8 @@ import 'deposit_screen.dart';
 import 'live_rates_screen.dart';
 import 'coin_preview_screen.dart';
 import 'notifications_screen.dart';
+import '../widgets/transaction_details_modal.dart';
+import '../widgets/deposit_methods_modal.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSwitch;
@@ -474,10 +475,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icons.swap_horiz,
               color: const Color(0xFF8B5CF6),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => TradeScreen(onTabSwitch: widget.onTabSwitch)),
-                );
+                if (widget.onTabSwitch != null) {
+                  widget.onTabSwitch!(2);
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => TradeScreen(onTabSwitch: widget.onTabSwitch)),
+                  );
+                }
               },
             )),
           ],
@@ -638,13 +643,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
             items: ads.map((ad) {
               return Builder(
                 builder: (BuildContext context) {
+                  final idx = ads.indexOf(ad);
                   return _carouselAdCard(
                     title: ad['title']!,
                     subtitle: ad['subtitle']!,
                     badge: ad['badge']!,
                     btnText: ad['btn']!,
                     imageUrl: ad['image']!,
-                    index: ads.indexOf(ad),
+                    index: idx,
+                    onTap: () {
+                      if (idx == 0) {
+                        if (widget.onTabSwitch != null) {
+                          widget.onTabSwitch!(2);
+                        } else {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => TradeScreen(onTabSwitch: widget.onTabSwitch)));
+                        }
+                      } else if (idx == 1) {
+                        if (widget.onTabSwitch != null) {
+                          widget.onTabSwitch!(2);
+                        } else {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => TradeScreen(initialMode: 'buy', onTabSwitch: widget.onTabSwitch)));
+                        }
+                      } else if (idx == 2) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
+                      }
+                    },
                   );
                 },
               );
@@ -677,6 +700,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String btnText,
     required String imageUrl,
     required int index,
+    VoidCallback? onTap,
   }) {
     List<Color> gradientColors = [const Color(0xFF1E293B), const Color(0xFF0F172A)];
     Color badgeColor = const Color(0xFF10B981);
@@ -693,27 +717,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       badgeColor = const Color(0xFFFBBF24);
     }
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradientColors,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: gradientColors,
+          ),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 6)),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 6)),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => const SizedBox(),
               ),
             ),
@@ -800,6 +826,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
+      ),
     );
   }
 
@@ -905,7 +932,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CoinPreviewScreen(
                         coinName: meta['name'] as String,
                         coinSymbol: ticker,
-                        coinIcon: meta['icon'] as IconData? ?? Icons.token_rounded,
+                        coinIcon: meta['icon'] ?? Icons.token_rounded,
                         coinColor: meta['color'] as Color,
                         balanceNaira: md != null ? _formatNairaValue(nairaValue) : '0',
                         balanceCoin: '${balance.toStringAsFixed(6)} $ticker',
@@ -1045,6 +1072,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       time: time,
                       amount: amount,
                       amountColor: color,
+                      onTap: () => TransactionDetailsModal.show(context, tx),
                     ),
                   ],
                 );
@@ -1055,28 +1083,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _activityItem({required IconData icon, required Color iconBg, required Color iconColor, required String title, required String time, required String amount, required Color amountColor}) {
-    return Padding(
-      padding: EdgeInsets.zero,
-      child: Row(
-        children: [
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg),
-            child: Icon(icon, size: 9, color: iconColor),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
-                Text(time, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-              ],
+  Widget _activityItem({required IconData icon, required Color iconBg, required Color iconColor, required String title, required String time, required String amount, required Color amountColor, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: EdgeInsets.zero,
+        child: Row(
+          children: [
+            Container(
+              width: 28, height: 28,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg),
+              child: Icon(icon, size: 9, color: iconColor),
             ),
-          ),
-          Text(amount, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: amountColor)),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+                  Text(time, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                ],
+              ),
+            ),
+            Text(amount, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: amountColor)),
+          ],
+        ),
       ),
     );
   }

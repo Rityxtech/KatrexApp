@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +19,8 @@ import '../services/market_data_service.dart';
 import '../services/trade_fee_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
+import '../widgets/pin_input_sheet.dart';
+import '../widgets/universal_icon.dart';
 import 'coin_preview_screen.dart';
 
 class TradeScreen extends StatefulWidget {
@@ -33,7 +36,7 @@ class TradeScreen extends StatefulWidget {
 
 class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStateMixin {
   late AnimationController _rainbowController;
-  final _supportedCoins = ['BTC', 'ETH', 'USDT', 'TON', 'TRX'];
+  final _supportedCoins = ['BTC', 'ETH', 'USDT', 'SOL', 'BNB', 'DOGE', 'XRP', 'ADA', 'MATIC', 'TRX', 'TON'];
   String _selectedCoin = 'BTC';
   List<CoinMarketData> _marketDataList = [];
   StreamSubscription<List<CoinMarketData>>? _marketSub;
@@ -42,14 +45,26 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     'BTC': FontAwesomeIcons.bitcoin,
     'ETH': FontAwesomeIcons.ethereum,
     'USDT': FontAwesomeIcons.dollarSign,
+    'SOL': Icons.wb_sunny_rounded,
+    'BNB': Icons.token_rounded,
+    'DOGE': Icons.pets_rounded,
+    'XRP': Icons.currency_exchange_rounded,
+    'ADA': Icons.hub_rounded,
+    'MATIC': Icons.hexagon_rounded,
     'TON': FontAwesomeIcons.telegram,
-    'TRX': FontAwesomeIcons.telegram,
+    'TRX': FontAwesomeIcons.bolt,
   };
 
   final _coinColors = <String, Color>{
     'BTC': const Color(0xFFF7931A),
     'ETH': const Color(0xFF627EEA),
     'USDT': const Color(0xFF26A17B),
+    'SOL': const Color(0xFF14F195),
+    'BNB': const Color(0xFFF3BA2F),
+    'DOGE': const Color(0xFFC2A633),
+    'XRP': const Color(0xFF23292F),
+    'ADA': const Color(0xFF0033AD),
+    'MATIC': const Color(0xFF8247E5),
     'TON': const Color(0xFF0098EA),
     'TRX': const Color(0xFFEF0027),
   };
@@ -57,9 +72,15 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
   static const _coinMeta = <String, Map<String, dynamic>>{
     'BTC': {'name': 'Bitcoin', 'icon': FontAwesomeIcons.bitcoin, 'color': Color(0xFFF7931A)},
     'ETH': {'name': 'Ethereum', 'icon': FontAwesomeIcons.ethereum, 'color': Color(0xFF627EEA)},
-    'USDT': {'name': 'Tether', 'icon': Icons.attach_money, 'color': Color(0xFF26A17B)},
-    'TON': {'name': 'Toncoin', 'icon': Icons.bolt_rounded, 'color': Color(0xFF0098EA)},
-    'TRX': {'name': 'TRON', 'icon': Icons.token_rounded, 'color': Color(0xFFEF0027)},
+    'USDT': {'name': 'Tether', 'icon': FontAwesomeIcons.dollarSign, 'color': Color(0xFF26A17B)},
+    'SOL': {'name': 'Solana', 'icon': Icons.wb_sunny_rounded, 'color': Color(0xFF14F195)},
+    'BNB': {'name': 'BNB', 'icon': Icons.token_rounded, 'color': Color(0xFFF3BA2F)},
+    'DOGE': {'name': 'Dogecoin', 'icon': Icons.pets_rounded, 'color': Color(0xFFC2A633)},
+    'XRP': {'name': 'Ripple', 'icon': Icons.currency_exchange_rounded, 'color': Color(0xFF23292F)},
+    'ADA': {'name': 'Cardano', 'icon': Icons.hub_rounded, 'color': Color(0xFF0033AD)},
+    'MATIC': {'name': 'Polygon', 'icon': Icons.hexagon_rounded, 'color': Color(0xFF8247E5)},
+    'TRX': {'name': 'TRON', 'icon': FontAwesomeIcons.bolt, 'color': Color(0xFFEF0027)},
+    'TON': {'name': 'Toncoin', 'icon': FontAwesomeIcons.telegram, 'color': Color(0xFF0098EA)},
   };
 
   String _formatNairaValue(double value) {
@@ -91,6 +112,18 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
       if (mounted) setState(() => _marketDataList = data);
     });
     if (widget.initialCoin != null) _selectedCoin = widget.initialCoin!;
+    if (widget.initialMode != null) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        switch (widget.initialMode) {
+          case 'send': _showSendSheet(); break;
+          case 'buy': _showBuySheet(); break;
+          case 'sell': _showSellSheet(); break;
+          case 'swap': _showSwapSheet(); break;
+          default: break;
+        }
+      });
+    }
   }
 
   @override
@@ -251,6 +284,136 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     );
   }
 
+  void _showSendStatusModal(double amount, String coin, String address) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0F1423),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 24),
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFF59E0B).withOpacity(0.1),
+                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+              ),
+              child: const Icon(Icons.schedule_rounded, color: Color(0xFFF59E0B), size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text('Send Request Submitted',
+                style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+            const SizedBox(height: 8),
+            Text(
+              'Your request to send ${amount.toStringAsFixed(8)} $coin is being processed. Admin will broadcast within 24 hours.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF)),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: Column(
+                children: [
+                  _buildInfoRow('Amount', '${amount.toStringAsFixed(8)} $coin'),
+                  const SizedBox(height: 8),
+                  _buildInfoRow('To', '${address.substring(0, address.length > 16 ? 8 : address.length)}...${address.length > 16 ? address.substring(address.length - 8) : ""}'),
+                  const SizedBox(height: 8),
+                  _buildInfoRow('Status', 'Processing', valueColor: const Color(0xFFF59E0B)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: Text('Done', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTradeResultModal({required String title, required IconData icon, required Color iconColor, required List<String> lines}) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0F1423),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 24),
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: iconColor.withOpacity(0.1),
+                border: Border.all(color: iconColor.withOpacity(0.3)),
+              ),
+              child: Icon(icon, color: iconColor, size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.04), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withOpacity(0.08))),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: lines.map((l) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(l, style: GoogleFonts.robotoMono(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                )).toList(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(color: iconColor, borderRadius: BorderRadius.circular(14)),
+                child: Center(child: Text('Done', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white))),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showBuySheet() {
     final wallet = context.read<WalletProvider>();
     final ngnBal = wallet.nairaBalance;
@@ -371,6 +534,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
             builder: (context, innerState) {
               double inputCoin = double.tryParse(sellController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
               double nairaAmount = inputCoin * priceNaira;
+              double feeCoin = inputCoin * TradeFeeService.sellFeePercent / 100;
               double feeNaira = nairaAmount * TradeFeeService.sellFeePercent / 100;
               double netNaira = nairaAmount - feeNaira;
               bool canSell = inputCoin > 0 && inputCoin <= coinBal && priceNaira > 0;
@@ -427,7 +591,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                     ]),
                   ),
                   const SizedBox(height: 12),
-                  _buildInfoRow('Fee', '\u20A6${feeNaira.toStringAsFixed(2)}'),
+                  _buildInfoRow('Fee (${TradeFeeService.sellFeePercent}%)', '\u2248 ${feeCoin.toStringAsFixed(8)} $_selectedCoin'),
                   const SizedBox(height: 20),
                   _buildActionButton('Sell $_selectedCoin', const Color(0xFFEF4444), canSell, isProcessing, () async {
                     if (!canSell) return;
@@ -435,7 +599,19 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                     try {
                       final uid = context.read<AuthProvider>().firebaseUser!.uid;
                       await FirestoreService().executeSell(uid: uid, coinSymbol: _selectedCoin, coinAmount: inputCoin, nairaAmount: nairaAmount);
-                      if (mounted) { Navigator.pop(context); _showSnackBar('Sold for \u20A6${netNaira.toStringAsFixed(2)}'); }
+                      if (mounted) {
+                        Navigator.pop(context);
+                        _showTradeResultModal(
+                          title: 'Sell Successful!',
+                          icon: Icons.trending_down_rounded,
+                          iconColor: const Color(0xFFEF4444),
+                          lines: [
+                            'Sold: ${inputCoin.toStringAsFixed(8)} $_selectedCoin',
+                            'Received: ₦${netNaira.toStringAsFixed(2)}',
+                            'Fee: ${feeCoin.toStringAsFixed(8)} $_selectedCoin',
+                          ],
+                        );
+                      }
                     } catch (e) {
                       setSheetState(() => isProcessing = false);
                       if (mounted) _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
@@ -537,7 +713,18 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                     try {
                       final uid = context.read<AuthProvider>().firebaseUser!.uid;
                       await FirestoreService().executeSwap(uid: uid, fromCoin: _selectedCoin, toCoin: toCoin, fromAmount: fromAmount, toAmount: toAmount);
-                      if (mounted) { Navigator.pop(context); _showSnackBar('Swapped to ${netTo.toStringAsFixed(8)} $toCoin'); }
+                      if (mounted) {
+                        Navigator.pop(context);
+                        _showTradeResultModal(
+                          title: 'Swap Successful!',
+                          icon: Icons.swap_horiz_rounded,
+                          iconColor: const Color(0xFF8B5CF6),
+                          lines: [
+                            'Paid: ${fromAmount.toStringAsFixed(8)} $_selectedCoin',
+                            'Received: ${netTo.toStringAsFixed(8)} $toCoin',
+                          ],
+                        );
+                      }
                     } catch (e) {
                       setSheetState(() => isProcessing = false);
                       if (mounted) _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
@@ -639,11 +826,19 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
         const SizedBox(height: 20),
         _buildActionButton('Send $_selectedCoin', const Color(0xFFF59E0B), canSend, isProcessing, () async {
           if (!canSend) return;
+          
+          // PIN gate
+          final pinPassed = await PinInputSheet.ensurePinRequired(context);
+          if (!pinPassed) return;
+
           setSheetState(() => isProcessing = true);
           try {
             final uid = context.read<AuthProvider>().firebaseUser!.uid;
             await FirestoreService().requestSend(uid: uid, coinSymbol: _selectedCoin, coinAmount: sendAmount, recipientAddress: addressController.text.trim());
-            if (mounted) { Navigator.pop(context); _showSnackBar('Send request submitted. Processing...'); }
+            if (mounted) {
+              Navigator.pop(context);
+              _showSendStatusModal(sendAmount, _selectedCoin, addressController.text.trim());
+            }
           } catch (e) {
             setSheetState(() => isProcessing = false);
             if (mounted) _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
@@ -675,7 +870,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                 _buildHeader(),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.only(bottom: 100),
                     children: [
                       _buildBalanceCard(coinBal, ngnBal, priceNaira),
                       _buildCryptoAssetsSection(),
@@ -698,7 +893,13 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              if (widget.onTabSwitch != null) {
+                widget.onTabSwitch!(0);
+              } else {
+                Navigator.maybePop(context);
+              }
+            },
             child: Container(width: 36, height: 36, decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.08))), child: const Center(child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 18))),
           ),
           Text('Trade', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
@@ -867,7 +1068,15 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     final wallet = context.watch<WalletProvider>();
     final cryptoBalances = wallet.cryptoBalances;
     final visibleCoins = wallet.visibleCoins;
-    final coinsToShow = visibleCoins.isEmpty ? _coinMeta.keys.toList() : visibleCoins;
+
+    final allCoins = <String>{
+      ..._coinMeta.keys,
+      ..._marketDataList.map((m) => m.symbol.toUpperCase()),
+    }.toList();
+
+    final coinsToShow = visibleCoins.isEmpty
+        ? allCoins
+        : allCoins.where((c) => visibleCoins.contains(c)).toList();
     final mdMap = {for (final c in _marketDataList) c.symbol.toUpperCase(): c};
 
     return Padding(
@@ -884,18 +1093,63 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
           _glassCard(child: Column(children: List.generate(coinsToShow.length, (index) {
             final ticker = coinsToShow[index];
             final balance = cryptoBalances[ticker] ?? 0;
-            final meta = _coinMeta[ticker] ?? {'name': ticker, 'icon': Icons.token_rounded, 'color': const Color(0xFF9CA3AF)};
+            final meta = _coinMeta[ticker] ?? {
+              'name': mdMap[ticker]?.name ?? ticker,
+              'icon': Icons.token_rounded,
+              'color': const Color(0xFF9CA3AF),
+            };
             final isLast = index == coinsToShow.length - 1;
             final md = mdMap[ticker.toUpperCase()];
             final nairaValue = md != null ? balance * md.priceNaira : 0.0;
-            final valueStr = md != null ? '\u20A6${_formatNairaValue(nairaValue)}' : '${balance.toStringAsFixed(4)} $ticker';
-            final priceStr = md != null ? '\u20A6${_formatNairaValue(md.priceNaira)}' : '';
+            final valueStr = md != null ? '₦${_formatNairaValue(nairaValue)}' : '${balance.toStringAsFixed(4)} $ticker';
+            final priceStr = md != null ? '₦${_formatNairaValue(md.priceNaira)}' : '';
             final changeStr = md != null ? '${md.change24h >= 0 ? '+' : ''}${md.change24h.toStringAsFixed(2)}%' : '';
             final changeColor = md != null ? (md.isUp ? const Color(0xFF34D399) : const Color(0xFFEF4444)) : Colors.transparent;
             final chartColor = md != null ? (md.isUp ? const Color(0xFF10B981) : const Color(0xFFEF4444)) : const Color(0xFF10B981);
             final chartPoints = md != null && md.sparkline.length > 1 ? _normalizeSparkline(md.sparkline) : const [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
             return Column(children: [
-              _portfolioItem(name: meta['name'] as String, ticker: ticker, value: valueStr, price: priceStr, change: changeStr, changeColor: changeColor, iconColor: meta['color'] as Color, iconBg: (meta['color'] as Color).withOpacity(0.2), chartColor: chartColor, chartPoints: chartPoints, iconData: meta['icon'] as IconData?, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CoinPreviewScreen(coinName: meta['name'] as String, coinSymbol: ticker, coinIcon: meta['icon'] as IconData? ?? Icons.token_rounded, coinColor: meta['color'] as Color, balanceNaira: md != null ? _formatNairaValue(nairaValue) : '0', balanceCoin: '${balance.toStringAsFixed(6)} $ticker', livePrice: md != null ? _formatNairaValue(md.priceNaira) : '0', priceChange: md != null ? '${md.change24h.toStringAsFixed(2)}%' : '0%', isUp: md?.isUp ?? true, currencyCode: {'BTC': 'btc', 'ETH': 'eth', 'USDT': 'usdttrc20', 'TRX': 'trx'}[ticker] ?? ticker.toLowerCase())))),
+              _portfolioItem(
+                name: meta['name'] as String,
+                ticker: ticker,
+                value: valueStr,
+                price: priceStr,
+                change: changeStr,
+                changeColor: changeColor,
+                iconColor: meta['color'] as Color,
+                iconBg: (meta['color'] as Color).withOpacity(0.2),
+                chartColor: chartColor,
+                chartPoints: chartPoints,
+                iconData: meta['icon'],
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CoinPreviewScreen(
+                      coinName: meta['name'] as String,
+                      coinSymbol: ticker,
+                      coinIcon: meta['icon'] ?? Icons.token_rounded,
+                      coinColor: meta['color'] as Color,
+                      balanceNaira: md != null ? _formatNairaValue(nairaValue) : '0',
+                      balanceCoin: '${balance.toStringAsFixed(6)} $ticker',
+                      livePrice: md != null ? _formatNairaValue(md.priceNaira) : '0',
+                      priceChange: md != null ? '${md.change24h.toStringAsFixed(2)}%' : '0%',
+                      isUp: md?.isUp ?? true,
+                      currencyCode: {
+                        'BTC': 'btc',
+                        'ETH': 'eth',
+                        'USDT': 'usdttrc20',
+                        'SOL': 'sol',
+                        'BNB': 'bnb',
+                        'DOGE': 'doge',
+                        'XRP': 'xrp',
+                        'ADA': 'ada',
+                        'MATIC': 'matic',
+                        'TRX': 'trx',
+                        'TON': 'ton',
+                      }[ticker] ?? ticker.toLowerCase(),
+                    ),
+                  ),
+                ),
+              ),
               if (!isLast) const Divider(color: Color(0x0DFFFFFF), height: 16),
             ]);
           }))),
@@ -910,10 +1164,23 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     );
   }
 
-  Widget _portfolioItem({required String name, required String ticker, required String value, required String price, required String change, required Color changeColor, required Color iconColor, required Color iconBg, required Color chartColor, required List<double> chartPoints, IconData? iconData, VoidCallback? onTap}) {
+  Widget _portfolioItem({
+    required String name,
+    required String ticker,
+    required String value,
+    required String price,
+    required String change,
+    required Color changeColor,
+    required Color iconColor,
+    required Color iconBg,
+    required Color chartColor,
+    required List<double> chartPoints,
+    Object? iconData,
+    VoidCallback? onTap,
+  }) {
     return GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: Row(children: [
       Expanded(flex: 35, child: Row(children: [
-        Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg), child: Center(child: iconData != null ? Icon(iconData, size: 16, color: iconColor) : Text(ticker[0], style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: iconColor)))),
+        Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg), child: Center(child: iconData != null ? UniversalIcon(iconData, size: 16, color: iconColor) : Text(ticker[0], style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: iconColor)))),
         const SizedBox(width: 8),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
@@ -933,7 +1200,11 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
 
   void _showManageAssetsModal(BuildContext context) {
     final walletProvider = context.read<WalletProvider>();
-    final currentVisible = walletProvider.visibleCoins.isEmpty ? _coinMeta.keys.toList() : List<String>.from(walletProvider.visibleCoins);
+    final allCoins = <String>{
+      ..._coinMeta.keys,
+      ..._marketDataList.map((m) => m.symbol.toUpperCase()),
+    }.toList();
+    final currentVisible = walletProvider.visibleCoins.isEmpty ? List<String>.from(allCoins) : List<String>.from(walletProvider.visibleCoins);
 
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (sheetContext) {
       return StatefulBuilder(builder: (context, setSheetState) {
@@ -947,11 +1218,10 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
             GestureDetector(onTap: () => Navigator.pop(context), child: Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Colors.grey, size: 16))),
           ]),
           const SizedBox(height: 24),
-          Expanded(child: ListView(children: _coinMeta.entries.map((entry) {
-            final ticker = entry.key;
-            final meta = entry.value;
+          Expanded(child: ListView(children: allCoins.map((ticker) {
+            final meta = _coinMeta[ticker] ?? {'name': ticker, 'icon': Icons.token_rounded, 'color': const Color(0xFF9CA3AF)};
             final isToggled = currentVisible.contains(ticker);
-            return Padding(padding: const EdgeInsets.only(bottom: 8), child: _manageItem('${meta['name']} ($ticker)', meta['icon'] as IconData, meta['color'] as Color, isToggled, (val) { setSheetState(() { if (val) { if (!currentVisible.contains(ticker)) currentVisible.add(ticker); } else { currentVisible.remove(ticker); } }); }));
+            return Padding(padding: const EdgeInsets.only(bottom: 8), child: _manageItem('${meta['name']} ($ticker)', meta['icon'], meta['color'] as Color, isToggled, (val) { setSheetState(() { if (val) { if (!currentVisible.contains(ticker)) currentVisible.add(ticker); } else { currentVisible.remove(ticker); } }); }));
           }).toList())),
           const SizedBox(height: 16),
           GestureDetector(onTap: () async { await walletProvider.saveVisibleCoins(currentVisible); if (context.mounted) Navigator.pop(context); }, child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: Center(child: Text('Save Changes', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.black))))),
@@ -960,15 +1230,37 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     });
   }
 
-  Widget _manageItem(String name, IconData icon, Color color, bool isToggled, ValueChanged<bool> onChanged) {
-    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.05))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Row(children: [
-        Container(width: 32, height: 32, decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.1), border: Border.all(color: color.withOpacity(0.2))), child: Center(child: Icon(icon, size: 14, color: color))),
-        const SizedBox(width: 12),
-        Text(name, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-      ]),
-      CupertinoSwitch(value: isToggled, onChanged: onChanged, activeColor: Colors.blue.shade600, trackColor: Colors.grey.shade800),
-    ]));
+  Widget _manageItem(String name, Object? icon, Color color, bool isToggled, ValueChanged<bool> onChanged) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.1), border: Border.all(color: color.withOpacity(0.2))),
+                child: Center(child: UniversalIcon(icon, size: 14, color: color)),
+              ),
+              const SizedBox(width: 12),
+              Text(name, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+            ],
+          ),
+          Switch.adaptive(
+            value: isToggled,
+            activeColor: const Color(0xFF2563EB),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
   }
 }
 

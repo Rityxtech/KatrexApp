@@ -15,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "925831475855-mqjacb3fhptpk04f2132pi86te9t8c1n.apps.googleusercontent.com",
+          "client_id": "925831475855-ih8v8d6gq9aak23jq1sl9fkklom096q0.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.rityxtech.katrexapp",
-            "certificate_hash": "c852b90730b5cd280a29df52932e62f377798fad"
+            "certificate_hash": "6fbeb658a07c316dc72694e9f1aceb0cd2a7c08b"
           }
         },
         {

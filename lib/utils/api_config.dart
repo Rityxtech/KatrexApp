@@ -19,6 +19,11 @@ class ApiConfig {
   // The client never sees the mnemonic or private keys.
   static const String hdWalletMnemonic = '';
 
+  // ─── Korapay (Payouts & Payments) ──────────────────────────────────
+  static const String korapayBaseUrl = 'https://api.korapay.com/merchant/api/v1';
+  static const String korapayBankCode = '';
+  static const String korapaySecretKey = '';
+
   // ─── SMEPLUG (Data & Airtime) ────────────────────────────────────
   // API key is now in Cloud Functions (SMEPLUG_API_KEY env var).
   static const String smeplugBaseUrl = 'https://smeplug.ng/api/v1';

@@ -189,6 +189,11 @@ class _StatusBadge extends StatelessWidget {
         label = 'Pending';
         icon = Icons.pending_rounded;
         break;
+      case TransactionStatus.processing:
+        color = const Color(0xFF3B82F6);
+        label = 'Processing';
+        icon = Icons.schedule_rounded;
+        break;
       case TransactionStatus.failed:
         color = const Color(0xFFEF4444);
         label = 'Failed';
