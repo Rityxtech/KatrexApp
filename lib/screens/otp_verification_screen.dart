@@ -104,20 +104,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Email verified successfully!'),
+          content: const Text('Email verified successfully! Welcome to Katrex.'),
           backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
-      Future.delayed(const Duration(seconds: 2), () {
-        if (!mounted) return;
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      });
+      await auth.reloadUserProfile();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(auth.errorMessage ?? 'Invalid code. Please try again.'),
+          content: Text(auth.errorMessage ?? 'Invalid code. Please check your email and try again.'),
           backgroundColor: const Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -246,9 +243,30 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         ),
         _canResend
             ? GestureDetector(
-                onTap: () {
+                onTap: () async {
                   _startResendTimer();
-                  context.read<AuthProvider>().sendEmailVerification();
+                  final auth = context.read<AuthProvider>();
+                  final sent = await auth.sendEmailVerification();
+                  if (!mounted) return;
+                  if (sent) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('A new 6-digit code has been sent to your email.'),
+                        backgroundColor: const Color(0xFF10B981),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(auth.errorMessage ?? 'Failed to send code. Please try again.'),
+                        backgroundColor: const Color(0xFFEF4444),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  }
                 },
                 child: Text(
                   'Resend code',

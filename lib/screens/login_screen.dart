@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -75,12 +76,29 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _handleBiometricLogin() async {
     if (_isLoading) return;
+
+    final localAuth = LocalAuthentication();
+    final canCheck = await localAuth.canCheckBiometrics;
+    final isSupported = await localAuth.isDeviceSupported();
+    if (!canCheck && !isSupported) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Biometric authentication is not supported on this device.'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
     final hasCreds = await BiometricAuthService.hasSavedCredentials();
     if (!hasCreds) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('No biometric credentials saved yet. Log in with your password first to enable biometric login.'),
+          content: const Text('No biometric credentials saved. Log in with your password first to enable fingerprint login.'),
           backgroundColor: const Color(0xFF3B82F6),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -93,21 +111,41 @@ class _LoginScreenState extends State<LoginScreen>
     final savedPassword = await BiometricAuthService.getSavedPassword();
     if (savedEmail == null || savedPassword == null) return;
 
-    setState(() => _isLoading = true);
-    final auth = context.read<AuthProvider>();
-    final success = await auth.signIn(email: savedEmail, password: savedPassword);
-
-    if (!mounted) return;
-    if (!success) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.errorMessage ?? 'Biometric login failed. Please try manual login.'),
-          backgroundColor: const Color(0xFFEF4444),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+    try {
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Scan fingerprint to log into Katrex',
+        biometricOnly: true,
       );
+      if (!authenticated) return;
+
+      setState(() => _isLoading = true);
+      final auth = context.read<AuthProvider>();
+      final success = await auth.signIn(email: savedEmail, password: savedPassword);
+
+      if (!mounted) return;
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(auth.errorMessage ?? 'Biometric login failed. Please enter your password.'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Biometric error: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -158,27 +196,41 @@ class _LoginScreenState extends State<LoginScreen>
 
     setState(() => _isLoading = true);
 
-    final auth = context.read<AuthProvider>();
-    final success = await auth.signIn(
-      email: _emailController.text,
-      password: _passController.text,
-    );
-
-    if (success) {
-      await BiometricAuthService.saveCredentials(
+    try {
+      final auth = context.read<AuthProvider>();
+      final success = await auth.signIn(
         email: _emailController.text.trim(),
         password: _passController.text,
       );
-    } else if (mounted) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.errorMessage ?? 'Login failed. Please try again.'),
-          backgroundColor: const Color(0xFFEF4444),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+
+      if (success) {
+        await BiometricAuthService.saveCredentials(
+          email: _emailController.text.trim(),
+          password: _passController.text,
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(auth.errorMessage ?? 'Login failed. Please try again.'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login error: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -782,35 +834,41 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildGoogleButton() {
     final auth = context.watch<AuthProvider>();
-    final isLoading = auth.status == AuthStatus.loading;
+    final isGoogleLoading = auth.status == AuthStatus.loading;
 
     return GestureDetector(
-      onTap: isLoading ? null : () async {
-        final success = await context.read<AuthProvider>().signInWithGoogle();
-        if (!mounted) return;
-        if (!success && auth.needsRegistration) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(auth.errorMessage ?? 'No account found. Please create an account first.'),
-              backgroundColor: const Color(0xFFEF4444),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const RegisterScreen()),
-          );
-        } else if (!success && auth.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(auth.errorMessage!),
-              backgroundColor: const Color(0xFFEF4444),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        }
-      },
+      onTap: isGoogleLoading || _isLoading
+          ? null
+          : () async {
+              setState(() => _isLoading = true);
+              try {
+                final success = await context.read<AuthProvider>().signInWithGoogle();
+                if (!mounted) return;
+                if (!success && auth.errorMessage != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(auth.errorMessage!),
+                      backgroundColor: const Color(0xFFEF4444),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Google sign-in error: $e'),
+                      backgroundColor: const Color(0xFFEF4444),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _isLoading = false);
+              }
+            },
       child: Container(
         width: double.infinity,
         height: 50,
@@ -827,8 +885,15 @@ class _LoginScreenState extends State<LoginScreen>
           ],
         ),
         child: Center(
-          child: isLoading
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Color(0xFF0A1128), strokeWidth: 2))
+          child: isGoogleLoading || _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF0A1128),
+                    strokeWidth: 2,
+                  ),
+                )
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -181,9 +181,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Sign in with Google. Only succeeds for existing accounts.
-  /// If no account exists, sets [needsRegistration] to true so the UI can
-  /// redirect to the register screen.
+  /// Sign in with Google. Seamlessly logs in existing users or provisions new accounts.
   Future<bool> signInWithGoogle() async {
     _status = AuthStatus.loading;
     _errorMessage = null;
@@ -196,13 +194,6 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.authenticated;
       notifyListeners();
       return true;
-    } on GoogleUserNotFoundException catch (e) {
-      debugPrint('[GoogleSignIn] No existing account: ${e.email}');
-      _errorMessage = 'No account found with this Google email. Please create an account first.';
-      _needsRegistration = true;
-      _status = AuthStatus.unauthenticated;
-      notifyListeners();
-      return false;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'cancelled') {
         _status = AuthStatus.unauthenticated;
@@ -261,6 +252,9 @@ class AuthProvider extends ChangeNotifier {
     await _authService.signOut();
     _userModel = null;
     _firebaseUser = null;
+    _isRegistering = false;
+    _needsRegistration = false;
+    _errorMessage = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }

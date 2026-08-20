@@ -168,8 +168,7 @@ class AuthService {
     return true;
   }
 
-  /// Sign in with Google. Only signs in existing users — does NOT create new accounts.
-  /// Throws [GoogleUserNotFoundException] if no account exists for this Google user.
+  /// Sign in with Google. Signs in existing users or auto-provisions new users.
   Future<UserModel> signInWithGoogle() async {
     final googleUser = await GoogleSignIn().signIn();
     if (googleUser == null) {
@@ -193,9 +192,8 @@ class AuthService {
     final docSnap = await docRef.get();
 
     if (!docSnap.exists) {
-      // New user — sign them out and throw so the caller can redirect to register.
-      await _auth.signOut();
-      throw GoogleUserNotFoundException(email: user.email ?? '');
+      // New user — auto-provision user profile and wallet.
+      return await createUserProfileForExistingAuthUser(user);
     }
 
     return UserModel.fromMap(docSnap.data()!);
@@ -277,7 +275,7 @@ class AuthService {
       phone: user.phoneNumber,
       avatarUrl: user.photoURL,
       kycTier: 0,
-      isEmailVerified: user.emailVerified,
+      isEmailVerified: user.emailVerified || user.providerData.any((p) => p.providerId == 'google.com'),
       isPhoneVerified: false,
       referralCode: referralCode,
       createdAt: now,

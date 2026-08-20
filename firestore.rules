@@ -28,43 +28,56 @@ service cloud.firestore {
 
     // ────────────────────────────────────────────────────────────────────
     // Users
-    //   • A user can read their own document.
-    //   • An admin (custom claim) can read any user document.
-    //   • No client can write a user document directly — all writes go
-    //     through the adminApi Cloud Function (which uses Admin SDK and
-    //     bypasses these rules). This guarantees audit logging and
-    //     authorization cannot be bypassed by editing the client.
+    //   • A user can read their own document; admins can read any user document.
+    //   • A user can create their own profile on registration.
+    //   • A user can update their own profile; admins can update any user.
     // ────────────────────────────────────────────────────────────────────
     match /users/{uid} {
       allow read: if isSelf(uid) || isAdmin();
-      allow write: if false;
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid) || isAdmin();
     }
 
     // ────────────────────────────────────────────────────────────────────
     // Wallets
-    //   • Self read; admin read; no client writes.
+    //   • Self read; admin read.
+    //   • Self create on registration; self update for balance operations; admin update.
     // ────────────────────────────────────────────────────────────────────
     match /wallets/{uid} {
       allow read: if isSelf(uid) || isAdmin();
-      allow write: if false;
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid) || isAdmin();
     }
 
     // ────────────────────────────────────────────────────────────────────
     // Transactions
-    //   • Self read for own txs; admin read; no client writes.
+    //   • Self read for own txs; admin read.
+    //   • Self create for initiating transactions; admin write/update.
     // ────────────────────────────────────────────────────────────────────
     match /transactions/{txId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-      allow write: if false;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin();
     }
 
     // ────────────────────────────────────────────────────────────────────
     // Notifications
-    //   • Self read; admin read; no client writes.
+    //   • Self read for own notifications; admin read.
+    //   • Users/server can create notifications for users; self can mark read.
     // ────────────────────────────────────────────────────────────────────
     match /notifications/{notifId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-      allow write: if false;
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Email OTP Codes
+    //   • Self read, create, update, delete for email verification.
+    // ────────────────────────────────────────────────────────────────────
+    match /email_codes/{uid} {
+      allow read, write, delete: if isSelf(uid);
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -78,28 +91,27 @@ service cloud.firestore {
     // ────────────────────────────────────────────────────────────────────
     // Operational / config collections — admin only.
     // ────────────────────────────────────────────────────────────────────
-    match /giftcard_brands/{id}    { allow read, write: if isAdmin(); }
-    match /giftcard_rates/{id}     { allow read, write: if isAdmin(); }
-    match /giftcard_trades/{id}    { allow read: if isAdmin(); allow write: if false; }
-    match /giftcard_promos/{id}    { allow read, write: if isAdmin(); }
-    match /giftcard_categories/{id}{ allow read, write: if isAdmin(); }
-    match /homepage_promos/{id}    { allow read, write: if isAdmin(); }
-    match /app_settings/{id}       { allow read, write: if isAdmin(); }
-    match /app_config/{id}         { allow read, write: if isAdmin(); }
-    match /pricing_config/{id}     { allow read, write: if isAdmin(); }
-    match /giftcard_settings/{id}  { allow read, write: if isAdmin(); }
-    match /p2p_settings/{id}       { allow read, write: if isAdmin(); }
-    match /p2p_listings/{id}       { allow read: if isAdmin(); allow write: if false; }
-    match /p2p_trades/{id}         { allow read: if isAdmin(); allow write: if false; }
-    match /p2p_disputes/{id}       { allow read: if isAdmin(); allow write: if false; }
-    match /support_tickets/{id}    { allow read: if isAdmin(); allow write: if false; }
-    match /referrals/{id}          { allow read: if isAdmin(); allow write: if false; }
-    match /referral_config/{id}    { allow read: if isAdmin(); allow write: if false; }
+    match /giftcard_brands/{id}    { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /giftcard_rates/{id}     { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /giftcard_trades/{id}    { allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); allow create: if isSignedIn(); allow update: if isAdmin(); }
+    match /giftcard_promos/{id}    { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /giftcard_categories/{id}{ allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /homepage_promos/{id}    { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /app_settings/{id}       { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /app_config/{id}         { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /pricing_config/{id}     { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /giftcard_settings/{id}  { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /p2p_settings/{id}       { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /p2p_listings/{id}       { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /p2p_trades/{id}         { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /p2p_disputes/{id}       { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /support_tickets/{id}    { allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); allow create: if isSignedIn(); allow update: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); }
+    match /referrals/{id}          { allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); allow write: if isSignedIn(); }
+    match /referral_config/{id}    { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /market_data/{id}        { allow read: if isSignedIn(); allow write: if false; }
-    match /fcm_tokens/{uid}        { allow read, write: if isSelf(uid); }
+    match /fcm_tokens/{uid}        { allow read, write: if isSelf(uid) || isAdmin(); }
     match /crypto_deposits/{uid}   { allow read: if isSelf(uid) || isAdmin(); allow write: if false; }
     match /virtualAccounts/{uid}   { allow read: if isSelf(uid) || isAdmin(); allow write: if false; }
-    match /email_codes/{uid}       { allow read, write: if false; }
     match /webhook_logs/{id}       { allow read: if isAdmin(); allow write: if false; }
     match /push_campaigns/{id}     { allow read: if isAdmin(); allow write: if false; }
 

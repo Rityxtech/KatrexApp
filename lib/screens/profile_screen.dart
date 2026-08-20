@@ -12,6 +12,7 @@ import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 import '../services/storage_service.dart';
 import '../services/push_notification_service.dart';
+import '../services/biometric_auth_service.dart';
 import 'edit_profile_screen.dart';
 import 'kyc_verification_screen.dart';
 import 'notifications_screen.dart';
@@ -112,10 +113,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
 
         if (authenticated) {
-          setState(() => _biometricLogin = true);
           final auth = context.read<AuthProvider>();
           final u = auth.userModel;
           if (u != null) {
+            final hasCreds = await BiometricAuthService.hasSavedCredentials();
+            if (!hasCreds) {
+              final pass = await _promptPasswordForBiometrics(context, u.email);
+              if (pass != null && pass.isNotEmpty) {
+                await BiometricAuthService.saveCredentials(email: u.email, password: pass);
+              }
+            }
+            setState(() => _biometricLogin = true);
             await auth.updateUserProfileDirect(u.copyWith(biometricEnabled: true));
             _showSuccess('Biometric login enabled');
           }
@@ -127,6 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } else {
       setState(() => _biometricLogin = false);
+      await BiometricAuthService.clearCredentials();
       final auth = context.read<AuthProvider>();
       final u = auth.userModel;
       if (u != null) {
@@ -134,6 +143,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _showSuccess('Biometric login disabled');
       }
     }
+  }
+
+  Future<String?> _promptPasswordForBiometrics(BuildContext context, String email) async {
+    final passCtrl = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1423),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0x1AFFFFFF))),
+        title: Text('Enable Biometric Login', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Enter your account password to enable quick 1-tap fingerprint login.', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF9CA3AF), fontSize: 13)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passCtrl,
+              obscureText: true,
+              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Password',
+                hintStyle: GoogleFonts.plusJakartaSans(color: Colors.white30),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: Text('Cancel', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF9CA3AF))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () => Navigator.pop(ctx, passCtrl.text),
+            child: Text('Save', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showError(String msg) {
@@ -463,14 +515,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: InkWell(
                             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
                             onTap: () async {
-                              final navigator = Navigator.of(context);
                               final messenger = ScaffoldMessenger.of(context);
                               try {
+                                Navigator.of(context).popUntil((route) => route.isFirst);
                                 await context.read<AuthProvider>().signOut();
-                                navigator.pushNamedAndRemoveUntil(
-                                  '/login',
-                                  (route) => false,
-                                );
                               } catch (e) {
                                 messenger.showSnackBar(
                                   SnackBar(
