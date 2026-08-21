@@ -17,7 +17,9 @@ import '../providers/wallet_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/market_data_service.dart';
 import '../services/trade_fee_service.dart';
+import '../utils/coin_meta.dart';
 import '../widgets/app_background.dart';
+import '../widgets/coin_icon.dart';
 import '../widgets/header_profile_avatar.dart';
 import '../widgets/notification_icon.dart';
 import '../widgets/pin_input_sheet.dart';
@@ -37,52 +39,26 @@ class TradeScreen extends StatefulWidget {
 
 class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStateMixin {
   late AnimationController _rainbowController;
-  final _supportedCoins = ['BTC', 'ETH', 'USDT', 'SOL', 'BNB', 'DOGE', 'XRP', 'ADA', 'MATIC', 'TRX', 'TON'];
+  final _supportedCoins = CoinMeta.coins.keys.toList();
   String _selectedCoin = 'BTC';
   List<CoinMarketData> _marketDataList = [];
   StreamSubscription<List<CoinMarketData>>? _marketSub;
 
-  final _coinIcons = <String, dynamic>{
-    'BTC': FontAwesomeIcons.bitcoin,
-    'ETH': FontAwesomeIcons.ethereum,
-    'USDT': FontAwesomeIcons.dollarSign,
-    'SOL': Icons.wb_sunny_rounded,
-    'BNB': Icons.token_rounded,
-    'DOGE': Icons.pets_rounded,
-    'XRP': Icons.currency_exchange_rounded,
-    'ADA': Icons.hub_rounded,
-    'MATIC': Icons.hexagon_rounded,
-    'TON': FontAwesomeIcons.telegram,
-    'TRX': FontAwesomeIcons.bolt,
-  };
+  static const _coinMeta = CoinMeta.coins;
 
-  final _coinColors = <String, Color>{
-    'BTC': const Color(0xFFF7931A),
-    'ETH': const Color(0xFF627EEA),
-    'USDT': const Color(0xFF26A17B),
-    'SOL': const Color(0xFF14F195),
-    'BNB': const Color(0xFFF3BA2F),
-    'DOGE': const Color(0xFFC2A633),
-    'XRP': const Color(0xFF23292F),
-    'ADA': const Color(0xFF0033AD),
-    'MATIC': const Color(0xFF8247E5),
-    'TON': const Color(0xFF0098EA),
-    'TRX': const Color(0xFFEF0027),
-  };
-
-  static const _coinMeta = <String, Map<String, dynamic>>{
-    'BTC': {'name': 'Bitcoin', 'icon': FontAwesomeIcons.bitcoin, 'color': Color(0xFFF7931A)},
-    'ETH': {'name': 'Ethereum', 'icon': FontAwesomeIcons.ethereum, 'color': Color(0xFF627EEA)},
-    'USDT': {'name': 'Tether', 'icon': FontAwesomeIcons.dollarSign, 'color': Color(0xFF26A17B)},
-    'SOL': {'name': 'Solana', 'icon': Icons.wb_sunny_rounded, 'color': Color(0xFF14F195)},
-    'BNB': {'name': 'BNB', 'icon': Icons.token_rounded, 'color': Color(0xFFF3BA2F)},
-    'DOGE': {'name': 'Dogecoin', 'icon': Icons.pets_rounded, 'color': Color(0xFFC2A633)},
-    'XRP': {'name': 'Ripple', 'icon': Icons.currency_exchange_rounded, 'color': Color(0xFF23292F)},
-    'ADA': {'name': 'Cardano', 'icon': Icons.hub_rounded, 'color': Color(0xFF0033AD)},
-    'MATIC': {'name': 'Polygon', 'icon': Icons.hexagon_rounded, 'color': Color(0xFF8247E5)},
-    'TRX': {'name': 'TRON', 'icon': FontAwesomeIcons.bolt, 'color': Color(0xFFEF0027)},
-    'TON': {'name': 'Toncoin', 'icon': FontAwesomeIcons.telegram, 'color': Color(0xFF0098EA)},
-  };
+  Widget _buildCoinBadge(String coin, {double size = 16, double bgSize = 32}) {
+    final color = _getColor(coin);
+    return Container(
+      width: bgSize,
+      height: bgSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.15),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Center(child: CoinIcon(symbol: coin, size: size)),
+    );
+  }
 
   String _formatNairaValue(double value) {
     if (value >= 1000000000) return '${(value / 1000000000).toStringAsFixed(2)}B';
@@ -141,8 +117,8 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     return null;
   }
 
-  dynamic _getIcon(String coin) => _coinIcons[coin] ?? FontAwesomeIcons.coins;
-  Color _getColor(String coin) => _coinColors[coin] ?? const Color(0xFF9CA3AF);
+  dynamic _getIcon(String coin) => Icons.token_rounded;
+  Color _getColor(String coin) => (CoinMeta.forTicker(coin)['color'] as Color?) ?? const Color(0xFF9CA3AF);
 
   String _fmtNaira(double v) {
     if (v >= 1e9) return '${(v / 1e9).toStringAsFixed(2)}B';
@@ -261,7 +237,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                     ),
                     child: Row(
                       children: [
-                        Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: _getColor(coin).withOpacity(0.15), border: Border.all(color: _getColor(coin).withOpacity(0.2))), child: Center(child: FaIcon(_getIcon(coin), size: 14, color: _getColor(coin)))),
+                        _buildCoinBadge(coin, size: 20, bgSize: 36),
                         const SizedBox(width: 12),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(coin, style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: isSelected ? const Color(0xFF2563EB) : Colors.white)),
@@ -584,7 +560,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.1))),
                     child: Row(children: [
-                      Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: _getColor(_selectedCoin).withOpacity(0.1)), child: Center(child: FaIcon(_getIcon(_selectedCoin), size: 10, color: _getColor(_selectedCoin)))),
+                      _buildCoinBadge(_selectedCoin, size: 14, bgSize: 28),
                       const SizedBox(width: 10),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('Receive to NGN Wallet', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
@@ -665,7 +641,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.1))),
                     child: Row(children: [
-                      Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: _getColor(_selectedCoin).withOpacity(0.1)), child: Center(child: FaIcon(_getIcon(_selectedCoin), size: 10, color: _getColor(_selectedCoin)))),
+                      _buildCoinBadge(_selectedCoin, size: 14, bgSize: 28),
                       const SizedBox(width: 8),
                       Text(_selectedCoin, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
                       const Spacer(),
@@ -690,7 +666,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.1))),
                       child: Row(children: [
-                        Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: _getColor(toCoin).withOpacity(0.1)), child: Center(child: FaIcon(_getIcon(toCoin), size: 10, color: _getColor(toCoin)))),
+                        _buildCoinBadge(toCoin, size: 14, bgSize: 28),
                         const SizedBox(width: 8),
                         Text(toCoin, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
                         const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: Color(0xFF9CA3AF)),
@@ -938,7 +914,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white.withOpacity(0.08))),
           child: Row(children: [
-            Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: _getColor(_selectedCoin).withOpacity(0.15), border: Border.all(color: _getColor(_selectedCoin).withOpacity(0.2))), child: Center(child: FaIcon(_getIcon(_selectedCoin), size: 14, color: _getColor(_selectedCoin)))),
+            _buildCoinBadge(_selectedCoin, size: 20, bgSize: 36),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_selectedCoin, style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
@@ -1003,7 +979,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(6)),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        FaIcon(_getIcon(_selectedCoin), size: 10, color: _getColor(_selectedCoin)),
+                        CoinIcon(symbol: _selectedCoin, size: 14),
                         const SizedBox(width: 4),
                         Text('${coinBal.toStringAsFixed(8)} $_selectedCoin', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFFD1D5DB))),
                       ]),
@@ -1129,25 +1105,26 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
             final chartPoints = md != null && md.sparkline.length > 1 ? _normalizeSparkline(md.sparkline) : const [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
             return Column(children: [
               _portfolioItem(
-                name: meta['name'] as String,
+                name: (meta['name'] as String?) ?? ticker,
                 ticker: ticker,
                 value: valueStr,
                 price: priceStr,
                 change: changeStr,
                 changeColor: changeColor,
-                iconColor: meta['color'] as Color,
-                iconBg: (meta['color'] as Color).withOpacity(0.2),
+                iconColor: (meta['color'] as Color?) ?? const Color(0xFF9CA3AF),
+                iconBg: ((meta['color'] as Color?) ?? const Color(0xFF9CA3AF)).withValues(alpha: 0.2),
                 chartColor: chartColor,
                 chartPoints: chartPoints,
-                iconData: meta['icon'],
+                customIconWidget: CoinIcon(symbol: ticker, size: 20),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => CoinPreviewScreen(
-                      coinName: meta['name'] as String,
+                      coinName: (meta['name'] as String?) ?? ticker,
                       coinSymbol: ticker,
-                      coinIcon: meta['icon'] ?? Icons.token_rounded,
-                      coinColor: meta['color'] as Color,
+                      coinIcon: Icons.token_rounded,
+                      iconUrl: meta['iconUrl'] as String?,
+                      coinColor: (meta['color'] as Color?) ?? const Color(0xFF9CA3AF),
                       balanceNaira: md != null ? _formatNairaValue(nairaValue) : '0',
                       balanceCoin: '${balance.toStringAsFixed(6)} $ticker',
                       livePrice: md != null ? _formatNairaValue(md.priceNaira) : '0',
@@ -1196,6 +1173,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     required Color chartColor,
     required List<double> chartPoints,
     Object? iconData,
+    Widget? customIconWidget,
     VoidCallback? onTap,
   }) {
     return GestureDetector(
@@ -1212,16 +1190,17 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                   height: 36,
                   decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg),
                   child: Center(
-                    child: iconData != null
-                        ? UniversalIcon(iconData, size: 16, color: iconColor)
-                        : Text(
-                            ticker[0],
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color: iconColor,
-                            ),
-                          ),
+                    child: customIconWidget ??
+                        (iconData != null
+                            ? UniversalIcon(iconData, size: 16, color: iconColor)
+                            : Text(
+                                ticker[0],
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: iconColor,
+                                ),
+                              )),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1345,9 +1324,26 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
           ]),
           const SizedBox(height: 24),
           Expanded(child: ListView(children: allCoins.map((ticker) {
-            final meta = _coinMeta[ticker] ?? {'name': ticker, 'icon': Icons.token_rounded, 'color': const Color(0xFF9CA3AF)};
+            final meta = CoinMeta.forTicker(ticker);
             final isToggled = currentVisible.contains(ticker);
-            return Padding(padding: const EdgeInsets.only(bottom: 8), child: _manageItem('${meta['name']} ($ticker)', meta['icon'], meta['color'] as Color, isToggled, (val) { setSheetState(() { if (val) { if (!currentVisible.contains(ticker)) currentVisible.add(ticker); } else { currentVisible.remove(ticker); } }); }));
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _manageItem(
+                '${meta['name']} ($ticker)',
+                ticker,
+                (meta['color'] as Color?) ?? const Color(0xFF9CA3AF),
+                isToggled,
+                (val) {
+                  setSheetState(() {
+                    if (val) {
+                      if (!currentVisible.contains(ticker)) currentVisible.add(ticker);
+                    } else {
+                      currentVisible.remove(ticker);
+                    }
+                  });
+                },
+              ),
+            );
           }).toList())),
           const SizedBox(height: 16),
           GestureDetector(onTap: () async { await walletProvider.saveVisibleCoins(currentVisible); if (context.mounted) Navigator.pop(context); }, child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: Center(child: Text('Save Changes', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.black))))),
@@ -1356,7 +1352,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     });
   }
 
-  Widget _manageItem(String name, Object? icon, Color color, bool isToggled, ValueChanged<bool> onChanged) {
+  Widget _manageItem(String name, String ticker, Color color, bool isToggled, ValueChanged<bool> onChanged) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1373,7 +1369,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.1), border: Border.all(color: color.withOpacity(0.2))),
-                child: Center(child: UniversalIcon(icon, size: 14, color: color)),
+                child: Center(child: CoinIcon(symbol: ticker, size: 16)),
               ),
               const SizedBox(width: 12),
               Text(name, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),

@@ -16,6 +16,7 @@ import '../services/market_data_service.dart';
 import '../services/hd_wallet_service.dart';
 import '../services/network_fee_service.dart';
 import '../services/trade_fee_service.dart';
+import '../utils/coin_meta.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 import 'transaction_history_screen.dart';
@@ -57,6 +58,18 @@ class CoinPreviewScreen extends StatefulWidget {
 class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
   Widget _buildCoinIcon(double size, {Color? color}) {
     final finalColor = color ?? widget.coinColor;
+    final url = widget.iconUrl ?? (widget.coinSymbol.isNotEmpty ? CoinMeta.forTicker(widget.coinSymbol)['iconUrl'] as String? : null);
+    if (url != null && url.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorWidget: (context, error, stackTrace) => widget.coinIcon is FaIconData
+            ? FaIcon(widget.coinIcon, size: size, color: finalColor)
+            : Icon(widget.coinIcon as IconData?, size: size, color: finalColor),
+      );
+    }
     return widget.coinIcon is FaIconData
         ? FaIcon(widget.coinIcon, size: size, color: finalColor)
         : Icon(widget.coinIcon as IconData?, size: size, color: finalColor);
