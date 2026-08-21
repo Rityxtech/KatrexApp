@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../widgets/app_background.dart';
+import '../widgets/header_profile_avatar.dart';
 import '../widgets/notification_icon.dart';
 import '../widgets/transaction_details_modal.dart';
 import 'giftcard_trades_history_screen.dart';
@@ -135,7 +136,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          widget.onTabSwitch?.call(0);
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFF000000),
       body: Stack(
         fit: StackFit.expand,
@@ -160,6 +168,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -167,9 +176,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildIconButton(
-          icon: Icons.chevron_left_rounded,
+        GestureDetector(
           onTap: () => widget.onTabSwitch?.call(0),
+          child: const HeaderProfileAvatar(),
         ),
         Text(
           'Transactions',

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { doc, updateDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useP2PListings, useP2PTrades, useP2PDisputes, useP2PSettings, useWallets } from "@/hooks/useAdminData";
 
 function formatNaira(n: number) {
@@ -24,6 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
   active: "text-status-success",
   live: "text-status-success",
   pending: "text-status-warning",
+  pending_review: "text-status-warning",
   disputed: "text-status-danger",
   escrow_locked: "text-status-info",
   credentials_sent: "text-status-info",
@@ -33,6 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "text-on-surface-variant",
   completed: "text-status-success",
   processing: "text-status-info",
+  rejected: "text-status-danger",
 };
 
 const ESCROW_COLORS: Record<string, string> = {
@@ -61,9 +65,20 @@ export default function P2PPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [escrowFeePercent, setEscrowFeePercent] = useState("");
 
+  // Manual Listing Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newPlatform, setNewPlatform] = useState("Instagram");
+  const [newHandle, setNewHandle] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [newNiche, setNewNiche] = useState("General");
+  const [newFollowers, setNewFollowers] = useState("10000");
+  const [newPrice, setNewPrice] = useState("");
+  const [newVerified, setNewVerified] = useState(false);
+  const [creatingListing, setCreatingListing] = useState(false);
+
   const functions = getFunctions();
 
-  const pendingListings = listings.filter((l: any) => l.status === "pending");
+  const pendingListings = listings.filter((l: any) => l.status === "pending" || l.status === "pending_review");
   const disputedTrades = trades.filter((t: any) => t.status === "disputed");
   const openDisputes = disputes.filter((d: any) => d.status === "open");
   const escrowBalance = wallets.reduce((s: number, w: any) => s + (w.escrowBalance || 0), 0);
@@ -84,10 +99,19 @@ export default function P2PPage() {
   const handleApprove = async (listingId: string) => {
     setProcessingId(listingId);
     try {
-      await httpsCallable(functions, "p2pApi")({ action: "approveListing", listingId });
-    } catch (e) {
+      try {
+        await httpsCallable(functions, "p2pApi")({ action: "approveListing", listingId });
+      } catch (callErr) {
+        console.warn("Cloud Function failed, falling back to direct Firestore:", callErr);
+        await updateDoc(doc(db, "p2p_listings", listingId), {
+          status: "live",
+          approvedAt: serverTimestamp(),
+        });
+      }
+      alert("Listing approved and is now LIVE on the marketplace!");
+    } catch (e: any) {
       console.error("Failed to approve listing:", e);
-      alert("Failed to approve listing. Check console for details.");
+      alert("Failed to approve listing: " + (e?.message || e));
     } finally {
       setProcessingId(null);
     }
@@ -100,13 +124,65 @@ export default function P2PPage() {
     }
     setRejectingId(listingId);
     try {
-      await httpsCallable(functions, "p2pApi")({ action: "rejectListing", listingId, reason: rejectReason.trim() });
+      try {
+        await httpsCallable(functions, "p2pApi")({ action: "rejectListing", listingId, reason: rejectReason.trim() });
+      } catch (callErr) {
+        console.warn("Cloud Function failed, falling back to direct Firestore:", callErr);
+        await updateDoc(doc(db, "p2p_listings", listingId), {
+          status: "rejected",
+          rejectionReason: rejectReason.trim(),
+          rejectedAt: serverTimestamp(),
+        });
+      }
       setRejectReason("");
-    } catch (e) {
+      alert("Listing rejected.");
+    } catch (e: any) {
       console.error("Failed to reject listing:", e);
-      alert("Failed to reject listing. Check console for details.");
+      alert("Failed to reject listing: " + (e?.message || e));
     } finally {
       setRejectingId(null);
+    }
+  };
+
+  const handleCreateManualListing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const handle = newHandle.trim();
+    const priceNum = parseFloat(newPrice.replace(/[^0-9.]/g, ""));
+    const followersNum = parseInt(newFollowers.replace(/[^0-9]/g, "")) || 1000;
+
+    if (!handle || isNaN(priceNum) || priceNum <= 0) {
+      alert("Please enter a valid handle and price.");
+      return;
+    }
+
+    setCreatingListing(true);
+    try {
+      const docRef = await addDoc(collection(db, "p2p_listings"), {
+        platform: newPlatform,
+        handle: handle.startsWith("@") ? handle : `@${handle}`,
+        title: newTitle.trim() || `${newPlatform} Account (${handle})`,
+        niche: newNiche.trim() || "General",
+        followers: followersNum,
+        priceNaira: priceNum,
+        priceType: "fixed",
+        verified: newVerified,
+        status: "live", // Admin creates directly as live
+        sellerUid: "admin",
+        sellerName: "Verified Store",
+        sellerRating: 5.0,
+        sellerTrades: 120,
+        createdAt: serverTimestamp(),
+      });
+      alert(`Listing created and is now LIVE! ID: ${docRef.id}`);
+      setShowCreateModal(false);
+      setNewHandle("");
+      setNewTitle("");
+      setNewPrice("");
+    } catch (err: any) {
+      console.error("Failed to create listing:", err);
+      alert("Failed to create listing: " + (err?.message || err));
+    } finally {
+      setCreatingListing(false);
     }
   };
 
@@ -282,7 +358,16 @@ export default function P2PPage() {
                   <span className="material-symbols-outlined">pending_actions</span>
                   Queue: Listing Approvals
                 </h3>
-                <span className="font-label-caps text-label-caps text-on-surface-variant">{pendingListings.length} PENDING</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-label-caps text-label-caps text-on-surface-variant">{pendingListings.length} PENDING</span>
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="bg-secondary text-on-secondary px-3 py-1 rounded text-body-sm font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    <span>Post Live Listing</span>
+                  </button>
+                </div>
               </div>
               <div className="flex overflow-x-auto gap-3 pb-2">
                 {loading ? (
@@ -632,6 +717,124 @@ export default function P2PPage() {
                 </>
               );
             })()}
+          </div>
+        </div>
+      )}
+      {/* Manual Create Listing Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-bright border border-subtle rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-subtle">
+              <h3 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">add_circle</span>
+                Create Live Account Listing
+              </h3>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="material-symbols-outlined text-on-surface-variant hover:text-on-surface"
+              >
+                close
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateManualListing} className="space-y-3">
+              <div>
+                <label className="block font-label-caps text-on-surface-variant mb-1">PLATFORM</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["Instagram", "TikTok", "YouTube", "X", "WhatsApp"].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setNewPlatform(p)}
+                      className={`py-1.5 px-2 rounded text-body-sm font-bold border transition-colors ${
+                        newPlatform === p
+                          ? "bg-secondary text-on-secondary border-secondary"
+                          : "bg-surface-container border-subtle text-on-surface-variant hover:text-on-surface"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-label-caps text-on-surface-variant mb-1">ACCOUNT HANDLE</label>
+                <input
+                  type="text"
+                  placeholder="@username"
+                  required
+                  value={newHandle}
+                  onChange={(e) => setNewHandle(e.target.value)}
+                  className="w-full bg-surface-container border border-subtle rounded px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-secondary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-label-caps text-on-surface-variant mb-1">NICHE / CATEGORY</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Comedy, Fashion"
+                    value={newNiche}
+                    onChange={(e) => setNewNiche(e.target.value)}
+                    className="w-full bg-surface-container border border-subtle rounded px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-secondary"
+                  />
+                </div>
+                <div>
+                  <label className="block font-label-caps text-on-surface-variant mb-1">FOLLOWERS</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 50000"
+                    value={newFollowers}
+                    onChange={(e) => setNewFollowers(e.target.value)}
+                    className="w-full bg-surface-container border border-subtle rounded px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-secondary"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-label-caps text-on-surface-variant mb-1">PRICE (₦)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 150000"
+                  required
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value)}
+                  className="w-full bg-surface-container border border-subtle rounded px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-secondary"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="verifiedCheck"
+                  checked={newVerified}
+                  onChange={(e) => setNewVerified(e.target.checked)}
+                  className="rounded border-subtle"
+                />
+                <label htmlFor="verifiedCheck" className="text-body-sm text-on-surface font-medium cursor-pointer">
+                  Show Blue Verified Badge (✓)
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-3">
+                <button
+                  type="submit"
+                  disabled={creatingListing}
+                  className="flex-1 bg-secondary text-on-secondary py-2.5 rounded font-label-caps font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {creatingListing ? "CREATING..." : "PUBLISH LIVE TO MARKETPLACE"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 border border-subtle text-on-surface py-2.5 rounded font-label-caps font-bold hover:bg-surface-container"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

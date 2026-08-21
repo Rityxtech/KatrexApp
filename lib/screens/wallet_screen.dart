@@ -10,6 +10,7 @@ import '../providers/transaction_provider.dart';
 import '../widgets/notification_icon.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/app_background.dart';
+import '../widgets/header_profile_avatar.dart';
 import 'buy_airtime_screen.dart';
 import 'buy_data_screen.dart';
 import 'deposit_screen.dart';
@@ -30,7 +31,14 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          widget.onTabSwitch?.call(0);
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFF000000),
       body: Stack(
         fit: StackFit.expand,
@@ -57,6 +65,7 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -68,21 +77,7 @@ class _WalletScreenState extends State<WalletScreen> {
         children: [
           GestureDetector(
             onTap: () => widget.onTabSwitch?.call(0),
-            child: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                  child: const Center(child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 18)),
-                ),
-              ),
-            ),
+            child: const HeaderProfileAvatar(),
           ),
           Text('My Wallet', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
           const NotificationIcon(),
@@ -131,14 +126,15 @@ class _WalletScreenState extends State<WalletScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 4,
-            mainAxisSpacing: 6,
+            mainAxisSpacing: 8,
             crossAxisSpacing: 8,
-            childAspectRatio: 1.1,
+            childAspectRatio: 0.88,
             children: actions.map((a) {
               return GestureDetector(
                 onTap: a['onTap'] as VoidCallback,
                 behavior: HitTestBehavior.opaque,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 48, height: 48,
@@ -150,11 +146,43 @@ class _WalletScreenState extends State<WalletScreen> {
                       child: Icon(a['icon'] as IconData, size: 22, color: a['color'] as Color),
                     ),
                     const SizedBox(height: 6),
-                    Text(a['label'] as String, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text(
+                      a['label'] as String,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
               );
             }).toList(),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => _showAddCardModal(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.2)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.credit_card_rounded, size: 16, color: Color(0xFF60A5FA)),
+                  const SizedBox(width: 8),
+                  Text('Link a card for faster deposits', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF60A5FA))),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(0xFF60A5FA)),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -225,39 +253,56 @@ class _WalletScreenState extends State<WalletScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '\u20A6${_formatNaira(totalValue)}',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1),
-                      ),
+                      Builder(builder: (context) {
+                        final wallet = context.watch<WalletProvider>();
+                        if (wallet.isLoading && wallet.totalValueNaira == 0) {
+                          return Container(
+                            height: 32, width: 200,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const _ShimmerPulse(),
+                          );
+                        }
+                        return Text(
+                          '\u20A6${_formatNaira(totalValue)}',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1),
+                        );
+                      }),
                       const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: SizedBox(
-                          height: 8,
-                          child: Row(
-                            children: [
-                              if (ngnPercent > 0 || totalValue == 0)
-                                Expanded(
-                                  flex: totalValue == 0 ? 100 : (ngnPercent * 100).toInt(),
-                                  child: Container(color: const Color(0xFF10B981)),
-                                ),
-                              if (cryptoPercent > 0)
-                                Expanded(
-                                  flex: (cryptoPercent * 100).toInt(),
-                                  child: Container(color: const Color(0xFFF59E0B)),
-                                ),
-                            ],
+                      if (wallet.isLoading && wallet.totalValueNaira == 0)
+                        const SizedBox(height: 8)
+                      else ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            height: 8,
+                            child: Row(
+                              children: [
+                                if (ngnPercent > 0 || totalValue == 0)
+                                  Expanded(
+                                    flex: totalValue == 0 ? 100 : (ngnPercent * 100).toInt(),
+                                    child: Container(color: const Color(0xFF10B981)),
+                                  ),
+                                if (cryptoPercent > 0)
+                                  Expanded(
+                                    flex: (cryptoPercent * 100).toInt(),
+                                    child: Container(color: const Color(0xFFF59E0B)),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildLegendItem('NGN Fiat', const Color(0xFF10B981), ngnBal, totalValue == 0 ? 100 : ngnPercent * 100),
-                          _buildLegendItem('Crypto Assets', const Color(0xFFF59E0B), cryptoValue, cryptoPercent * 100),
-                        ],
-                      ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildLegendItem('NGN Fiat', const Color(0xFF10B981), ngnBal, totalValue == 0 ? 100 : ngnPercent * 100),
+                            _buildLegendItem('Crypto Assets', const Color(0xFFF59E0B), cryptoValue, cryptoPercent * 100),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -603,4 +648,51 @@ class _WalletMeshPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ShimmerPulse extends StatefulWidget {
+  const _ShimmerPulse();
+
+  @override
+  State<_ShimmerPulse> createState() => _ShimmerPulseState();
+}
+
+class _ShimmerPulseState extends State<_ShimmerPulse> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(_animation.value),
+            borderRadius: BorderRadius.circular(8),
+          ),
+        );
+      },
+    );
+  }
 }

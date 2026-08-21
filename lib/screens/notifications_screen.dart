@@ -8,6 +8,7 @@ import '../models/notification_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/app_background.dart';
+import '../widgets/universal_icon.dart';
 import 'withdraw_screen.dart';
 import 'trade_screen.dart';
 
@@ -104,9 +105,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Center(
-          child: icon is FaIconData
-              ? FaIcon(icon, size: 12, color: onTap == null ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF))
-              : Icon(icon as IconData, size: 12, color: onTap == null ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF)),
+          child: UniversalIcon(
+            icon,
+            size: 12,
+            color: onTap == null ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF),
+          ),
         ),
       ),
     );
@@ -180,6 +183,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final isRead = n.isRead;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         if (!isRead) provider.markAsRead(n.id);
         _openNotification(n, iconColor);

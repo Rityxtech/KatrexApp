@@ -1,3 +1,5 @@
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -29,7 +31,12 @@ void main() async {
   // Initialize push notification settings & channel configurations
   await PushNotificationService.instance.init();
   
-  runApp(const MyApp());
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -49,6 +56,8 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'KatrexApp',
         debugShowCheckedModeBanner: false,
+        locale: DevicePreview.locale(context),
+        builder: DevicePreview.appBuilder,
         theme: ThemeData(
           useMaterial3: true,
           textTheme: GoogleFonts.plusJakartaSansTextTheme(),

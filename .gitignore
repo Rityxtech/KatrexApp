@@ -59,4 +59,7 @@ admin/.next/
 # Misc Tools & IDEs
 .zcode/
 nul
+*.tsbuildinfo
+.audit/
+audit_shots/
 

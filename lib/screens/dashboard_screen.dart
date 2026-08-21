@@ -12,10 +12,12 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../models/transaction_model.dart';
+import '../models/homepage_promo_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/wallet_provider.dart';
+import '../services/firestore_service.dart';
 import '../services/market_data_service.dart';
 import '../widgets/app_background.dart';
 import 'profile_screen.dart';
@@ -48,6 +50,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Map<String, CoinMarketData> _marketDataMap = {};
   StreamSubscription<List<CoinMarketData>>? _marketSub;
+  StreamSubscription<List<HomepagePromo>>? _promoSub;
+
+  static final List<Map<String, String>> _defaultAds = [
+    {
+      'title': 'Trade Gift Cards at Best Rates',
+      'subtitle': 'Sell your unused gift cards for instant cash today.',
+      'badge': 'HOT DEALS',
+      'btn': 'Trade Now',
+      'image': 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      'title': 'Zero Fees on First Trade!',
+      'subtitle': 'Buy, sell, and swap top cryptocurrencies instantly.',
+      'badge': 'PROMO',
+      'btn': 'Buy Crypto',
+      'image': 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      'title': 'Invite & Earn ₦1,500',
+      'subtitle': 'Share your referral code with friends and earn rewards.',
+      'badge': 'REFERRAL',
+      'btn': 'Share Code',
+      'image': 'https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=600&auto=format&fit=crop',
+    },
+  ];
+
+  List<Map<String, String>> _ads = List.from(_defaultAds);
 
   @override
   void initState() {
@@ -59,11 +88,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     });
+
+    _promoSub = FirestoreService().watchHomepagePromos().listen((promos) {
+      if (mounted) {
+        if (promos.isNotEmpty) {
+          final loaded = promos.map((p) {
+            return {
+              'id': p.id,
+              'title': p.title,
+              'subtitle': p.subtitle ?? '',
+              'badge': p.badge ?? 'FEATURED',
+              'btn': p.buttonText ?? 'View',
+              'image': p.imageUrl.isNotEmpty
+                  ? p.imageUrl
+                  : 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=600&auto=format&fit=crop',
+            };
+          }).toList();
+          setState(() {
+            _ads = loaded;
+            if (_currentAdIndex >= _ads.length) {
+              _currentAdIndex = 0;
+            }
+          });
+        } else {
+          setState(() => _ads = List.from(_defaultAds));
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     _marketSub?.cancel();
+    _promoSub?.cancel();
     super.dispose();
   }
 
@@ -118,7 +175,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: Colors.white.withOpacity(0.1),
                   border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-                child: const Icon(Icons.person, size: 16, color: Colors.white70),
+                child: Builder(builder: (context) {
+                  final user = context.watch<AuthProvider>().userModel;
+                  final photoUrl = user?.avatarUrl;
+                  if (photoUrl != null && photoUrl.isNotEmpty) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: CachedNetworkImage(
+                        imageUrl: photoUrl,
+                        width: 32, height: 32,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => const Center(child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54))),
+                        errorWidget: (context, url, error) => const Icon(Icons.person, size: 16, color: Colors.white70),
+                      ),
+                    );
+                  }
+                  return const Icon(Icons.person, size: 16, color: Colors.white70);
+                }),
               ),
               const SizedBox(width: 8),
               Column(
@@ -346,43 +419,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Flexible(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                _balanceVisible
-                                    ? (_currency == 'NGN'
-                                        ? '\u20A6${NumberFormat('#,##0').format(context.watch<WalletProvider>().nairaBalance)}'
-                                        : '\$${NumberFormat('#,##0.00').format(context.watch<WalletProvider>().totalValueNaira / 1500)}')
-                                    : '********',
-                                style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white, height: 1),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
+                  Builder(
+                    builder: (context) {
+                      final wallet = context.watch<WalletProvider>();
+                      if (wallet.isLoading && wallet.nairaBalance == 0) {
+                        return _buildBalanceLoader();
+                      }
+                      final rawAmount = _currency == 'NGN'
+                          ? wallet.nairaBalance
+                          : (wallet.totalValueNaira / 1500);
+                      final formatted = NumberFormat('#,##0.00').format(rawAmount);
+                      final parts = formatted.split('.');
+                      final mainPart = (_currency == 'NGN' ? '₦' : '\$') + parts[0];
+                      final decimalPart = '.${parts.length > 1 ? parts[1] : "00"}';
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        _balanceVisible ? mainPart : '••••••••',
+                                        style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white, height: 1),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                    if (_balanceVisible)
+                                      Text(decimalPart, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white70)),
+                                  ],
+                                ),
+                              ],
                             ),
-                            if (_balanceVisible)
-                              Text('.00', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white70)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.2), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3))),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.trending_up_rounded, size: 12, color: Color(0xFF34D399)),
-                            const SizedBox(width: 2),
-                            Text('+3.2%', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF34D399))),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.2), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3))),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.trending_up_rounded, size: 12, color: Color(0xFF34D399)),
+                                const SizedBox(width: 2),
+                                Text('+3.2%', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF34D399))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -403,6 +493,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       ),
+    );
+  }
+
+  Widget _buildBalanceLoader() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Flexible(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                height: 32, width: 180,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const _ShimmerPulse(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.2), borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3))),
+          child: Row(
+            children: [
+              const Icon(Icons.trending_up_rounded, size: 12, color: Color(0xFF34D399)),
+              const SizedBox(width: 2),
+              Text('+3.2%', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF34D399))),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -598,29 +723,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildPromoCarousel() {
-    final List<Map<String, String>> ads = [
-      {
-        'title': 'Trade Gift Cards at Best Rates',
-        'subtitle': 'Sell your unused gift cards for instant cash today.',
-        'badge': 'HOT DEALS',
-        'btn': 'Trade Now',
-        'image': 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=600&auto=format&fit=crop',
-      },
-      {
-        'title': 'Zero Fees on First Trade!',
-        'subtitle': 'Buy, sell, and swap top cryptocurrencies instantly.',
-        'badge': 'PROMO',
-        'btn': 'Buy Crypto',
-        'image': 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?q=80&w=600&auto=format&fit=crop',
-      },
-      {
-        'title': 'Invite & Earn ₦1,500',
-        'subtitle': 'Share your referral code with friends and earn rewards.',
-        'badge': 'REFERRAL',
-        'btn': 'Share Code',
-        'image': 'https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=600&auto=format&fit=crop',
-      },
-    ];
+    final ads = _ads;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
@@ -630,7 +733,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             options: CarouselOptions(
               height: 96.0,
               viewportFraction: 1.0,
-              autoPlay: true,
+              autoPlay: ads.length > 1,
               autoPlayInterval: const Duration(seconds: 4),
               autoPlayAnimationDuration: const Duration(milliseconds: 800),
               autoPlayCurve: Curves.fastOutSlowIn,
@@ -645,27 +748,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 builder: (BuildContext context) {
                   final idx = ads.indexOf(ad);
                   return _carouselAdCard(
-                    title: ad['title']!,
-                    subtitle: ad['subtitle']!,
-                    badge: ad['badge']!,
-                    btnText: ad['btn']!,
-                    imageUrl: ad['image']!,
+                    title: ad['title'] ?? '',
+                    subtitle: ad['subtitle'] ?? '',
+                    badge: ad['badge'] ?? 'FEATURED',
+                    btnText: ad['btn'] ?? 'View',
+                    imageUrl: ad['image'] ?? '',
                     index: idx,
                     onTap: () {
-                      if (idx == 0) {
+                      final titleLower = (ad['title'] ?? '').toLowerCase();
+                      final badgeLower = (ad['badge'] ?? '').toLowerCase();
+
+                      if (titleLower.contains('gift') || badgeLower.contains('gift')) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SellGiftcardScreen()));
+                      } else if (titleLower.contains('referral') || badgeLower.contains('referral')) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
+                      } else if (titleLower.contains('airtime') || badgeLower.contains('airtime')) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BuyAirtimeScreen()));
+                      } else if (titleLower.contains('data') || badgeLower.contains('data')) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BuyDataScreen()));
+                      } else {
                         if (widget.onTabSwitch != null) {
                           widget.onTabSwitch!(2);
                         } else {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => TradeScreen(onTabSwitch: widget.onTabSwitch)));
                         }
-                      } else if (idx == 1) {
-                        if (widget.onTabSwitch != null) {
-                          widget.onTabSwitch!(2);
-                        } else {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => TradeScreen(initialMode: 'buy', onTabSwitch: widget.onTabSwitch)));
-                        }
-                      } else if (idx == 2) {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
                       }
                     },
                   );
@@ -674,20 +780,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }).toList(),
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: ads.asMap().entries.map((entry) {
-              return Container(
-                width: _currentAdIndex == entry.key ? 24.0 : 8.0,
-                height: 4.0,
-                margin: const EdgeInsets.symmetric(horizontal: 3.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  color: _currentAdIndex == entry.key ? const Color(0xFF10B981) : Colors.white.withOpacity(0.2),
-                ),
-              );
-            }).toList(),
-          ),
+          if (ads.length > 1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: ads.asMap().entries.map((entry) {
+                return Container(
+                  width: _currentAdIndex == entry.key ? 24.0 : 8.0,
+                  height: 4.0,
+                  margin: const EdgeInsets.symmetric(horizontal: 3.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: _currentAdIndex == entry.key ? const Color(0xFF10B981) : Colors.white.withOpacity(0.2),
+                  ),
+                );
+              }).toList(),
+            ),
         ],
       ),
     );
@@ -1255,17 +1362,14 @@ class _BounceWrapperState extends State<_BounceWrapper> with SingleTickerProvide
       },
       onTapUp: (_) {
         if (widget.onTap != null) {
-          Future.delayed(const Duration(milliseconds: 50), () {
-            if (mounted) _controller.reverse();
-          });
-          // Small delay before triggering the actual tap action so the user feels the click first
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (mounted) widget.onTap!();
-          });
+          _controller.reverse();
         }
       },
       onTapCancel: () {
         if (widget.onTap != null) _controller.reverse();
+      },
+      onTap: () {
+        widget.onTap?.call();
       },
       child: ScaleTransition(
         scale: _scaleAnimation,
@@ -1414,6 +1518,53 @@ class _AnimatedVisitIndicatorState extends State<_AnimatedVisitIndicator> with S
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ShimmerPulse extends StatefulWidget {
+  const _ShimmerPulse();
+
+  @override
+  State<_ShimmerPulse> createState() => _ShimmerPulseState();
+}
+
+class _ShimmerPulseState extends State<_ShimmerPulse> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(_animation.value),
+            borderRadius: BorderRadius.circular(8),
+          ),
+        );
+      },
     );
   }
 }

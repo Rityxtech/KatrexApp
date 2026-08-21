@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/support_service.dart';
 import '../widgets/app_background.dart';
+import '../widgets/header_profile_avatar.dart';
 import '../widgets/notification_icon.dart';
 
 Widget _btn({required IconData i, required VoidCallback t, double s = 36}) => GestureDetector(
@@ -108,7 +109,14 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) {
+        widget.onTabSwitch?.call(0);
+      }
+    },
+    child: Scaffold(
     backgroundColor: const Color(0xFF000000),
     body: Stack(
       fit: StackFit.expand,
@@ -116,6 +124,7 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
         const AppBackground(child: SizedBox.expand()),
         SafeArea(child: _main()),
       ],
+    ),
     ),
   );
 
@@ -127,7 +136,10 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _btn(i: Icons.chevron_left_rounded, t: () => widget.onTabSwitch?.call(0)),
+            GestureDetector(
+              onTap: () => widget.onTabSwitch?.call(0),
+              child: const HeaderProfileAvatar(),
+            ),
             Text('Help Center', style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
             const NotificationIcon(),
           ],
@@ -293,7 +305,7 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
                       final doc = e.value;
                       final data = doc.data() as Map<String, dynamic>;
                       final isLast = e.key == paginated.length - 1 && !_hasMore;
-                      return _ticketItemFromData(data, showDivider: e.key != paginated.length - 1);
+                      return _ticketItemFromData(data, showDivider: e.key != paginated.length - 1, onTap: () => _showTicketDetail(data));
                     }),
                     if (_isLoadingMore)
                       const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Color(0xFF6B7280), strokeWidth: 1.5)))),
@@ -365,7 +377,7 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
     ],
   );
 
-  Widget _ticketItemFromData(Map<String, dynamic> data, {bool showDivider = true}) {
+  Widget _ticketItemFromData(Map<String, dynamic> data, {bool showDivider = true, VoidCallback? onTap}) {
     final status = (data['status'] as String?) ?? 'open';
     final statusUpper = status.toUpperCase();
     final statusColor = status == 'open'
@@ -381,44 +393,171 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
     final dateStr = DateFormat('MMM d, y').format(createdAt);
     final msgs = (data['messageCount'] as int?) ?? 0;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: statusColor.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
-                    child: Text(statusUpper, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor, letterSpacing: 0.5)),
-                  ),
-                  Text(dateStr, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: statusColor.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                      child: Text(statusUpper, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor, letterSpacing: 0.5)),
+                    ),
+                    Text(dateStr, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(ticketId, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                        const SizedBox(width: 8),
+                        Icon(Icons.chevron_right_rounded, size: 14, color: const Color(0xFF9CA3AF)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.chat_bubble_rounded, size: 11, color: Color(0xFF9CA3AF)),
+                        const SizedBox(width: 4),
+                        Text('$msgs msgs', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (showDivider) const Divider(color: Color(0x0DFFFFFF), height: 16),
+        ],
+      ),
+    );
+  }
+
+  void _showTicketDetail(Map<String, dynamic> data) {
+    final status = (data['status'] as String?) ?? 'open';
+    final statusColor = status == 'open'
+        ? const Color(0xFF10B981)
+        : status == 'resolved'
+            ? const Color(0xFF3B82F6)
+            : const Color(0xFFF59E0B);
+    final title = (data['subject'] as String?) ?? (data['title'] as String?) ?? 'Support Ticket';
+    final ticketId = (data['ticketId'] as String?) ?? '#${data['id'] ?? ''}';
+    final createdAt = data['createdAt'] is Timestamp
+        ? (data['createdAt'] as Timestamp).toDate()
+        : DateTime.now();
+    final dateStr = DateFormat('MMM d, y, h:mm a').format(createdAt);
+    final description = (data['description'] as String?) ?? 'No description provided.';
+    final category = (data['category'] as String?) ?? 'General';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0F1F).withOpacity(0.95),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Ticket Details', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
+                            child: const Icon(Icons.close_rounded, color: Colors.grey, size: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _detailRow('Ticket ID', ticketId),
+                    const SizedBox(height: 12),
+                    _detailRow('Category', category),
+                    const SizedBox(height: 12),
+                    _detailRow('Status', status.toUpperCase(), valueColor: statusColor),
+                    const SizedBox(height: 12),
+                    _detailRow('Date', dateStr),
+                    const SizedBox(height: 12),
+                    _detailRow('Subject', title),
+                    const SizedBox(height: 12),
+                    Text('Description', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white54, letterSpacing: 1)),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      child: Text(description, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70, height: 1.4)),
+                    ),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text('Close', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 6),
-              Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(ticketId, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                  Row(
-                    children: [
-                      const Icon(Icons.chat_bubble_rounded, size: 11, color: Color(0xFF9CA3AF)),
-                      const SizedBox(width: 4),
-                      Text('$msgs msgs', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
-        if (showDivider) const Divider(color: Color(0x0DFFFFFF), height: 16),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white54)),
+        ),
+        Expanded(
+          child: Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: valueColor ?? Colors.white)),
+        ),
       ],
     );
   }
@@ -806,11 +945,25 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isInitializing = false);
+      final msg = e.toString().contains('NOT_FOUND')
+          ? 'AI chat is not available right now. Please check back later or submit a ticket.'
+          : e.toString().contains('resource-exhausted')
+              ? 'Chat service is temporarily busy. Please try again in a moment.'
+              : 'Could not start chat. Would you like to submit a ticket instead?';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Could not start chat. Please try again.', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600)),
+        content: Text(msg, style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w600)),
         backgroundColor: const Color(0xFFEF4444),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () {
+            setState(() => _isInitializing = true);
+            _initChat();
+          },
+        ),
       ));
     }
   }

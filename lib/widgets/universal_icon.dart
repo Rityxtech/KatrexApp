@@ -16,9 +16,15 @@ class UniversalIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (icon is FaIconData) {
-      return FaIcon(icon as FaIconData, key: iconKey, size: size, color: color);
+    if (icon == null) return const SizedBox.shrink();
+    if (icon is IconData) {
+      return Icon(icon as IconData, key: iconKey, size: size, color: color);
     }
-    return Icon(icon as IconData?, key: iconKey, size: size, color: color);
+    try {
+      if (icon is FaIconData) {
+        return FaIcon(icon as FaIconData, key: iconKey, size: size, color: color);
+      }
+    } catch (_) {}
+    return const SizedBox.shrink();
   }
 }

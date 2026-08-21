@@ -14,6 +14,8 @@ class FirestoreCollections {
   static const cryptoDeposits = 'crypto_deposits';
   static const appConfig = 'app_config';
   static const fcmTokens = 'fcm_tokens';
+  static const homepagePromos = 'homepage_promos';
+  static const giftcardPromos = 'giftcard_promos';
 }
 
 class StoragePaths {

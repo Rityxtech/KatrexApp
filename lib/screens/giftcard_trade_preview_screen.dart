@@ -160,7 +160,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
           Text(
             'Trade #$_displayTradeId',
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
+              fontSize: 15,
               fontWeight: FontWeight.w900,
               color: Colors.white,
               letterSpacing: -0.2,
@@ -234,7 +234,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                     Text(
                       'UNDER REVIEW',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 8,
+                        fontSize: 11,
                         fontWeight: FontWeight.w900,
                         color: const Color(0xFFF59E0B),
                         letterSpacing: 1,
@@ -246,7 +246,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
               Text(
                 'Est. 2 - 5 mins',
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 8,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF9CA3AF),
                 ),
@@ -257,7 +257,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
           Text(
             'Expected Payout',
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 9,
+              fontSize: 13,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF9CA3AF),
             ),
@@ -353,7 +353,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
           child: Text(
             'TRADE SUMMARY',
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 9,
+              fontSize: 12,
               fontWeight: FontWeight.w900,
               color: const Color(0xFF9CA3AF),
               letterSpacing: 1.5,
@@ -384,7 +384,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                     Text(
                       '$brand ($sym${cardVal.toStringAsFixed(0)})',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
                         color: const Color(0xFF09090B),
                       ),
@@ -403,7 +403,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                   child: Text(
                     typeStr,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                       color: const Color(0xFF09090B),
                     ),
@@ -415,7 +415,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                 child: Text(
                   '₦${NumberFormat('#,##0').format(rate)} / ${sym}1',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
                     color: const Color(0xFF2563EB),
                   ),
@@ -431,13 +431,13 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                       Text(
                         _displayTradeId,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
+                          fontSize: 13,
                           fontWeight: FontWeight.w900,
                           color: const Color(0xFF09090B),
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.copy_rounded, color: Color(0xFF09090B), size: 10),
+                      const Icon(Icons.copy_rounded, color: Color(0xFF09090B), size: 13),
                     ],
                   ),
                 ),
@@ -447,7 +447,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                 child: Text(
                   dateStr,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
                     color: const Color(0xFF09090B),
                   ),
@@ -474,7 +474,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
           Text(
             label,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 9.5,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF64748B),
             ),
@@ -498,7 +498,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
             child: Text(
               'SUBMITTED E-CODE PIN',
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 9,
+                fontSize: 12,
                 fontWeight: FontWeight.w900,
                 color: const Color(0xFF9CA3AF),
                 letterSpacing: 1.5,
@@ -539,7 +539,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
           child: Text(
             'UPLOADED ASSETS (${images.length})',
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 9,
+              fontSize: 12,
               fontWeight: FontWeight.w900,
               color: const Color(0xFF9CA3AF),
               letterSpacing: 1.5,
@@ -600,7 +600,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
         'You will be notified via push once an admin reviews this trade. Please do not submit this card anywhere else.',
         textAlign: TextAlign.center,
         style: GoogleFonts.plusJakartaSans(
-          fontSize: 8.5,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: const Color(0xFF94A3B8),
           height: 1.5,
@@ -700,7 +700,7 @@ class _GiftcardTradePreviewScreenState extends State<GiftcardTradePreviewScreen>
                 Text(
                   'Copied ID!',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 9,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                   ),

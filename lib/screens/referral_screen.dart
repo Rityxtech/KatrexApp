@@ -103,6 +103,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () => Navigator.pop(context),
             child: Container(
               width: 36, height: 36,
@@ -210,31 +211,38 @@ class _ReferralScreenState extends State<ReferralScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'TOTAL EARNED LIFETIME',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF9CA3AF),
-                                  letterSpacing: 1.0),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '₦' + NumberFormat('#,##0').format(total),
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
-                            ),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'TOTAL EARNED LIFETIME',
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF9CA3AF),
+                                    letterSpacing: 1.0),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '₦' + NumberFormat('#,##0').format(total),
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         GestureDetector(
                           onTap: claimable > 0 ? _showClaimSheet : null,
                           child: Opacity(
                             opacity: claimable > 0 ? 1.0 : 0.5,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF10B981),
                                 borderRadius: BorderRadius.circular(12),
@@ -250,7 +258,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                               child: Text(
                                 'Claim Rewards',
                                 style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
+                                    fontSize: 13, fontWeight: FontWeight.w900, color: Colors.black),
                               ),
                             ),
                           ),
@@ -300,6 +308,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                           letterSpacing: 3.0),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   GestureDetector(
@@ -370,7 +380,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
       crossAxisCount: 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 2.3,
+      childAspectRatio: 1.8,
       children: [
         _analyticsCard('$total', 'Total Invited', Icons.people_rounded, Colors.white, Colors.white, null),
         _analyticsCard('$qualified', 'Qualified (Paid)', Icons.verified_user_rounded, Colors.white, const Color(0xFF34D399), const Color(0xFF10B981).withOpacity(0.2)),
@@ -383,7 +393,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
   Widget _analyticsCard(
       String value, String label, IconData? icon, Color? iconColor, Color valueColor, Color? borderColor) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
         borderRadius: BorderRadius.circular(12),
@@ -396,8 +406,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
               top: 0,
               right: 0,
               child: Container(
-                width: 28,
-                height: 28,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: (iconColor ?? Colors.white).withOpacity(0.1),
@@ -414,13 +424,17 @@ class _ReferralScreenState extends State<ReferralScreen> {
               Text(
                 value,
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 20, fontWeight: FontWeight.w900, color: valueColor),
+                    fontSize: 18, fontWeight: FontWeight.w900, color: valueColor),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               Text(
                 label,
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 11, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -633,6 +647,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   name,
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Row(
@@ -643,13 +659,17 @@ class _ReferralScreenState extends State<ReferralScreen> {
                       decoration: BoxDecoration(shape: BoxShape.circle, color: statusColor),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      statusText,
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: statusColor,
-                          letterSpacing: 0.5),
+                    Flexible(
+                      child: Text(
+                        statusText,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: statusColor,
+                            letterSpacing: 0.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),

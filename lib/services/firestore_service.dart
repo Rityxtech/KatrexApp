@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/transaction_model.dart';
 import '../models/notification_model.dart';
 import '../models/wallet_model.dart';
+import '../models/homepage_promo_model.dart';
+import '../models/giftcard_promo_model.dart';
 import '../utils/constants.dart';
 import 'trade_fee_service.dart';
 
@@ -753,5 +755,37 @@ class FirestoreService {
       body: 'Your ${tx.type == TransactionType.withdrawal ? 'withdrawal' : 'send'} request was declined. Reason: $reason. Your funds have been refunded.',
       preview: 'Transaction failed: $reason',
     );
+  }
+
+  // ─── Promos & Banners ────────────────────────────────────
+
+  /// Stream active homepage promo slides ordered by sortOrder.
+  Stream<List<HomepagePromo>> watchHomepagePromos() {
+    return _db
+        .collection(FirestoreCollections.homepagePromos)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs
+              .map((doc) => HomepagePromo.fromMap(doc.id, doc.data()))
+              .toList();
+          list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+          return list;
+        });
+  }
+
+  /// Stream active giftcard promo slides ordered by sortOrder.
+  Stream<List<GiftcardPromo>> watchGiftcardPromos() {
+    return _db
+        .collection(FirestoreCollections.giftcardPromos)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs
+              .map((doc) => GiftcardPromo.fromMap(doc.id, doc.data()))
+              .toList();
+          list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+          return list;
+        });
   }
 }

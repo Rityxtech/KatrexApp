@@ -7,13 +7,16 @@ import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/wallet_provider.dart';
+import '../services/cloud_functions_service.dart';
 import '../services/firestore_service.dart';
 import '../services/squad_service.dart';
 import '../services/vtu_provider_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
+import '../widgets/pin_input_sheet.dart';
 import '../widgets/squad_checkout_sheet.dart';
 import '../widgets/transaction_result_modal.dart';
+import '../utils/recent_numbers.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
 class BuyDataScreen extends StatefulWidget {
@@ -78,10 +81,28 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
   Future<void> _loadRecentNumbers() async {
     try {
       final uid = context.read<AuthProvider>().firebaseUser!.uid;
-      final firestore = FirestoreService();
-      final txs = await firestore.watchTransactions(uid, limit: 50).first;
+      // Load local recent numbers first for instant UI
+      final localRecents = await RecentNumbers.load(uid);
       final numbers = <_RecentContact>[];
       final seen = <String>{};
+
+      for (final r in localRecents) {
+        if (r.phone.length >= 11 && !seen.contains(r.phone)) {
+          seen.add(r.phone);
+          numbers.add(_RecentContact(
+            phone: r.phone,
+            networkIndex: r.networkIndex,
+          ));
+        }
+      }
+
+      if (mounted && numbers.isNotEmpty) {
+        setState(() => _recentNumbers = List.from(numbers));
+      }
+
+      // Also check Firestore transactions to merge
+      final firestore = FirestoreService();
+      final txs = await firestore.watchTransactions(uid, limit: 50).first;
       for (final tx in txs) {
         if ((tx.type == TransactionType.airtime || tx.type == TransactionType.data) &&
             tx.recipient != null && tx.recipient!.isNotEmpty &&
@@ -92,10 +113,11 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
             phone: tx.recipient!,
             networkIndex: _networkIndexFromName(tx.networkProvider),
           ));
+          await RecentNumbers.save(uid, tx.recipient!, _networkIndexFromName(tx.networkProvider));
         }
-        if (numbers.length >= 3) break;
+        if (numbers.length >= 5) break;
       }
-      if (mounted) setState(() => _recentNumbers = numbers);
+      if (mounted) setState(() => _recentNumbers = numbers.take(5).toList());
     } catch (_) {}
   }
 
@@ -224,6 +246,9 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
       return;
     }
 
+    final pinPassed = await PinInputSheet.ensurePinRequired(context);
+    if (!pinPassed) return;
+
     setState(() => _isProcessing = true);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -286,58 +311,38 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
           return;
         }
 
-        // Verify transaction via Squad API
-        final verification = await SquadService.verifyTransaction(reference: reference);
-        if (!verification.success || verification.status.toLowerCase() != 'success') {
-          await firestore.updateTransactionStatus(txId, TransactionStatus.failed);
-          if (mounted) {
-            messenger.showSnackBar(
-              SnackBar(content: Text('Payment verification failed: ${verification.errorMessage ?? verification.status}', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFFEF4444)),
-            );
-          }
-          return;
-        }
-
-        // Payment verified — proceed to deliver data via active provider
-        final result = await VtuProviderService.purchaseData(
-          networkIndex: _selectedNetwork,
-          planId: planId,
-          amount: _amount,
+        // Complete card payment server-side (verifies Squad + delivers data + updates transaction)
+        final cardResult = await CloudFunctionsService.completeCardData(
+          squadRef: returnedRef,
           phone: phone,
-          customerReference: reference,
+          planId: planId.toString(),
+          amount: _amount,
+          network: network,
+          planName: planName,
+          transactionId: txId,
         );
-
-        await firestore.updateTransactionStatus(
-          txId,
-          result.success ? TransactionStatus.completed : TransactionStatus.failed,
-        );
-
-        // If delivery failed after successful payment, refund to wallet
-        if (!result.success) {
-          final wallet = await firestore.getWallet(uid);
-          await firestore.updateWallet(wallet.copyWith(
-            nairaBalance: wallet.nairaBalance + _amount,
-            totalValueNaira: wallet.totalValueNaira + _amount,
-            updatedAt: DateTime.now(),
-          ));
-        }
+        final cardSuccess = cardResult['success'] == true;
 
         if (mounted) {
           await showTransactionResultModal(
             context: context,
-            success: result.success,
-            title: result.success ? 'Data Purchased!' : 'Purchase Failed',
-            subtitle: result.success
+            success: cardSuccess,
+            title: cardSuccess ? 'Data Purchased!' : 'Purchase Failed',
+            subtitle: cardSuccess
                 ? '$planName delivered to $phone'
-                : '\u20A6${NumberFormat('#,##0').format(_amount)} refunded to wallet',
+                : (cardResult['refunded'] == true
+                    ? '\u20A6${NumberFormat('#,##0').format(_amount)} refunded to wallet'
+                    : (cardResult['message'] ?? 'Purchase failed')),
             amount: _amount,
             recipient: phone,
             network: network,
-            reference: reference,
+            reference: returnedRef,
             paymentMethod: 'card',
-            errorMessage: result.success ? null : result.message,
+            errorMessage: cardSuccess ? null : (cardResult['message'] as String?),
           );
-          if (mounted && result.success) {
+          if (mounted && cardSuccess) {
+            await RecentNumbers.save(uid, phone, _selectedNetwork);
+            _loadRecentNumbers();
             _phoneController.clear();
             setState(() {
               _selectedNetwork = 0;
@@ -347,24 +352,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
           }
         }
       } else {
-        // Wallet payment — debit wallet first, then purchase
-        final wallet = await firestore.getWallet(uid);
-        if (wallet.nairaBalance < _amount) {
-          if (mounted) {
-            messenger.showSnackBar(
-              SnackBar(content: Text('Insufficient wallet balance', style: GoogleFonts.plusJakartaSans()), backgroundColor: const Color(0xFFEF4444)),
-            );
-          }
-          return;
-        }
-
-        // Debit wallet
-        await firestore.updateWallet(wallet.copyWith(
-          nairaBalance: wallet.nairaBalance - _amount,
-          totalValueNaira: wallet.totalValueNaira - _amount,
-          updatedAt: DateTime.now(),
-        ));
-
+        // Wallet payment — Cloud Function handles atomic debit and transaction
         final result = await VtuProviderService.purchaseData(
           networkIndex: _selectedNetwork,
           planId: planId,
@@ -373,31 +361,6 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
           customerReference: reference,
         );
 
-        final tx = TransactionModel(
-          id: '',
-          uid: uid,
-          type: TransactionType.data,
-          status: result.success ? TransactionStatus.completed : TransactionStatus.failed,
-          amountNaira: _amount,
-          description: 'Data purchase - $network - $planName',
-          reference: reference,
-          createdAt: DateTime.now(),
-          paymentMethod: 'wallet',
-          recipient: phone,
-        );
-
-        await firestore.createTransaction(tx);
-
-        // If delivery failed, refund to wallet
-        if (!result.success) {
-          final updatedWallet = await firestore.getWallet(uid);
-          await firestore.updateWallet(updatedWallet.copyWith(
-            nairaBalance: updatedWallet.nairaBalance + _amount,
-            totalValueNaira: updatedWallet.totalValueNaira + _amount,
-            updatedAt: DateTime.now(),
-          ));
-        }
-
         if (mounted) {
           await showTransactionResultModal(
             context: context,
@@ -405,7 +368,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
             title: result.success ? 'Data Purchased!' : 'Purchase Failed',
             subtitle: result.success
                 ? '$planName delivered to $phone'
-                : '\u20A6${NumberFormat('#,##0').format(_amount)} refunded to wallet',
+                : (result.message ?? 'Purchase failed'),
             amount: _amount,
             recipient: phone,
             network: network,
@@ -414,6 +377,8 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
             errorMessage: result.success ? null : result.message,
           );
           if (mounted && result.success) {
+            await RecentNumbers.save(uid, phone, _selectedNetwork);
+            _loadRecentNumbers();
             _phoneController.clear();
             setState(() {
               _selectedNetwork = 0;
@@ -479,6 +444,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
                             ),
                           ),
                           child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: _isProcessing ? null : _processData,
                             child: Container(
                               width: double.infinity,
@@ -750,13 +716,15 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        _phoneController.text = rc.phone;
-        if (rc.networkIndex != null) {
-          setState(() => _selectedNetwork = rc.networkIndex!);
-          _fetchPlans();
-        } else {
-          _detectNetwork(rc.phone);
-        }
+        setState(() {
+          _phoneController.text = rc.phone;
+          if (rc.networkIndex != null) {
+            _selectedNetwork = rc.networkIndex!;
+            _fetchPlans();
+          } else {
+            _detectNetwork(rc.phone);
+          }
+        });
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),

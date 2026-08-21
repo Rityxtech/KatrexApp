@@ -151,6 +151,40 @@ export interface GiftcardSettings {
   payoutDestination: string;
 }
 
+export interface HomepagePromo {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  badge?: string | null;
+  buttonText?: string | null;
+  imageUrl: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export interface GiftcardPromo {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  tag?: string | null;
+  imageUrl: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+// Homepage & Giftcard Promos / Slider banners
+export function useHomepagePromos() {
+  return useCollection<HomepagePromo>("homepage_promos", orderBy("sortOrder", "asc"));
+}
+
+export function useGiftcardPromos() {
+  return useCollection<GiftcardPromo>("giftcard_promos", orderBy("sortOrder", "asc"));
+}
+
 // Giftcard administration - all listeners update in real time.
 export function useGiftcardBrands() {
   return useCollection<GiftcardBrand>("giftcard_brands", orderBy("sortOrder", "asc"));

@@ -10,11 +10,13 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
+import '../models/giftcard_promo_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
+import '../widgets/pin_input_sheet.dart';
 import 'giftcard_trade_preview_screen.dart';
 import 'giftcard_trades_history_screen.dart';
 import 'live_rates_screen.dart';
@@ -29,11 +31,58 @@ class SellGiftcardScreen extends StatefulWidget {
 class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
   int _currentPromoIndex = 0;
   StreamSubscription<QuerySnapshot>? _brandsSubscription;
+  StreamSubscription<List<GiftcardPromo>>? _promosSubscription;
+
+  static final List<Map<String, dynamic>> _defaultPromos = [
+    {
+      'image': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=1000',
+      'tag': 'HOT DEAL',
+      'title': 'Steam Wallet Cards',
+      'subtitle': 'Highest payout rates today',
+    },
+    {
+      'image': 'https://images.unsplash.com/photo-1556742049-0a67d57a4b71?q=80&w=1000',
+      'tag': 'INSTANT',
+      'title': 'Amazon E-Codes',
+      'subtitle': 'Fast & secure payouts',
+    },
+  ];
+
+  List<Map<String, dynamic>> _promos = List.from(_defaultPromos);
 
   @override
   void initState() {
     super.initState();
     _listenToBrands();
+    _listenToPromos();
+  }
+
+  void _listenToPromos() {
+    _promosSubscription = FirestoreService().watchGiftcardPromos().listen((promos) {
+      if (mounted) {
+        if (promos.isNotEmpty) {
+          final loaded = promos.map((p) {
+            return {
+              'id': p.id,
+              'image': p.imageUrl.isNotEmpty
+                  ? p.imageUrl
+                  : 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=1000',
+              'tag': p.tag,
+              'title': p.title,
+              'subtitle': p.subtitle ?? '',
+            };
+          }).toList();
+          setState(() {
+            _promos = loaded;
+            if (_currentPromoIndex >= _promos.length) {
+              _currentPromoIndex = 0;
+            }
+          });
+        } else {
+          setState(() => _promos = List.from(_defaultPromos));
+        }
+      }
+    });
   }
 
   void _listenToBrands() {
@@ -58,23 +107,9 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
   @override
   void dispose() {
     _brandsSubscription?.cancel();
+    _promosSubscription?.cancel();
     super.dispose();
   }
-
-  final List<Map<String, dynamic>> _promos = [
-    {
-      'image': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=1000',
-      'tag': 'HOT DEAL',
-      'title': 'Steam Wallet Cards',
-      'subtitle': 'Highest payout rates today',
-    },
-    {
-      'image': 'https://images.unsplash.com/photo-1556742049-0a67d57a4b71?q=80&w=1000',
-      'tag': 'INSTANT',
-      'title': 'Amazon E-Codes',
-      'subtitle': 'Fast & secure payouts',
-    },
-  ];
 
   List<Map<String, dynamic>> _featuredCards = [
     {
@@ -159,6 +194,7 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
           Row(
             children: [
               GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () => Navigator.pop(context),
                 child: Container(
                   width: 36,
@@ -253,7 +289,7 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
-                        color: (promo['tagColor'] as Color).withOpacity(0.9),
+                        color: ((promo['tagColor'] as Color?) ?? const Color(0xFF2563EB)).withOpacity(0.9),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -423,6 +459,7 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LiveRatesScreen(initialIsGiftcardTab: true)),
@@ -445,12 +482,14 @@ class _SellGiftcardScreenState extends State<SellGiftcardScreen> {
                       child: const Center(child: Icon(Icons.calculate_rounded, color: Color(0xFF34D399), size: 18)),
                     ),
                     const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Rate Calculator', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
-                        Text('Live unit values', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Rate Calculator', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text('Live unit values', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -633,18 +672,36 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
     }
 
     // 3. E-Code / PIN Validation
-    if (_typeIndex == 1 && _ecodeController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Please enter your gift card e-code PIN or voucher code.',
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+    if (_typeIndex == 1) {
+      final code = _ecodeController.text.trim();
+      if (code.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Please enter your gift card e-code PIN or voucher code.',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
           ),
-          backgroundColor: const Color(0xFFEF4444),
-        ),
-      );
-      return;
+        );
+        return;
+      }
+      if (code.length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'E-code must be at least 6 characters long.',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+        return;
+      }
     }
+
+    final pinPassed = await PinInputSheet.ensurePinRequired(context);
+    if (!pinPassed) return;
 
     setState(() {
       _isProcessing = true;
@@ -1041,20 +1098,24 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('E-Code / PIN / Voucher Digits', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF))),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'DIGITAL CODE',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w900, color: const Color(0xFF34D399)),
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'DIGITAL CODE',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w900, color: const Color(0xFF34D399)),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
@@ -1074,6 +1135,11 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                             isDense: true,
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Min. 6 characters required',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280)),
                       ),
                     ],
                   ),
@@ -1098,10 +1164,15 @@ class _TradeBottomSheetState extends State<_TradeBottomSheet> {
                           Text('Rate: ₦${NumberFormat('#,##0').format(_rates[_currencyIndex])}/$currencySymbol', style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF6B7280))),
                         ],
                       ),
-                      Builder(builder: (_) => Text(
-                        '\u20A6${NumberFormat('#,##0').format(_nairaAmount)}',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: const Color(0xFF60A5FA)),
-                      )),
+                      Flexible(
+                        child: Text(
+                          '\u20A6${NumberFormat('#,##0').format(_nairaAmount)}',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: const Color(0xFF60A5FA)),
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ),

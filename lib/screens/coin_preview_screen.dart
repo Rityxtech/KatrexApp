@@ -216,7 +216,8 @@ class _CoinPreviewScreenState extends State<CoinPreviewScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
             child: Container(
               width: 36, height: 36,
               decoration: BoxDecoration(

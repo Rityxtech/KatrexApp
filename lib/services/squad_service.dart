@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../utils/api_config.dart';
+import 'cloud_functions_service.dart';
 
 /// Result of a Squad checkout initialization.
 class SquadResult {
@@ -57,9 +58,7 @@ class SquadVirtualAccount {
 
 /// Service that integrates with Squad's Payment API.
 ///
-/// Uses the Checkout Redirect flow: initiate a charge on the server,
-/// get a checkout URL, launch it in an in-app WebView, then verify the
-/// transaction status afterwards.
+/// Uses Cloud Functions for server-side secret key protection.
 class SquadService {
   static const _base = ApiConfig.squadBaseUrl;
   static const _secretKey = ApiConfig.squadSecretKey;
@@ -67,7 +66,7 @@ class SquadService {
   /// Initialize a Squad checkout session.
   ///
   /// Returns a [SquadResult] with the checkout URL to redirect the user to.
-  /// Amount is in naira — converted to kobo internally.
+  /// Amount is in naira.
   static Future<SquadResult> initializeCheckout({
     required double amount,
     required String customerName,
@@ -80,43 +79,29 @@ class SquadService {
     final ref = reference ?? 'smclientkx-${DateTime.now().millisecondsSinceEpoch}';
 
     try {
-      final res = await http.post(
-        Uri.parse('$_base/transaction/initiate'),
-        headers: {
-          'Authorization': 'Bearer $_secretKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'transaction_ref': ref,
-          'amount': (amount * 100).toInt(),
-          'currency': currency,
-          'initiate_type': 'inline',
-          'callback_url': ApiConfig.squadCallbackUrl,
-          'customer_name': customerName,
-          'email': customerEmail,
-          'payment_channels': paymentChannels,
-          if (isRecurring) 'is_recurring': true,
-        }),
+      final res = await CloudFunctionsService.initializeCardPayment(
+        amount: amount,
+        email: customerEmail,
       );
 
-      final body = jsonDecode(res.body);
+      final checkoutUrl = res['checkoutUrl'] as String?;
+      final txRef = res['transactionRef'] as String? ?? ref;
 
-      if (body['success'] == true || body['status'] == 200) {
-        final data = body['data'] as Map<String, dynamic>;
+      if (checkoutUrl != null) {
         return SquadResult(
           success: true,
-          checkoutUrl: data['checkout_url'] as String?,
-          reference: data['transaction_ref'] as String? ?? ref,
+          checkoutUrl: checkoutUrl,
+          reference: txRef,
         );
       }
 
       return SquadResult(
         success: false,
-        errorMessage: body['message'] as String? ?? 'Failed to initialize payment',
+        errorMessage: res['message'] as String? ?? 'Failed to initialize payment',
       );
     } catch (e) {
       debugPrint('Squad initializeCheckout error: $e');
-      return SquadResult(success: false, errorMessage: 'Network error: $e');
+      return SquadResult(success: false, errorMessage: 'Payment error: $e');
     }
   }
 
@@ -125,40 +110,27 @@ class SquadService {
     required String reference,
   }) async {
     try {
-      final res = await http.get(
-        Uri.parse('$_base/transaction/verify/$reference'),
-        headers: {
-          'Authorization': 'Bearer $_secretKey',
-        },
+      final res = await CloudFunctionsService.verifyTransaction(
+        transactionRef: reference,
       );
 
-      final body = jsonDecode(res.body);
-
-      if (body['success'] == true || body['status'] == 200) {
-        final data = body['data'] as Map<String, dynamic>;
-        final rawAmount = data['transaction_amount'];
-        final amt = rawAmount is int
-            ? rawAmount / 100.0
-            : double.tryParse('$rawAmount') ?? 0;
-        return SquadVerificationResult(
-          success: true,
-          status: data['transaction_status'] as String? ?? 'failed',
-          amount: amt,
-          reference: data['transaction_ref'] as String?,
-        );
-      }
+      final success = res['success'] == true;
+      final status = res['status'] as String? ?? (success ? 'success' : 'failed');
+      final amount = (res['amount'] as num?)?.toDouble() ?? 0.0;
 
       return SquadVerificationResult(
-        success: false,
-        status: 'failed',
-        errorMessage: body['message'] as String? ?? 'Verification failed',
+        success: success,
+        status: status,
+        amount: amount,
+        reference: (res['reference'] as String?) ?? reference,
+        errorMessage: res['message'] as String?,
       );
     } catch (e) {
       debugPrint('Squad verifyTransaction error: $e');
       return SquadVerificationResult(
         success: false,
         status: 'failed',
-        errorMessage: 'Network error: $e',
+        errorMessage: 'Verification error: $e',
       );
     }
   }

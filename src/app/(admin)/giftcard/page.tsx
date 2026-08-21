@@ -339,9 +339,30 @@ export default function GiftcardPage() {
                   {(["auto", "manual"] as const).map((mode) => <button key={mode} type="button" onClick={() => setPayoutMode(mode)} className={`px-3 py-1 text-[10px] rounded font-bold uppercase ${payoutMode === mode ? "bg-secondary text-on-secondary" : "text-on-surface-variant"}`}>{mode}</button>)}
                 </div>
               </div>
-              <label className="flex flex-col gap-2 font-label-caps text-label-caps text-on-surface-variant">PAYOUT DESTINATION<input className={inputClass} value={payoutDestination} onChange={(event) => setPayoutDestination(event.target.value)} placeholder="Destination identifier" /></label>
               <button type="button" disabled={savingSettings || !payoutMode || !payoutDestination.trim()} onClick={saveSettings} className={`${buttonClass} bg-primary text-on-primary`}>{savingSettings ? "Saving…" : "Save payout settings"}</button>
             </div>}
+          </div>
+
+          <div className="bg-surface-bright border border-subtle rounded-xl p-container-padding">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="font-headline-md text-headline-md text-primary">Slider Banners</h2>
+              <a href="/settings" className="text-secondary text-[11px] font-bold hover:underline flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">settings</span> Manage
+              </a>
+            </div>
+            <p className="text-body-sm text-on-surface-variant mb-3">
+              Configure promo carousel images displayed on the mobile Giftcard page.
+            </p>
+            <a
+              href="/settings"
+              className="w-full bg-surface-container-high border border-outline-variant rounded-lg p-2.5 flex items-center justify-between text-body-sm font-semibold hover:border-secondary hover:text-secondary transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">view_carousel</span>
+                Open Banner Manager
+              </span>
+              <span className="material-symbols-outlined text-sm">chevron_right</span>
+            </a>
           </div>
         </section>
 

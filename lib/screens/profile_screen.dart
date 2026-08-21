@@ -218,6 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _headerBtn({required IconData icon, required VoidCallback onTap}) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
     onTap: onTap,
     child: Container(
       width: 36, height: 36,
@@ -290,35 +291,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onTap: onTap,
       highlightColor: Colors.white.withOpacity(0.05),
       splashColor: Colors.white.withOpacity(0.08),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: showDivider ? BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05)))) : null,
-        child: Row(
-          children: [
-            Container(
-              width: 28, height: 28,
-              decoration: BoxDecoration(
-                color: bgColor.withOpacity(0.15),
-                shape: BoxShape.circle,
-                border: Border.all(color: bgColor.withOpacity(0.2)),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: showDivider ? BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05)))) : null,
+          child: Row(
+            children: [
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                  color: bgColor.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: bgColor.withOpacity(0.2)),
+                ),
+                child: Icon(icon, color: iconColor, size: 12),
               ),
-              child: Icon(icon, color: iconColor, size: 12),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            trailing ?? const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 14),
-          ],
+              trailing ?? const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 14),
+            ],
+          ),
         ),
       ),
     ),
@@ -343,7 +348,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _headerBtn(icon: Icons.chevron_left_rounded, onTap: () => widget.onTabSwitch?.call(0)),
+                      _headerBtn(
+                        icon: Icons.chevron_left_rounded,
+                        onTap: () {
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          } else {
+                            widget.onTabSwitch?.call(0);
+                          }
+                        },
+                      ),
                       Text('Profile', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
                       const NotificationIcon(),
                     ],

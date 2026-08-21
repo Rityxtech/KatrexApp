@@ -59,7 +59,7 @@ class _DepositMethodsSheetState extends State<_DepositMethodsSheet> {
 
   void _setAmount(String raw) {
     final value = double.tryParse(raw.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
-    setState(() => _amountController.text = value > 0 ? _fmt.format(value) : '');
+    setState(() => _amountController.text = value > 0 ? value.toInt().toString() : '');
   }
 
   // ── Card / Bank Transfer — Squad checkout flow ─────────────────────────
@@ -302,6 +302,7 @@ class _DepositMethodsSheetState extends State<_DepositMethodsSheet> {
                         children: _quickAmounts
                             .map((q) => Expanded(
                                   child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
                                     onTap: () => _setAmount(q),
                                     child: Container(
                                       margin: EdgeInsets.only(right: q == _quickAmounts.last ? 0 : 6),
@@ -359,8 +360,9 @@ class _DepositMethodsSheetState extends State<_DepositMethodsSheet> {
                     badge: 'FREE',
                     badgeColor: const Color(0xFF10B981),
                     onTap: () {
+                      final rootContext = Navigator.of(context, rootNavigator: true).context;
                       Navigator.of(context).pop();
-                      showCryptoDepositSheet(context: context);
+                      showCryptoDepositSheet(context: rootContext);
                     },
                   ),
                 ),
@@ -848,6 +850,7 @@ class _DepositMethodCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: isProcessing ? null : onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

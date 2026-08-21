@@ -57,7 +57,6 @@ class _MockAuthProvider extends ChangeNotifier implements AuthProvider {
   @override
   Future<void> reloadUserProfile() async {}
 
-  @override
   Future<void> updateUserProfile(UserModel updated) async {}
 
   @override
@@ -69,10 +68,8 @@ class _MockAuthProvider extends ChangeNotifier implements AuthProvider {
   @override
   void clearError() {}
 
-  @override
   void setBiometricEnabled(bool enabled) {}
 
-  @override
   void setPinEnabled(bool enabled) {}
 }
 

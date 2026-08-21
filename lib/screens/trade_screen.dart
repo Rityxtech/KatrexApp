@@ -18,6 +18,7 @@ import '../services/firestore_service.dart';
 import '../services/market_data_service.dart';
 import '../services/trade_fee_service.dart';
 import '../widgets/app_background.dart';
+import '../widgets/header_profile_avatar.dart';
 import '../widgets/notification_icon.dart';
 import '../widgets/pin_input_sheet.dart';
 import '../widgets/universal_icon.dart';
@@ -495,6 +496,8 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                   const SizedBox(height: 20),
                   _buildActionButton('Buy $_selectedCoin', const Color(0xFF10B981), canBuy, isProcessing, () async {
                     if (!canBuy) return;
+                    final pinPassed = await PinInputSheet.ensurePinRequired(context);
+                    if (!pinPassed) return;
                     setSheetState(() => isProcessing = true);
                     try {
                       final uid = context.read<AuthProvider>().firebaseUser!.uid;
@@ -595,6 +598,8 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                   const SizedBox(height: 20),
                   _buildActionButton('Sell $_selectedCoin', const Color(0xFFEF4444), canSell, isProcessing, () async {
                     if (!canSell) return;
+                    final pinPassed = await PinInputSheet.ensurePinRequired(context);
+                    if (!pinPassed) return;
                     setSheetState(() => isProcessing = true);
                     try {
                       final uid = context.read<AuthProvider>().firebaseUser!.uid;
@@ -709,6 +714,8 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                   const SizedBox(height: 20),
                   _buildActionButton('Swap Now', const Color(0xFF8B5CF6), canSwap, isProcessing, () async {
                     if (!canSwap) return;
+                    final pinPassed = await PinInputSheet.ensurePinRequired(context);
+                    if (!pinPassed) return;
                     setSheetState(() => isProcessing = true);
                     try {
                       final uid = context.read<AuthProvider>().firebaseUser!.uid;
@@ -848,43 +855,55 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final wallet = context.watch<WalletProvider>();
-    final md = _getMd(_selectedCoin);
-    final coinBal = wallet.cryptoBalances[_selectedCoin] ?? 0;
-    final ngnBal = wallet.nairaBalance;
-    final priceNaira = md?.priceNaira ?? 0;
-    final change24h = md?.change24h ?? 0;
-    final isUp = change24h >= 0;
+	  @override
+	  Widget build(BuildContext context) {
+	    final wallet = context.watch<WalletProvider>();
+	    final md = _getMd(_selectedCoin);
+	    final coinBal = wallet.cryptoBalances[_selectedCoin] ?? 0;
+	    final ngnBal = wallet.nairaBalance;
+	    final priceNaira = md?.priceNaira ?? 0;
+	    final change24h = md?.change24h ?? 0;
+	    final isUp = change24h >= 0;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const AppBackground(child: SizedBox.expand()),
-          SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.only(bottom: 100),
-                    children: [
-                      _buildBalanceCard(coinBal, ngnBal, priceNaira),
-                      _buildCryptoAssetsSection(),
-                      _buildActivities(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+	    return PopScope(
+	      canPop: false,
+	      onPopInvokedWithResult: (didPop, result) {
+	        if (!didPop) {
+	          if (widget.onTabSwitch != null) {
+	            widget.onTabSwitch!(0);
+	          } else {
+	            Navigator.maybePop(context);
+	          }
+	        }
+	      },
+	      child: Scaffold(
+	      backgroundColor: const Color(0xFF000000),
+	      body: Stack(
+	        fit: StackFit.expand,
+	        children: [
+	          const AppBackground(child: SizedBox.expand()),
+	          SafeArea(
+	            child: Column(
+	              children: [
+	                _buildHeader(),
+	                Expanded(
+	                  child: ListView(
+	                    padding: const EdgeInsets.only(bottom: 100),
+	                    children: [
+	                      _buildBalanceCard(coinBal, ngnBal, priceNaira),
+	                      _buildCryptoAssetsSection(),
+	                      _buildActivities(),
+	                    ],
+	                  ),
+	                ),
+	              ],
+	            ),
+	          ),
+	        ],
+	      ),
+	      ),
+	    );
+	  }
 
   Widget _buildHeader() {
     return Padding(
@@ -893,6 +912,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               if (widget.onTabSwitch != null) {
                 widget.onTabSwitch!(0);
@@ -900,7 +920,7 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
                 Navigator.maybePop(context);
               }
             },
-            child: Container(width: 36, height: 36, decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.08))), child: const Center(child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 18))),
+            child: const HeaderProfileAvatar(),
           ),
           Text('Trade', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
           const NotificationIcon(),
@@ -1178,24 +1198,130 @@ class _TradeScreenState extends State<TradeScreen> with SingleTickerProviderStat
     Object? iconData,
     VoidCallback? onTap,
   }) {
-    return GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: Row(children: [
-      Expanded(flex: 35, child: Row(children: [
-        Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg), child: Center(child: iconData != null ? UniversalIcon(iconData, size: 16, color: iconColor) : Text(ticker[0], style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: iconColor)))),
-        const SizedBox(width: 8),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-          Text(ticker, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-        ]),
-      ])),
-      Expanded(flex: 20, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        SizedBox(height: 28, child: CustomPaint(size: const Size(70, 28), painter: _MiniChartPainter(upColor: const Color(0xFF10B981), downColor: const Color(0xFFEF4444), points: chartPoints))),
-        if (change.isNotEmpty) Text(change, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: changeColor)),
-      ])),
-      Expanded(flex: 35, child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-        if (price.isNotEmpty) Text(price, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-      ])),
-    ]));
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          Expanded(
+            flex: 38,
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: iconBg),
+                  child: Center(
+                    child: iconData != null
+                        ? UniversalIcon(iconData, size: 16, color: iconColor)
+                        : Text(
+                            ticker[0],
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: iconColor,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        ticker,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            flex: 22,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 22,
+                  width: double.infinity,
+                  child: CustomPaint(
+                    painter: _MiniChartPainter(
+                      upColor: const Color(0xFF10B981),
+                      downColor: const Color(0xFFEF4444),
+                      points: chartPoints,
+                    ),
+                  ),
+                ),
+                if (change.isNotEmpty)
+                  Text(
+                    change,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: changeColor,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            flex: 40,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                if (price.isNotEmpty)
+                  Text(
+                    price,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF9CA3AF),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showManageAssetsModal(BuildContext context) {
