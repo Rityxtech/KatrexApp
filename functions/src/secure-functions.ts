@@ -1322,6 +1322,8 @@ async function handlePurchaseAirtime(request: CallableRequest<any>) {
         reference: `AIR_${Date.now()}`,
         createdAt: new Date(),
         paymentMethod: "wallet",
+        recipient: phone,
+        networkProvider: network,
       });
     });
 
@@ -1435,6 +1437,8 @@ async function handlePurchaseData(request: CallableRequest<any>) {
         reference: `DATA_${Date.now()}`,
         createdAt: new Date(),
         paymentMethod: "wallet",
+        recipient: phone,
+        networkProvider: network,
       });
     });
 

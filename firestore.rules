@@ -17,9 +17,6 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && request.auth.token.admin == true;
     }
-    function isSuperAdmin() {
-      return isSignedIn() && request.auth.token.role == 'superadmin';
-    }
 
     // Default deny: any collection not explicitly allowed below is denied.
     match /{document=**} {
@@ -52,18 +49,18 @@ service cloud.firestore {
     // ────────────────────────────────────────────────────────────────────
     // Transactions
     //   • Self read for own txs; admin read.
-    //   • Self create for initiating transactions; admin write/update.
+    //   • Self create for initiating transactions; self update for own txs; admin write/update.
     // ────────────────────────────────────────────────────────────────────
     match /transactions/{txId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if isAdmin();
+      allow update: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
     }
 
     // ────────────────────────────────────────────────────────────────────
     // Notifications
     //   • Self read for own notifications; admin read.
-    //   • Users/server can create notifications for users; self can mark read.
+    //   • Users/server can create notifications for users; self can mark read/delete.
     // ────────────────────────────────────────────────────────────────────
     match /notifications/{notifId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
