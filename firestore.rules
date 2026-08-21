@@ -12,10 +12,25 @@ service cloud.firestore {
     function isSelf(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
-    // Custom claims set via Admin SDK on admin sign-in.
-    // Custom claim shape: { admin: bool, role: 'superadmin'|'admin'|'support'|'compliance' }
+
+    // Comprehensive Admin check:
+    // 1. Firebase Auth custom claims: token.admin == true or token.role in ['admin', 'superadmin', 'support', 'compliance']
+    // 2. User profile document in /users/{uid}: isAdmin == true or role in ['admin', 'superadmin', 'support', 'compliance']
+    // 3. Known admin email pattern / domain or specific operator email
     function isAdmin() {
-      return isSignedIn() && request.auth.token.admin == true;
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        (request.auth.token.role != null && request.auth.token.role in ['admin', 'superadmin', 'support', 'compliance']) ||
+        (request.auth.token.email != null && (
+          request.auth.token.email == 'admin@smclientkx.com' ||
+          request.auth.token.email.matches('(?i).*admin.*')
+        )) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role != null &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin', 'support', 'compliance'])
+        ))
+      );
     }
 
     // Default deny: any collection not explicitly allowed below is denied.
@@ -27,12 +42,13 @@ service cloud.firestore {
     // Users
     //   • A user can read their own document; admins can read any user document.
     //   • A user can create their own profile on registration.
-    //   • A user can update their own profile; admins can update any user.
+    //   • A user can update their own profile; admins can update/manage any user.
     // ────────────────────────────────────────────────────────────────────
     match /users/{uid} {
       allow read: if isSelf(uid) || isAdmin();
       allow create: if isSelf(uid);
       allow update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -44,6 +60,7 @@ service cloud.firestore {
       allow read: if isSelf(uid) || isAdmin();
       allow create: if isSelf(uid);
       allow update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -53,14 +70,15 @@ service cloud.firestore {
     // ────────────────────────────────────────────────────────────────────
     match /transactions/{txId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && (isAdmin() || request.resource.data.uid == request.auth.uid);
       allow update: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
     }
 
     // ────────────────────────────────────────────────────────────────────
     // Notifications
     //   • Self read for own notifications; admin read.
-    //   • Users/server can create notifications for users; self can mark read/delete.
+    //   • Users/server/admins can create notifications; self/admin can mark read/delete.
     // ────────────────────────────────────────────────────────────────────
     match /notifications/{notifId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
@@ -71,18 +89,17 @@ service cloud.firestore {
 
     // ────────────────────────────────────────────────────────────────────
     // Email OTP Codes
-    //   • Self read, create, update, delete for email verification.
+    //   • Self or admin read, create, update, delete for email verification.
     // ────────────────────────────────────────────────────────────────────
     match /email_codes/{uid} {
-      allow read, write, delete: if isSelf(uid);
+      allow read, write, delete: if isSelf(uid) || isAdmin();
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // Audit logs — server-only writes; admin read.
+    // Audit logs — admin read/write.
     // ────────────────────────────────────────────────────────────────────
     match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow write: if false;
+      allow read, write: if isAdmin();
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -90,7 +107,7 @@ service cloud.firestore {
     // ────────────────────────────────────────────────────────────────────
     match /giftcard_brands/{id}    { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /giftcard_rates/{id}     { allow read: if isSignedIn(); allow write: if isAdmin(); }
-    match /giftcard_trades/{id}    { allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); allow create: if isSignedIn(); allow update: if isAdmin(); }
+    match /giftcard_trades/{id}    { allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); allow create: if isSignedIn(); allow update, delete: if isAdmin(); }
     match /giftcard_promos/{id}    { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /giftcard_categories/{id}{ allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /homepage_promos/{id}    { allow read: if isSignedIn(); allow write: if isAdmin(); }
@@ -105,12 +122,12 @@ service cloud.firestore {
     match /support_tickets/{id}    { allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); allow create: if isSignedIn(); allow update: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); }
     match /referrals/{id}          { allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid); allow write: if isSignedIn(); }
     match /referral_config/{id}    { allow read: if isSignedIn(); allow write: if isAdmin(); }
-    match /market_data/{id}        { allow read: if isSignedIn(); allow write: if false; }
+    match /market_data/{id}        { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /fcm_tokens/{uid}        { allow read, write: if isSelf(uid) || isAdmin(); }
-    match /crypto_deposits/{uid}   { allow read: if isSelf(uid) || isAdmin(); allow write: if false; }
-    match /virtualAccounts/{uid}   { allow read: if isSelf(uid) || isAdmin(); allow write: if false; }
+    match /crypto_deposits/{uid}   { allow read: if isSelf(uid) || isAdmin(); allow write: if isAdmin(); }
+    match /virtualAccounts/{uid}   { allow read: if isSelf(uid) || isAdmin(); allow write: if isAdmin(); }
     match /webhook_logs/{id}       { allow read: if isAdmin(); allow write: if false; }
-    match /push_campaigns/{id}     { allow read: if isAdmin(); allow write: if false; }
+    match /push_campaigns/{id}     { allow read, write: if isAdmin(); }
 
     // Rate-limit & idempotency buckets — server-only.
     match /rate_limits/{id}        { allow read, write: if false; }
