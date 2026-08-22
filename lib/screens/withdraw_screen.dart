@@ -84,7 +84,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       return;
     }
     final target = (available * fraction).floorToDouble();
-    _amountController.text = target.toStringAsFixed(0);
+    _amountController.text = NumberFormat('#,###').format(target);
   }
 
   List<Map<String, dynamic>> get _paymentMethods {
@@ -603,6 +603,9 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     color: Colors.white,
                     letterSpacing: -0.5,
                   ),
+                  inputFormatters: [
+                    _ThousandsSeparatorInputFormatter(),
+                  ],
                   decoration: InputDecoration(
                     hintText: '0.00',
                     hintStyle: GoogleFonts.plusJakartaSans(
@@ -1531,6 +1534,80 @@ class _WithdrawalStatusModal extends StatelessWidget {
           color: Colors.white12,
         ),
       ),
+    );
+  }
+}
+
+// ─── Input Formatter for Auto-Comma Separator ────────────────────────────────
+
+class _ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  static final NumberFormat _formatter = NumberFormat('#,###');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    final text = newValue.text;
+    final parts = text.split('.');
+    if (parts.length > 2) {
+      return oldValue;
+    }
+
+    final rawInteger = parts[0].replaceAll(RegExp(r'[^\d]'), '');
+    if (rawInteger.isEmpty) {
+      if (parts.length == 2) {
+        final decimalPart = parts[1].replaceAll(RegExp(r'[^\d]'), '');
+        final formatted = '0.$decimalPart';
+        return TextEditingValue(
+          text: formatted,
+          selection: TextSelection.collapsed(offset: formatted.length),
+        );
+      }
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+
+    final numVal = int.tryParse(rawInteger);
+    if (numVal == null) {
+      return oldValue;
+    }
+
+    final formattedInteger = _formatter.format(numVal);
+    final String formattedText = parts.length == 2
+        ? '$formattedInteger.${parts[1].replaceAll(RegExp(r'[^\d]'), '')}'
+        : formattedInteger;
+
+    // Calculate cursor position properly based on non-comma characters
+    int nonCommaCharsBeforeCursor = 0;
+    for (int i = 0; i < newValue.selection.end && i < newValue.text.length; i++) {
+      if (newValue.text[i] != ',') {
+        nonCommaCharsBeforeCursor++;
+      }
+    }
+
+    int newCursorOffset = 0;
+    int nonCommaCharsSeen = 0;
+    while (newCursorOffset < formattedText.length && nonCommaCharsSeen < nonCommaCharsBeforeCursor) {
+      if (formattedText[newCursorOffset] != ',') {
+        nonCommaCharsSeen++;
+      }
+      newCursorOffset++;
+    }
+
+    if (newValue.selection.end == newValue.text.length) {
+      newCursorOffset = formattedText.length;
+    }
+
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: newCursorOffset.clamp(0, formattedText.length)),
     );
   }
 }
