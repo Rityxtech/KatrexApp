@@ -81,6 +81,7 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
   String _accountName = 'Squad Checkout / Katrex';
   double _amount = 0.0;
   String _ref = '';
+  Timer? _extractionTimer;
 
   @override
   void initState() {
@@ -113,7 +114,10 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
               if (mounted) setState(() => _isLoading = true);
             },
             onPageFinished: (_) {
-              if (mounted) setState(() => _isLoading = false);
+              if (mounted) {
+                setState(() => _isLoading = false);
+                _extractAccountDetails();
+              }
             },
             onNavigationRequest: (request) {
               final uri = Uri.tryParse(request.url);
@@ -135,7 +139,22 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
         ..loadRequest(Uri.parse(widget.checkoutUrl));
 
       if (mounted) setState(() {});
+
+      // Periodically extract account details in case page loads dynamically
+      _extractionTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+        if (!mounted || _accountNumber.isNotEmpty || timer.tick > 25) {
+          if (_accountNumber.isNotEmpty || timer.tick > 25) timer.cancel();
+          return;
+        }
+        _extractAccountDetails();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _extractionTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchDynamicAccount() async {
@@ -193,6 +212,17 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
       final res = await _controller!.runJavaScriptReturningResult(r"""
 (function() {
   try {
+    // 1. Look for and click 'Transfer' or 'Bank Transfer' tab if available on Squad checkout
+    const elements = Array.from(document.querySelectorAll('button, a, div, span, li, p'));
+    const transferBtn = elements.find(el => {
+      const t = (el.innerText || el.textContent || '').trim().toLowerCase();
+      return (t === 'transfer' || t === 'bank transfer' || t === 'pay with transfer') && el.offsetParent !== null;
+    });
+    if (transferBtn && !transferBtn.dataset.clicked) {
+      transferBtn.dataset.clicked = 'true';
+      transferBtn.click();
+    }
+
     const text = document.body ? document.body.innerText : '';
     
     // Extract 10-digit Nigerian NUBAN account number
@@ -200,11 +230,11 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
     const accNum = match ? match[0] : '';
     
     let bank = 'Guaranty Trust Bank (GTB)';
-    if (text.includes('Wema') || text.includes('WEMA')) bank = 'Wema Bank';
-    else if (text.includes('Sterling') || text.includes('STERLING')) bank = 'Sterling Bank';
-    else if (text.includes('GTB') || text.includes('Guaranty Trust')) bank = 'Guaranty Trust Bank (GTB)';
-    else if (text.includes('Access') || text.includes('ACCESS')) bank = 'Access Bank';
-    else if (text.includes('Providus')) bank = 'Providus Bank';
+    if (/wema/i.test(text)) bank = 'Wema Bank';
+    else if (/sterling/i.test(text)) bank = 'Sterling Bank';
+    else if (/providus/i.test(text)) bank = 'Providus Bank';
+    else if (/access/i.test(text)) bank = 'Access Bank';
+    else if (/gtb|guaranty/i.test(text)) bank = 'Guaranty Trust Bank (GTB)';
 
     let accName = 'Squad Checkout';
     const nameMatch = text.match(/Account Name[\s:]*([^\n\r]+)/i);
@@ -212,18 +242,10 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
       accName = nameMatch[1].trim();
     }
 
-    // Extract amount if not set
-    let extractedAmount = '';
-    const amtMatch = text.match(/₦\s*([\d,]+(?:\.\d{2})?)/);
-    if (amtMatch && amtMatch[1]) {
-      extractedAmount = amtMatch[1].replace(/,/g, '');
-    }
-
     return JSON.stringify({
       accountNumber: accNum,
       bankName: bank,
-      accountName: accName,
-      amount: extractedAmount
+      accountName: accName
     });
   } catch(e) {
     return JSON.stringify({ error: e.toString() });
@@ -232,7 +254,6 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
 """);
 
       if (res is String && res.isNotEmpty && res != 'null') {
-        // Strip quotes if wrapped
         String raw = res;
         if (raw.startsWith('"') && raw.endsWith('"')) {
           raw = jsonDecode(raw);
@@ -242,10 +263,11 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
         if (acc.length == 10 && mounted) {
           setState(() {
             _accountNumber = acc;
-            if (data['bankName'] != null) _bankName = data['bankName'] as String;
-            if (data['accountName'] != null) _accountName = data['accountName'] as String;
-            if (_amount <= 0 && data['amount'] != null) {
-              _amount = double.tryParse(data['amount'].toString()) ?? 100.0;
+            if (data['bankName'] != null && data['bankName'].toString().isNotEmpty) {
+              _bankName = data['bankName'] as String;
+            }
+            if (data['accountName'] != null && data['accountName'].toString().isNotEmpty) {
+              _accountName = data['accountName'] as String;
             }
           });
         }
@@ -513,21 +535,32 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
         ),
         body: Stack(
           children: [
-            // Hidden headless WebView for card processing & dynamic account extraction
-            Offstage(
-              offstage: _selectedTab == 0,
-              child: _controller != null
-                  ? Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: WebViewWidget(controller: _controller!),
-                    )
-                  : const SizedBox.shrink(),
-            ),
+            // Active WebView for card processing & background dynamic account extraction
+            if (_selectedTab == 1)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _controller != null
+                    ? WebViewWidget(controller: _controller!)
+                    : const SizedBox.shrink(),
+              )
+            else
+              Positioned(
+                bottom: 0,
+                right: 0,
+                width: 1,
+                height: 1,
+                child: Opacity(
+                  opacity: 0.01,
+                  child: _controller != null
+                      ? WebViewWidget(controller: _controller!)
+                      : const SizedBox.shrink(),
+                ),
+              ),
 
             // Clean Native Payment View
             if (_selectedTab == 0)
