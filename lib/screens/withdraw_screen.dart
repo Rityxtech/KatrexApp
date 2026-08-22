@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/wallet_provider.dart';
+import '../services/cloud_functions_service.dart';
 import '../services/firestore_service.dart';
 import '../utils/constants.dart';
 import '../widgets/app_background.dart';
@@ -92,11 +93,27 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   void _openAddBankModal() {
+    final methods = context.read<AuthProvider>().userModel?.paymentMethods ?? [];
+    if (methods.length >= 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Maximum of 3 bank accounts reached. Delete an existing account to add a new one.',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const PaymentMethodsModal(),
+      builder: (_) => const AddBankAccountModal(),
     ).then((_) => setState(() {}));
   }
 
@@ -105,140 +122,218 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF0F1423),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Select Destination Bank',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _openAddBankModal();
-                    },
-                    child: Text(
-                      '+ Add New',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF60A5FA),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ...List.generate(paymentMethods.length, (index) {
-                final bank = paymentMethods[index];
-                final isSelected = _selectedBankIndex == index;
-                final bankName = bank['bankName'] as String? ?? 'Bank';
-                final accountNumber = bank['accountNumber'] as String? ?? '';
-                final accountName = bank['accountName'] as String? ?? '';
-                final initial = bankName.isNotEmpty ? bankName[0].toUpperCase() : 'B';
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setSheetState) {
+          final user = context.watch<AuthProvider>().userModel;
+          final currentMethods = user?.paymentMethods ?? paymentMethods;
+          final isLimit = currentMethods.length >= 3;
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedBankIndex = index);
-                    Navigator.pop(ctx);
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFF2563EB).withOpacity(0.12)
-                          : Colors.white.withOpacity(0.04),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF2563EB).withOpacity(0.5)
-                            : Colors.white.withOpacity(0.08),
+          return Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F1423),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF1E3A8A).withOpacity(0.4),
-                            border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
-                          ),
-                          child: Center(
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Select Destination Bank',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (!isLimit)
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _openAddBankModal();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             child: Text(
-                              initial,
+                              '+ Add New (${currentMethods.length}/3)',
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
                                 color: const Color(0xFF60A5FA),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                bankName,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '$accountNumber • $accountName',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF9CA3AF),
-                                ),
-                              ),
-                            ],
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '3/3 Accounts Used',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF9CA3AF),
+                            ),
                           ),
                         ),
-                        if (isSelected)
-                          const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 20),
-                      ],
-                    ),
+                    ],
                   ),
-                );
-              }),
-            ],
-          ),
-        ),
+                  const SizedBox(height: 16),
+                  if (currentMethods.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          'No bank accounts linked yet',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ...List.generate(currentMethods.length, (index) {
+                      final bank = currentMethods[index];
+                      final isSelected = _selectedBankIndex == index;
+                      final bankName = bank['bankName'] as String? ?? 'Bank';
+                      final accountNumber = bank['accountNumber'] as String? ?? '';
+                      final accountName = bank['accountName'] as String? ?? '';
+                      final initial = bankName.isNotEmpty ? bankName[0].toUpperCase() : 'B';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF2563EB).withOpacity(0.12)
+                              : Colors.white.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF2563EB).withOpacity(0.5)
+                                : Colors.white.withOpacity(0.08),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  setState(() => _selectedBankIndex = index);
+                                  Navigator.pop(ctx);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: const Color(0xFF1E3A8A).withOpacity(0.4),
+                                          border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            initial,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w900,
+                                              color: const Color(0xFF60A5FA),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              bankName,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '$accountNumber • $accountName',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFF9CA3AF),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 20),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () async {
+                                final uid = context.read<AuthProvider>().firebaseUser?.uid;
+                                if (uid != null) {
+                                  await FirestoreService().removeBankAccount(uid: uid, accountNumber: accountNumber);
+                                  try {
+                                    await CloudFunctionsService.removeBankAccount(accountNumber: accountNumber);
+                                  } catch (_) {}
+                                  if (mounted) {
+                                    setState(() {
+                                      if (_selectedBankIndex >= currentMethods.length - 1) {
+                                        _selectedBankIndex = 0;
+                                      }
+                                    });
+                                  }
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(8, 14, 14, 14),
+                                child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 18),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

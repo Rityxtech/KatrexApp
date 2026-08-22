@@ -1005,6 +1005,10 @@ async function handleSaveBankAccount(request: CallableRequest<any>) {
     const userData = userSnap.data()!;
     const paymentMethods = userData.paymentMethods ?? [];
 
+    if (paymentMethods.length >= 3) {
+      throw new HttpsError("failed-precondition", "Maximum of 3 bank accounts reached. Please delete an existing account first.");
+    }
+
     const exists = paymentMethods.some(
       (m: {type: string; accountNumber: string}) =>
         m.type === "bank" && m.accountNumber === accountNumber,

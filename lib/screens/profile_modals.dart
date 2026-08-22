@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart' as app_auth;
 import '../services/cloud_functions_service.dart';
+import '../services/firestore_service.dart';
 import '../widgets/pin_input_sheet.dart';
 
 class _ModalShell extends StatelessWidget {
@@ -367,7 +368,313 @@ class _SecuritySettingsModalState extends State<SecuritySettingsModal> {
   }
 }
 
-// ─── Payment Methods Modal ────────────────────────────────────────
+// ─── Add Bank Account Modal (Direct Bottom Sheet) ────────────────────────────
+
+class AddBankAccountModal extends StatefulWidget {
+  const AddBankAccountModal({super.key});
+
+  @override
+  State<AddBankAccountModal> createState() => _AddBankAccountModalState();
+}
+
+class _AddBankAccountModalState extends State<AddBankAccountModal> {
+  final _bankNameController = TextEditingController();
+  final _accountNumberController = TextEditingController();
+  final _accountNameController = TextEditingController();
+  bool _isSaving = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _bankNameController.dispose();
+    _accountNumberController.dispose();
+    _accountNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    final bankName = _bankNameController.text.trim();
+    final accountNumber = _accountNumberController.text.trim();
+    final accountName = _accountNameController.text.trim();
+
+    if (bankName.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your bank name');
+      return;
+    }
+    if (accountNumber.length != 10 || int.tryParse(accountNumber) == null) {
+      setState(() => _errorMessage = 'Account number must be 10 digits');
+      return;
+    }
+    if (accountName.isEmpty) {
+      setState(() => _errorMessage = 'Please enter the account name');
+      return;
+    }
+
+    final user = context.read<app_auth.AuthProvider>().userModel;
+    final uid = context.read<app_auth.AuthProvider>().firebaseUser?.uid;
+    if (user == null || uid == null) return;
+
+    if (user.paymentMethods.length >= 3) {
+      setState(() => _errorMessage = 'Maximum of 3 accounts reached. Delete one first.');
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await FirestoreService().addBankAccount(
+        uid: uid,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        accountName: accountName,
+      );
+
+      try {
+        await CloudFunctionsService.saveBankAccount(
+          bankName: bankName,
+          accountNumber: accountNumber,
+          accountName: accountName,
+        );
+      } catch (_) {}
+
+      if (mounted) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Bank account linked successfully',
+              style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<app_auth.AuthProvider>().userModel;
+    final count = user?.paymentMethods.length ?? 0;
+    final isLimitReached = count >= 3;
+
+    return _ModalShell(
+      title: 'Add Bank Account',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Personal Account Details',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF9CA3AF),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isLimitReached
+                      ? const Color(0xFFEF4444).withOpacity(0.12)
+                      : const Color(0xFF2563EB).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$count/3 Accounts',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: isLimitReached ? const Color(0xFFEF4444) : const Color(0xFF60A5FA),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          if (isLimitReached)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFEF4444)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'You have reached the maximum limit of 3 bank accounts. Please remove an existing account to add a new one.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          _buildField(
+            controller: _bankNameController,
+            label: 'Bank Name',
+            hint: 'e.g. GTBank, Kuda, Access Bank, Zenith',
+            icon: Icons.account_balance_rounded,
+            enabled: !isLimitReached && !_isSaving,
+          ),
+          const SizedBox(height: 14),
+
+          _buildField(
+            controller: _accountNumberController,
+            label: '10-Digit Account Number',
+            hint: '0123456789',
+            icon: Icons.tag_rounded,
+            keyboardType: TextInputType.number,
+            maxLength: 10,
+            enabled: !isLimitReached && !_isSaving,
+          ),
+          const SizedBox(height: 14),
+
+          _buildField(
+            controller: _accountNameController,
+            label: 'Account Name',
+            hint: 'e.g. John Doe (must match your KYC name)',
+            icon: Icons.person_outline_rounded,
+            enabled: !isLimitReached && !_isSaving,
+          ),
+
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFEF4444),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 20),
+
+          GestureDetector(
+            onTap: (isLimitReached || _isSaving) ? null : _handleSave,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: isLimitReached ? const Color(0xFF1E293B) : const Color(0xFF2563EB),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: !isLimitReached
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withOpacity(0.35),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Center(
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(
+                        isLimitReached ? 'Account Limit Reached (3/3)' : 'Save & Link Account',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w900,
+                          color: isLimitReached ? const Color(0xFF6B7280) : Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    int? maxLength,
+    bool enabled = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF9CA3AF),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
+          ),
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            maxLength: maxLength,
+            enabled: enabled,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: hint,
+              hintStyle: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Colors.white24,
+              ),
+              prefixIcon: Icon(icon, color: const Color(0xFF60A5FA), size: 18),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Payment Methods Modal (List & Manage) ────────────────────────────
 
 class PaymentMethodsModal extends StatefulWidget {
   const PaymentMethodsModal({super.key});
@@ -379,16 +686,124 @@ class PaymentMethodsModal extends StatefulWidget {
 class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
   bool _isLoading = false;
 
-  Future<void> _removeMethod(Map<String, dynamic> method) async {
-    setState(() => _isLoading = true);
+  Future<void> _confirmRemove(Map<String, dynamic> method) async {
+    final bankName = method['bankName'] as String? ?? 'Bank Account';
     final accountNumber = method['accountNumber'] as String? ?? '';
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0F1423),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFEF4444).withOpacity(0.12),
+                ),
+                child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 24),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Remove Bank Account?',
+                style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Are you sure you want to remove $bankName ($accountNumber)?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(fontSize: 12.5, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF)),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w800, color: Colors.white70),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Remove',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w900, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed == true) {
+      await _executeRemove(accountNumber);
+    }
+  }
+
+  Future<void> _executeRemove(String accountNumber) async {
+    final uid = context.read<app_auth.AuthProvider>().firebaseUser?.uid;
+    if (uid == null) return;
+
+    setState(() => _isLoading = true);
     try {
-      await CloudFunctionsService.removeBankAccount(accountNumber: accountNumber);
+      await FirestoreService().removeBankAccount(uid: uid, accountNumber: accountNumber);
+      try {
+        await CloudFunctionsService.removeBankAccount(accountNumber: accountNumber);
+      } catch (_) {}
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Bank account removed', style: GoogleFonts.plusJakartaSans()),
+            content: Text('Bank account removed', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700)),
             backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -396,8 +811,10 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to remove: $e', style: GoogleFonts.plusJakartaSans()),
+            content: Text('Failed to remove: $e', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700)),
             backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -406,24 +823,85 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
     }
   }
 
+  void _openDirectAddModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const AddBankAccountModal(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<app_auth.AuthProvider>().userModel;
     final methods = List<Map<String, dynamic>>.from(user?.paymentMethods ?? []);
+    final count = methods.length;
+    final isLimitReached = count >= 3;
 
     return _ModalShell(
       title: 'Payment Methods',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionLabel('Linked Bank Accounts'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Linked Bank Accounts',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF9CA3AF),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isLimitReached
+                      ? const Color(0xFFEF4444).withOpacity(0.12)
+                      : const Color(0xFF2563EB).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$count/3 Linked',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: isLimitReached ? const Color(0xFFEF4444) : const Color(0xFF60A5FA),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
           if (methods.isEmpty && !_isLoading)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                child: Text(
-                  'No bank accounts linked yet',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF2563EB).withOpacity(0.1),
+                      ),
+                      child: const Icon(Icons.account_balance_rounded, color: Color(0xFF60A5FA), size: 22),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No bank accounts linked yet',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Link up to 3 accounts for quick withdrawals',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF)),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -432,173 +910,134 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
               final bankName = m['bankName'] as String? ?? 'Bank Account';
               final accountNumber = m['accountNumber'] as String? ?? '';
               final accountName = m['accountName'] as String? ?? '';
-              return _paymentItem(
-                Icons.account_balance_outlined,
-                const Color(0xFF3B82F6),
-                bankName,
-                '$accountNumber ($accountName)',
-                () => _removeMethod(m),
+              final initial = bankName.isNotEmpty ? bankName[0].toUpperCase() : 'B';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF1E3A8A).withOpacity(0.3),
+                        border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          initial,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF60A5FA),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            bankName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$accountNumber • $accountName',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF9CA3AF),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _isLoading ? null : () => _confirmRemove(m),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 18),
+                      ),
+                    ),
+                  ],
+                ),
               );
             }),
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: _isLoading ? null : () => _showAddDialog(context),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+
+          const SizedBox(height: 12),
+
+          if (isLimitReached)
+            Container(
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                color: const Color(0xFFF59E0B).withOpacity(0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.2)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.add_rounded, color: Color(0xFF2563EB), size: 18),
+                  const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFF59E0B)),
                   const SizedBox(width: 8),
-                  Text('Add Bank Account', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF2563EB))),
+                  Expanded(
+                    child: Text(
+                      'Account limit reached (3/3). Delete an account to add another.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFF59E0B),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddDialog(BuildContext context) {
-    final bankNameController = TextEditingController();
-    final accountNumberController = TextEditingController();
-    final accountNameController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF0A0F1F),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Add Bank Account', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: bankNameController,
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Bank Name (e.g. GTBank)',
-                  hintStyle: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.white38),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: const Color(0xFF2563EB))),
+            )
+          else
+            GestureDetector(
+              onTap: _isLoading ? null : _openDirectAddModal,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: accountNumberController,
-                keyboardType: TextInputType.number,
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Account Number',
-                  hintStyle: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.white38),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: const Color(0xFF2563EB))),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: accountNameController,
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Account Name',
-                  hintStyle: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.white38),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: const Color(0xFF2563EB))),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('Cancel', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-            ),
-            TextButton(
-              onPressed: () async {
-                final bankName = bankNameController.text.trim();
-                final accountNumber = accountNumberController.text.trim();
-                final accountName = accountNameController.text.trim();
-                if (bankName.isEmpty || accountNumber.isEmpty || accountName.isEmpty) return;
-
-                Navigator.pop(dialogContext);
-                setState(() => _isLoading = true);
-
-                final messenger = ScaffoldMessenger.of(context);
-                try {
-                  await CloudFunctionsService.saveBankAccount(
-                    bankName: bankName,
-                    accountNumber: accountNumber,
-                    accountName: accountName,
-                  );
-                  if (mounted) {
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text('Bank account added', style: GoogleFonts.plusJakartaSans()),
-                        backgroundColor: const Color(0xFF10B981),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.add_rounded, color: Color(0xFF60A5FA), size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      '+ Add Bank Account ($count/3)',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF60A5FA),
                       ),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to add: $e', style: GoogleFonts.plusJakartaSans()),
-                        backgroundColor: const Color(0xFFEF4444),
-                      ),
-                    );
-                  }
-                } finally {
-                  if (mounted) setState(() => _isLoading = false);
-                }
-              },
-              child: Text('Add', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: const Color(0xFF2563EB))),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _paymentItem(IconData icon, Color color, String label, String detail, VoidCallback onRemove) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05)))),
-      child: Row(
-        children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              shape: BoxShape.circle,
-              border: Border.all(color: color.withOpacity(0.2)),
-            ),
-            child: Icon(icon, color: color, size: 16),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
-                if (detail.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(detail, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                ],
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onRemove,
-            child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 18),
-          ),
+          const SizedBox(height: 6),
         ],
       ),
     );

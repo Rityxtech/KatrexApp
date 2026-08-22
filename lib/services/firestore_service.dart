@@ -822,4 +822,56 @@ class FirestoreService {
           return list;
         });
   }
+
+  // ─── Bank Accounts Management (Max 3) ────────────────────
+
+  /// Save a bank account to the user's profile (max 3 accounts allowed).
+  Future<void> addBankAccount({
+    required String uid,
+    required String bankName,
+    required String accountNumber,
+    required String accountName,
+    String? bankCode,
+  }) async {
+    final userRef = _db.collection(FirestoreCollections.users).doc(uid);
+    final snap = await userRef.get();
+    if (!snap.exists || snap.data() == null) throw Exception('User not found');
+    final user = UserModel.fromMap(snap.data()!);
+    final methods = List<Map<String, dynamic>>.from(user.paymentMethods);
+
+    if (methods.length >= 3) {
+      throw Exception('Maximum of 3 bank accounts reached. Please delete an existing account first.');
+    }
+
+    final exists = methods.some((m) => m['accountNumber'] == accountNumber);
+    if (exists) {
+      throw Exception('This account number is already linked.');
+    }
+
+    methods.add({
+      'type': 'bank',
+      'bankName': bankName.trim(),
+      'accountNumber': accountNumber.trim(),
+      'accountName': accountName.trim(),
+      if (bankCode != null && bankCode.isNotEmpty) 'bankCode': bankCode.trim(),
+      'addedAt': DateTime.now().toIso8601String(),
+    });
+
+    await userRef.update({'paymentMethods': methods});
+  }
+
+  /// Remove a linked bank account from the user's profile.
+  Future<void> removeBankAccount({
+    required String uid,
+    required String accountNumber,
+  }) async {
+    final userRef = _db.collection(FirestoreCollections.users).doc(uid);
+    final snap = await userRef.get();
+    if (!snap.exists || snap.data() == null) return;
+    final user = UserModel.fromMap(snap.data()!);
+    final methods = List<Map<String, dynamic>>.from(user.paymentMethods);
+
+    methods.removeWhere((m) => m['accountNumber'] == accountNumber);
+    await userRef.update({'paymentMethods': methods});
+  }
 }
