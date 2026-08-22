@@ -123,7 +123,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
         final returnedRef = await SquadCheckoutSheet.show(
           context,
           checkoutUrl: squadResult.checkoutUrl!,
-          amount: amount,
+          amount: _amount,
           reference: squadResult.reference,
         );
 
