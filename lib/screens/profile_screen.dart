@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
