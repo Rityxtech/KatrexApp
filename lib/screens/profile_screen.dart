@@ -370,7 +370,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildProfileBanner(),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 16),
                         _sectionTitle('Account & Security'),
                         _glassCard(
                     child: Column(
@@ -586,164 +586,196 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileBanner() {
-    return SizedBox(
-      height: 208,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.topCenter,
-        children: [
-          _glassCard(
-            radius: 20,
-            child: Container(
-              height: 80,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF3B82F6).withOpacity(0.15),
-                    const Color(0xFFA855F7).withOpacity(0.1),
-                  ],
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(top: -20, right: -20, child: Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.3), shape: BoxShape.circle), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), child: Container(color: Colors.transparent)))),
-                  Positioned(bottom: -20, left: -20, child: Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFFA855F7).withOpacity(0.2), shape: BoxShape.circle), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), child: Container(color: Colors.transparent)))),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: 38,
-            left: 0,
-            right: 0,
-          child: Column(
+    return Column(
+      children: [
+        SizedBox(
+          height: 122,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.topCenter,
             children: [
-              GestureDetector(
-                onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 84, height: 84,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF000000), width: 3),
-                        color: const Color(0xFF0A0F1F),
-                      ),
-                      child: ClipOval(
-                        child: _isUploadingAvatar
-                            ? const Center(
-                                child: SizedBox(
-                                  width: 24, height: 24,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                ),
-                              )
-                            : AppAvatar(
-                                avatarUrl: context.watch<AuthProvider>().userModel?.avatarUrl,
-                                size: 84,
-                                fallback: const Icon(Icons.person, color: Colors.white, size: 36),
-                              ),
-                      ),
-                    ),
-                    if (!_isUploadingAvatar)
-                      Positioned(
-                        bottom: 0, right: 0,
-                        child: Container(
-                          width: 28, height: 28,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFF000000), width: 2.5),
-                          ),
-                          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                context.watch<AuthProvider>().userModel?.fullName ?? 'User',
-                style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                context.watch<AuthProvider>().userModel?.email ?? '',
-                style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
-              ),
-              const SizedBox(height: 10),
-              Builder(builder: (context) {
-                final kycTier = context.watch<AuthProvider>().userModel?.kycTier ?? 0;
-                final isVerified = kycTier > 0;
-                final statusColor = isVerified ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-                final statusText = kycTier == 2
-                    ? 'Tier 2 Verified'
-                    : kycTier == 1
-                        ? 'Tier 1 Verified'
-                        : 'Unverified';
-                final statusIcon = isVerified ? Icons.check_circle_rounded : Icons.cancel_rounded;
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: statusColor.withOpacity(0.25)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, color: statusColor, size: 12),
-                          const SizedBox(width: 4),
-                          Text(
-                            statusText,
-                            style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: statusColor),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      final code = context.read<AuthProvider>().userModel?.referralCode ?? '';
-                      if (code.isNotEmpty) {
-                        Clipboard.setData(ClipboardData(text: code));
-                        _showSuccess('Referral code copied!');
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withOpacity(0.1)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            context.watch<AuthProvider>().userModel?.referralCode ?? 'KAT-XXX',
-                            style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF)),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.copy_rounded, color: Color(0xFF6B7280), size: 11),
-                        ],
-                      ),
+              _glassCard(
+                radius: 20,
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFF3B82F6).withOpacity(0.15),
+                        const Color(0xFFA855F7).withOpacity(0.1),
+                      ],
                     ),
                   ),
-                ],
-              );
-            }),
-          ],
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: -20,
+                        right: -20,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6).withOpacity(0.3),
+                            shape: BoxShape.circle,
+                          ),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                            child: Container(color: Colors.transparent),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: -20,
+                        left: -20,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFA855F7).withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                            child: Container(color: Colors.transparent),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 38,
+                child: GestureDetector(
+                  onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF000000), width: 3),
+                          color: const Color(0xFF0A0F1F),
+                        ),
+                        child: ClipOval(
+                          child: _isUploadingAvatar
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  ),
+                                )
+                              : AppAvatar(
+                                  avatarUrl: context.watch<AuthProvider>().userModel?.avatarUrl,
+                                  size: 84,
+                                  fallback: const Icon(Icons.person, color: Colors.white, size: 36),
+                                ),
+                        ),
+                      ),
+                      if (!_isUploadingAvatar)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFF000000), width: 2.5),
+                            ),
+                            child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Text(
+          context.watch<AuthProvider>().userModel?.fullName ?? 'User',
+          style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          context.watch<AuthProvider>().userModel?.email ?? '',
+          style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
+        ),
+        const SizedBox(height: 10),
+        Builder(builder: (context) {
+          final kycTier = context.watch<AuthProvider>().userModel?.kycTier ?? 0;
+          final isVerified = kycTier > 0;
+          final statusColor = isVerified ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+          final statusText = kycTier == 2
+              ? 'Tier 2 Verified'
+              : kycTier == 1
+                  ? 'Tier 1 Verified'
+                  : 'Unverified';
+          final statusIcon = isVerified ? Icons.check_circle_rounded : Icons.cancel_rounded;
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: statusColor.withOpacity(0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(statusIcon, color: statusColor, size: 12),
+                    const SizedBox(width: 4),
+                    Text(
+                      statusText,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: statusColor),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  final code = context.read<AuthProvider>().userModel?.referralCode ?? '';
+                  if (code.isNotEmpty) {
+                    Clipboard.setData(ClipboardData(text: code));
+                    _showSuccess('Referral code copied!');
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        context.watch<AuthProvider>().userModel?.referralCode ?? 'KAT-XXX',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF9CA3AF)),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.copy_rounded, color: Color(0xFF6B7280), size: 11),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        }),
       ],
-      ),
     );
   }
 }
