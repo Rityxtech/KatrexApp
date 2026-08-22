@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { useAirtimePlans, useTransactions } from "@/hooks/useAdminData";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/lib/firebase";
+import { useTransactions } from "@/hooks/useAdminData";
 import { updateDocument, setDocument } from "@/hooks/useFirestore";
 
 function formatNaira(n: number) {
@@ -21,7 +23,6 @@ const STATUS_BADGES: Record<string, { class: string; label: string }> = {
 };
 
 export default function AirtimeDataPage() {
-  const { data: plans, loading: pl } = useAirtimePlans();
   const { data: txns, loading: tl } = useTransactions(100);
 
   const [activeProvider, setActiveProvider] = useState<"SMEPlug" | "SMEAPI">("SMEPlug");
@@ -33,6 +34,10 @@ export default function AirtimeDataPage() {
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [planVisibility, setPlanVisibility] = useState<Record<string, boolean>>({});
+  
+  // Live plans fetched from Cloud Function based on active provider
+  const [livePlans, setLivePlans] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -41,10 +46,49 @@ export default function AirtimeDataPage() {
 
   const airtimeTxns = txns.filter((t: any) => t.type === "airtime" || t.type === "data").slice(0, 10);
 
+  // Fetch plans from Cloud Function when provider changes
+  const fetchPlansForProvider = useCallback(async (provider: "SMEPlug" | "SMEAPI") => {
+    setPlansLoading(true);
+    try {
+      const getDataPlans = httpsCallable(functions, "getDataPlans");
+      const networks = ["MTN", "Airtel", "Glo", "9mobile"];
+      const providerParam = provider === "SMEPlug" ? "smeplug" : "smeapi";
+      
+      const results = await Promise.all(
+        networks.map((network) => 
+          getDataPlans({ network, provider: providerParam }).catch((err) => {
+            console.warn(`Failed to fetch ${network} plans from ${provider}:`, err);
+            return { data: { plans: [] } };
+          })
+        )
+      );
+      
+      const allPlans = results.flatMap((result: any) => 
+        (result.data?.plans || []).map((p: any) => ({
+          ...p,
+          provider: providerParam,
+        }))
+      );
+      
+      setLivePlans(allPlans);
+    } catch (err: any) {
+      console.error("Failed to fetch plans:", err);
+      showToast(`Failed to load plans: ${err.message}`);
+    } finally {
+      setPlansLoading(false);
+    }
+  }, [showToast]);
+
+  // Fetch plans when provider changes
+  useEffect(() => {
+    fetchPlansForProvider(activeProvider);
+  }, [activeProvider, fetchPlansForProvider]);
+
   const filteredPlans = useMemo(() => {
+    let plans = livePlans;
     if (networkFilter === "all") return plans;
-    return plans.filter((p: any) => (p.network || p.provider || "").toLowerCase().includes(networkFilter.toLowerCase()));
-  }, [plans, networkFilter]);
+    return plans.filter((p: any) => (p.network || "").toLowerCase() === networkFilter.toLowerCase());
+  }, [livePlans, networkFilter]);
 
   function getPlanVisibility(planId: string, defaultVisible: boolean | undefined): boolean {
     if (planVisibility.hasOwnProperty(planId)) return planVisibility[planId];
@@ -213,13 +257,13 @@ export default function AirtimeDataPage() {
               </div>
             </div>
             <div className="overflow-x-auto">
-              {pl ? (
+              {plansLoading ? (
                 <div className="p-3 space-y-1.5">
                   {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 bg-surface-container-high rounded animate-pulse" />)}
                 </div>
               ) : filteredPlans.length === 0 ? (
                 <div className="p-4 text-center text-on-surface-variant text-xs">
-                  {networkFilter !== "all" ? `No ${networkFilter} plans configured` : "No plans configured"}
+                  {networkFilter !== "all" ? `No ${networkFilter} plans from ${activeProvider}` : `No plans from ${activeProvider}`}
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse">
@@ -304,7 +348,7 @@ export default function AirtimeDataPage() {
             </div>
             <div className="space-y-1.5">
               {["MTN", "Airtel", "Glo", "9Mobile"].map((name) => {
-                const planExists = plans.some((p: any) => (p.network || p.provider || "").toLowerCase().includes(name.toLowerCase()));
+                const planExists = livePlans.some((p: any) => (p.network || "").toLowerCase().includes(name.toLowerCase()));
                 return (
                   <div key={name} className={`flex items-center justify-between p-2 bg-surface-container-low border border-subtle rounded-lg ${!planExists ? "opacity-50" : ""}`}>
                     <div className="flex items-center gap-2">
@@ -327,12 +371,12 @@ export default function AirtimeDataPage() {
               <h2 className="font-headline-md text-headline-md font-bold">Plan Control</h2>
             </div>
             <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
-              {pl ? (
+              {plansLoading ? (
                 Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-10 bg-surface-container-low rounded-lg animate-pulse" />)
-              ) : plans.length === 0 ? (
-                <div className="p-3 text-center text-on-surface-variant text-xs">No plans</div>
+              ) : livePlans.length === 0 ? (
+                <div className="p-3 text-center text-on-surface-variant text-xs">No plans from {activeProvider}</div>
               ) : (
-                plans.slice(0, 10).map((p: any) => {
+                livePlans.slice(0, 10).map((p: any) => {
                   const isVisible = getPlanVisibility(p.id, p.visible);
                   return (
                     <div key={p.id} className="p-2 border border-subtle rounded-lg bg-surface-container-low space-y-1">
