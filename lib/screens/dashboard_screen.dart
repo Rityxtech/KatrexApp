@@ -33,6 +33,7 @@ import 'deposit_screen.dart';
 import 'live_rates_screen.dart';
 import 'coin_preview_screen.dart';
 import 'notifications_screen.dart';
+import '../utils/coin_meta.dart';
 import '../widgets/transaction_details_modal.dart';
 import '../widgets/deposit_methods_modal.dart';
 
@@ -941,29 +942,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  static const Map<String, Map<String, dynamic>> _supportedCoins = {
-    'BTC': {'name': 'Bitcoin', 'iconUrl': 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png', 'color': Color(0xFFF7931A)},
-    'ETH': {'name': 'Ethereum', 'iconUrl': 'https://assets.coingecko.com/coins/images/279/large/ethereum.png', 'color': Color(0xFF627EEA)},
-    'USDT': {'name': 'Tether', 'iconUrl': 'https://assets.coingecko.com/coins/images/325/large/Tether.png', 'color': Color(0xFF26A17B)},
-    'SOL': {'name': 'Solana', 'iconUrl': 'https://assets.coingecko.com/coins/images/4128/large/solana.png', 'color': Color(0xFF14F195)},
-    'BNB': {'name': 'BNB', 'iconUrl': 'https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png', 'color': Color(0xFFF3BA2F)},
-    'DOGE': {'name': 'Dogecoin', 'iconUrl': 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png', 'color': Color(0xFFC2A633)},
-    'XRP': {'name': 'Ripple', 'iconUrl': 'https://cryptologos.cc/logos/xrp-xrp-logo.png', 'color': Color(0xFF23292F)},
-    'ADA': {'name': 'Cardano', 'iconUrl': 'https://assets.coingecko.com/coins/images/975/large/cardano.png', 'color': Color(0xFF0033AD)},
-    'MATIC': {'name': 'Polygon', 'iconUrl': 'https://assets.coingecko.com/coins/images/4713/large/polygon.png', 'color': Color(0xFF8247E5)},
-    'TRX': {'name': 'TRON', 'iconUrl': 'https://assets.coingecko.com/coins/images/1094/large/tron-logo.png', 'color': Color(0xFFEF0027)},
-    'TON': {'name': 'Toncoin', 'iconUrl': 'https://assets.coingecko.com/coins/images/17980/large/ton_symbol.png', 'color': Color(0xFF0098EA)},
-  };
-
   Widget _buildPortfolio() {
     final wallet = context.watch<WalletProvider>();
     final cryptoBalances = wallet.cryptoBalances;
     final visibleCoins = wallet.visibleCoins;
 
-    // Default to all supported coins if user hasn't set preferences yet
+    // Home always shows strictly the top-6 most popular coins in order.
+    // If the user has preferences, intersect them with homePageCoins and keep popularity order.
     final coinsToShow = visibleCoins.isEmpty
-        ? _supportedCoins.keys.toList()
-        : visibleCoins;
+        ? CoinMeta.homePageCoins
+        : CoinMeta.homePageCoins.where((c) => visibleCoins.contains(c)).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -994,7 +982,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: List.generate(coinsToShow.length, (index) {
                 final ticker = coinsToShow[index];
                 final balance = cryptoBalances[ticker] ?? 0;
-                final meta = _supportedCoins[ticker] ?? {'name': ticker, 'iconUrl': '', 'color': const Color(0xFF9CA3AF)};
+                final meta = CoinMeta.coins[ticker] ?? {'name': ticker, 'iconUrl': '', 'color': const Color(0xFF9CA3AF)};
                 final isLast = index == coinsToShow.length - 1;
                 final md = _marketDataMap[ticker.toUpperCase()];
 
