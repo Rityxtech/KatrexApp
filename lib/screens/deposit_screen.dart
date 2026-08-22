@@ -370,6 +370,10 @@ class _DepositScreenState extends State<DepositScreen> {
             checkoutUrl: result.checkoutUrl!,
             amount: amount,
             reference: result.reference,
+            accountNumber: result.accountNumber,
+            bankName: result.bankName,
+            accountName: result.accountName,
+            customerEmail: user.email,
           );
           if (returnedRef != null) {
             debugPrint('Checkout returned ref: $returnedRef, calling server to verify + credit...');

@@ -406,6 +406,19 @@ class CloudFunctionsService {
     });
   }
 
+  /// Create or retrieve dynamic virtual account for instant transfer.
+  static Future<Map<String, dynamic>> createDynamicVirtualAccount({
+    required double amount,
+    required String email,
+    required String transactionRef,
+  }) async {
+    return _call('createDynamicVirtualAccount', {
+      'amount': amount,
+      'email': email,
+      'transactionRef': transactionRef,
+    });
+  }
+
   /// Verify a Squad transaction by reference.
   static Future<Map<String, dynamic>> verifyTransaction({
     required String transactionRef,

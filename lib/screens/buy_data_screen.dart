@@ -350,6 +350,9 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
           checkoutUrl: squadResult.checkoutUrl!,
           amount: _amount,
           reference: squadResult.reference,
+          accountNumber: squadResult.accountNumber,
+          bankName: squadResult.bankName,
+          accountName: squadResult.accountName,
         );
 
         if (returnedRef == null) {

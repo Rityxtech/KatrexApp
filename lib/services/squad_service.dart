@@ -10,12 +10,18 @@ class SquadResult {
   final bool success;
   final String? checkoutUrl;
   final String? reference;
+  final String? accountNumber;
+  final String? bankName;
+  final String? accountName;
   final String? errorMessage;
 
   SquadResult({
     required this.success,
     this.checkoutUrl,
     this.reference,
+    this.accountNumber,
+    this.bankName,
+    this.accountName,
     this.errorMessage,
   });
 }
@@ -86,12 +92,18 @@ class SquadService {
 
       final checkoutUrl = res['checkoutUrl'] as String?;
       final txRef = res['transactionRef'] as String? ?? ref;
+      final accountNumber = res['accountNumber'] as String?;
+      final bankName = res['bankName'] as String?;
+      final accountName = res['accountName'] as String?;
 
       if (checkoutUrl != null) {
         return SquadResult(
           success: true,
           checkoutUrl: checkoutUrl,
           reference: txRef,
+          accountNumber: accountNumber,
+          bankName: bankName,
+          accountName: accountName,
         );
       }
 

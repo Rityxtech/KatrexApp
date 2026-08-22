@@ -1864,9 +1864,127 @@ async function handleInitializeCardPayment(request: CallableRequest<any>) {
       throw new HttpsError("internal", "Invalid response from payment service.");
     }
 
+    // Attempt to generate dynamic virtual account for instant transfer
+    let accountNumber = "";
+    let bankName = "Guaranty Trust Bank (GTB)";
+    let accountName = "Squad Checkout / Katrex";
+
+    try {
+      const dRes = await fetch("https://api-d.squadco.com/virtual-account/initiate-dynamic-virtual-account", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${squadKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: Math.round(amount * 100),
+          duration: 3600,
+          email,
+          transaction_ref: transactionRef,
+        }),
+      });
+      const dData = await dRes.json() as any;
+      if (dData?.success || dData?.status === 200) {
+        accountNumber = dData.data?.account_number || "";
+        bankName = dData.data?.bank || "Guaranty Trust Bank (GTB)";
+        accountName = dData.data?.account_name || "Squad Checkout / Katrex";
+      }
+    } catch (err) {
+      logger.warn("Dynamic virtual account init error (non-fatal):", err);
+    }
+
+    // If dynamic account was not returned, check if user has a permanent virtual account
+    if (!accountNumber) {
+      try {
+        const vSnap = await db.collection("virtualAccounts").doc(uid).get();
+        if (vSnap.exists) {
+          const vData = vSnap.data() as any;
+          if (vData?.account_number) {
+            accountNumber = vData.account_number;
+            bankName = vData.bank_name || "GTBank";
+            accountName = vData.account_name || "Katrex Wallet";
+          }
+        }
+      } catch (_) {}
+    }
+
     return {
       checkoutUrl,
       transactionRef,
+      accountNumber,
+      bankName,
+      accountName,
+    };
+}
+
+/**
+ * Explicitly create or retrieve a dynamic virtual account for a transaction.
+ */
+async function handleCreateDynamicVirtualAccount(request: CallableRequest<any>) {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Authentication required.");
+    }
+    const uid = request.auth.uid;
+    const {amount, email, transactionRef} = request.data as {amount: number; email: string; transactionRef: string};
+
+    if (!amount || !email || !transactionRef) {
+      throw new HttpsError("invalid-argument", "Amount, email, and transactionRef are required.");
+    }
+
+    const squadKey = squadSecretKey.value().trim();
+    if (!squadKey) {
+      throw new HttpsError("failed-precondition", "Payment service not configured.");
+    }
+
+    try {
+      const response = await fetch("https://api-d.squadco.com/virtual-account/initiate-dynamic-virtual-account", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${squadKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: Math.round(amount * 100),
+          duration: 3600,
+          email,
+          transaction_ref: transactionRef,
+        }),
+      });
+
+      const data = await response.json() as any;
+      if (data?.success || data?.status === 200) {
+        return {
+          success: true,
+          accountNumber: data.data?.account_number || "",
+          bankName: data.data?.bank || "Guaranty Trust Bank (GTB)",
+          accountName: data.data?.account_name || "Squad Checkout / Katrex",
+          transactionReference: data.data?.transaction_reference || transactionRef,
+        };
+      }
+    } catch (err) {
+      logger.error("Dynamic virtual account call failed:", err);
+    }
+
+    // Fallback to user's permanent virtual account
+    try {
+      const vSnap = await db.collection("virtualAccounts").doc(uid).get();
+      if (vSnap.exists) {
+        const vData = vSnap.data() as any;
+        if (vData?.account_number) {
+          return {
+            success: true,
+            accountNumber: vData.account_number,
+            bankName: vData.bank_name || "GTBank",
+            accountName: vData.account_name || "Katrex Wallet",
+            transactionReference: transactionRef,
+          };
+        }
+      }
+    } catch (_) {}
+
+    return {
+      success: false,
+      message: "Failed to generate dynamic virtual account",
     };
 }
 
@@ -2430,7 +2548,7 @@ const r2PublicUrl = defineSecret("R2_PUBLIC_URL");
 type SecureAction = "deriveDepositAddress" | "executeBuy" | "executeSell"
   | "executeSwap" | "requestSend" | "requestWithdrawal" | "saveBankAccount"
   | "removeBankAccount" | "getDataPlans" | "purchaseAirtime" | "purchaseData"
-  | "createVirtualAccount" | "initializeCardPayment" | "verifyTransaction"
+  | "createVirtualAccount" | "createDynamicVirtualAccount" | "initializeCardPayment" | "verifyTransaction"
   | "completeCardAirtime" | "completeCardData" | "completeCardDeposit"
   | "submitGiftcardTrade" | "submitKyc" | "verifyEmailCode"
   | "resendVerificationEmail"
@@ -2450,6 +2568,7 @@ const SECURE_HANDLERS: Record<SecureAction, (request: any) => Promise<any>> = {
   purchaseAirtime: handlePurchaseAirtime,
   purchaseData: handlePurchaseData,
   createVirtualAccount: handleCreateVirtualAccount,
+  createDynamicVirtualAccount: handleCreateDynamicVirtualAccount,
   initializeCardPayment: handleInitializeCardPayment,
   verifyTransaction: handleVerifyTransaction,
   completeCardAirtime: handleCompleteCardAirtime,

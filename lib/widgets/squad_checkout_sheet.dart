@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../services/cloud_functions_service.dart';
 import '../services/squad_service.dart';
 import '../utils/api_config.dart';
 
@@ -16,12 +16,20 @@ class SquadCheckoutSheet extends StatefulWidget {
   final String checkoutUrl;
   final double? amount;
   final String? reference;
+  final String? accountNumber;
+  final String? bankName;
+  final String? accountName;
+  final String? customerEmail;
 
   const SquadCheckoutSheet({
     super.key,
     required this.checkoutUrl,
     this.amount,
     this.reference,
+    this.accountNumber,
+    this.bankName,
+    this.accountName,
+    this.customerEmail,
   });
 
   /// Push the checkout page as a full-screen route.
@@ -31,6 +39,10 @@ class SquadCheckoutSheet extends StatefulWidget {
     required String checkoutUrl,
     double? amount,
     String? reference,
+    String? accountNumber,
+    String? bankName,
+    String? accountName,
+    String? customerEmail,
   }) {
     return Navigator.of(context).push<String>(
       MaterialPageRoute(
@@ -38,6 +50,10 @@ class SquadCheckoutSheet extends StatefulWidget {
           checkoutUrl: checkoutUrl,
           amount: amount,
           reference: reference,
+          accountNumber: accountNumber,
+          bankName: bankName,
+          accountName: accountName,
+          customerEmail: customerEmail,
         ),
         fullscreenDialog: true,
       ),
@@ -58,19 +74,32 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
   // Selected payment method: 0 = Bank Transfer, 1 = Card / Web Checkout
   int _selectedTab = 0;
 
-  // Dynamic bank account extracted from Squad session
+  // Dynamic bank account
   String _bankName = 'Guaranty Trust Bank (GTB)';
   String _accountNumber = '';
   String _accountName = 'Squad Checkout / Katrex';
   double _amount = 0.0;
   String _ref = '';
-  Timer? _extractionTimer;
 
   @override
   void initState() {
     super.initState();
     _amount = widget.amount ?? _extractAmountFromUrl(widget.checkoutUrl);
     _ref = widget.reference ?? _extractRefFromUrl(widget.checkoutUrl);
+    if (widget.accountNumber != null && widget.accountNumber!.isNotEmpty) {
+      _accountNumber = widget.accountNumber!;
+    }
+    if (widget.bankName != null && widget.bankName!.isNotEmpty) {
+      _bankName = widget.bankName!;
+    }
+    if (widget.accountName != null && widget.accountName!.isNotEmpty) {
+      _accountName = widget.accountName!;
+    }
+
+    // If account number wasn't provided yet, fetch dynamic virtual account via API
+    if (_accountNumber.isEmpty) {
+      _fetchDynamicAccount();
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _isClosing) return;
@@ -83,10 +112,7 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
               if (mounted) setState(() => _isLoading = true);
             },
             onPageFinished: (_) {
-              if (mounted) {
-                setState(() => _isLoading = false);
-                _extractAccountDetails();
-              }
+              if (mounted) setState(() => _isLoading = false);
             },
             onNavigationRequest: (request) {
               final uri = Uri.tryParse(request.url);
@@ -108,22 +134,28 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
         ..loadRequest(Uri.parse(widget.checkoutUrl));
 
       if (mounted) setState(() {});
-
-      // Periodically extract account details in case page loads dynamically
-      _extractionTimer = Timer.periodic(const Duration(milliseconds: 1200), (timer) {
-        if (!mounted || _accountNumber.isNotEmpty || timer.tick > 15) {
-          if (_accountNumber.isNotEmpty || timer.tick > 15) timer.cancel();
-          return;
-        }
-        _extractAccountDetails();
-      });
     });
   }
 
-  @override
-  void dispose() {
-    _extractionTimer?.cancel();
-    super.dispose();
+  Future<void> _fetchDynamicAccount() async {
+    try {
+      final email = widget.customerEmail ?? 'user@katrex.app';
+      final res = await CloudFunctionsService.createDynamicVirtualAccount(
+        amount: _amount > 0 ? _amount : 100,
+        email: email,
+        transactionRef: _ref.isNotEmpty ? _ref : 'KX-${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (res['success'] == true && mounted) {
+        final acc = res['accountNumber'] as String? ?? '';
+        if (acc.isNotEmpty) {
+          setState(() {
+            _accountNumber = acc;
+            if (res['bankName'] != null) _bankName = res['bankName'] as String;
+            if (res['accountName'] != null) _accountName = res['accountName'] as String;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   double _extractAmountFromUrl(String url) {
@@ -804,50 +836,60 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
           ),
           const SizedBox(height: 6),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              hasAccount
-                  ? Text(
-                      _accountNumber,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 2.0,
+              Expanded(
+                child: hasAccount
+                    ? FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _accountNumber,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF60A5FA),
+                              strokeWidth: 2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Generating Account...',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                  : Row(
-                      children: [
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF60A5FA),
-                            strokeWidth: 2,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Generating Account...',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
-                    ),
+              ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: hasAccount ? _copyAccount : null,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
                     color: _copied
                         ? const Color(0xFF10B981).withOpacity(0.2)
                         : const Color(0xFF2563EB).withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: _copied
                           ? const Color(0xFF10B981).withOpacity(0.5)
@@ -859,14 +901,14 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
                     children: [
                       Icon(
                         _copied ? Icons.check_rounded : Icons.copy_rounded,
-                        size: 14,
+                        size: 13,
                         color: _copied ? const Color(0xFF34D399) : const Color(0xFF60A5FA),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       Text(
                         _copied ? 'Copied' : 'Copy',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: _copied ? const Color(0xFF34D399) : const Color(0xFF60A5FA),
                         ),
