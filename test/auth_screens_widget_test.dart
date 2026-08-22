@@ -9,6 +9,7 @@ import 'package:katrexapp/screens/login_screen.dart';
 import 'package:katrexapp/screens/forgot_password_screen.dart';
 import 'package:katrexapp/screens/reset_password_screen.dart';
 import 'package:katrexapp/screens/otp_verification_screen.dart';
+import 'package:katrexapp/services/biometric_auth_service.dart';
 
 class _MockAuthProvider extends ChangeNotifier implements AuthProvider {
   @override
