@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/transaction_model.dart';
+import '../models/user_model.dart';
 import '../models/notification_model.dart';
 import '../models/wallet_model.dart';
 import '../models/homepage_promo_model.dart';
@@ -843,7 +844,7 @@ class FirestoreService {
       throw Exception('Maximum of 3 bank accounts reached. Please delete an existing account first.');
     }
 
-    final exists = methods.some((m) => m['accountNumber'] == accountNumber);
+    final exists = methods.any((m) => m['accountNumber'] == accountNumber);
     if (exists) {
       throw Exception('This account number is already linked.');
     }
