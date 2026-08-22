@@ -48,8 +48,10 @@ class _TransactionDetailsSheet extends StatelessWidget {
     final fmt = NumberFormat('#,##0.00');
     final dateFmt = DateFormat('EEE, MMM d, yyyy');
     final timeFmt = DateFormat('h:mm a');
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
 
     return Container(
+      constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: const BoxDecoration(
         color: Color(0xFF0A0F1F),
         borderRadius: BorderRadius.only(topLeft: Radius.circular(28), topRight: Radius.circular(28)),
@@ -57,37 +59,38 @@ class _TransactionDetailsSheet extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Drag handle
               Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(4))),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Icon + type
               Container(
-                width: 56, height: 56,
+                width: 52, height: 52,
                 decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.15), border: Border.all(color: color.withOpacity(0.3))),
-                child: Center(child: Icon(iconData, color: color, size: 24)),
+                child: Center(child: Icon(iconData, color: color, size: 22)),
               ),
-              const SizedBox(height: 12),
-              Text(tx.type.label, style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-              const SizedBox(height: 24),
+              const SizedBox(height: 10),
+              Text(tx.type.label, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+              const SizedBox(height: 14),
 
               // Amount
               Text(
                 '$amountPrefix\u20A6${fmt.format(tx.amountNaira)}',
-                style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: color, letterSpacing: -1),
+                style: GoogleFonts.plusJakartaSans(fontSize: 30, fontWeight: FontWeight.w900, color: color, letterSpacing: -1),
               ),
               const SizedBox(height: 4),
               if (tx.amountCoin != null && tx.coinSymbol != null)
                 Text(
                   '$amountPrefix${tx.amountCoin} ${tx.coinSymbol}',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
                 ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
 
               // Status badge
               _StatusBadge(status: tx.status),
@@ -150,7 +153,7 @@ class _TransactionDetailsSheet extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // Details list
               Container(
@@ -216,14 +219,14 @@ class _TransactionDetailsSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
 
               // Close button
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(12),
@@ -305,7 +308,7 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
