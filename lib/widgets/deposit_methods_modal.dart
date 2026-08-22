@@ -16,6 +16,8 @@ import '../utils/constants.dart';
 import 'crypto_result_modal.dart';
 import 'squad_checkout_sheet.dart';
 import 'universal_icon.dart';
+import 'coin_icon.dart';
+import '../utils/coin_meta.dart';
 
 /// Active deposit flow shown from the homepage/wallet "Add Money" buttons.
 ///
@@ -351,12 +353,12 @@ class _DepositMethodsSheetState extends State<_DepositMethodsSheet> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: _DepositMethodCard(
-                    icon: FontAwesomeIcons.bitcoin,
-                    iconColor: const Color(0xFFF7931A),
-                    bgColor: const Color(0xFFF7931A).withOpacity(0.1),
-                    borderColor: const Color(0xFFF7931A).withOpacity(0.2),
+                    customIconWidget: const CoinIcon(symbol: 'USDT', size: 24),
+                    iconColor: const Color(0xFF10B981),
+                    bgColor: const Color(0xFF10B981).withOpacity(0.1),
+                    borderColor: const Color(0xFF10B981).withOpacity(0.2),
                     title: 'Cryptocurrency',
-                    subtitle: 'BTC, ETH, USDT • Free',
+                    subtitle: 'BTC, ETH, USDT, TRX • Free',
                     badge: 'FREE',
                     badgeColor: const Color(0xFF10B981),
                     onTap: () {
@@ -518,6 +520,8 @@ class _CryptoDepositSheetState extends State<_CryptoDepositSheet> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white.withOpacity(0.1))),
           child: Row(children: [
+            CoinIcon(symbol: _selectedLabel, size: 18),
+            const SizedBox(width: 8),
             Text(_selectedLabel,
                 style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
             const Spacer(),
@@ -623,9 +627,16 @@ class _CryptoDepositSheetState extends State<_CryptoDepositSheet> {
                 child: QrImageView(data: _address!, size: 120),
               ),
               const SizedBox(height: 14),
-              Text('Your $_selectedLabel deposit address',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CoinIcon(symbol: _selectedLabel, size: 16),
+                  const SizedBox(width: 6),
+                  Text('Your $_selectedLabel deposit address',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                ],
+              ),
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
@@ -731,24 +742,30 @@ class _CryptoDepositSheetState extends State<_CryptoDepositSheet> {
                 child: ListView(
                   shrinkWrap: true,
                   children: _cryptoAssets
-                      .map((a) => ListTile(
-                            dense: true,
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              setState(() {
-                                _selectedAsset = a['code']!;
-                                _address = null;
-                                _error = null;
-                              });
-                              _init();
-                            },
-                            title: Text('${a['label']} (${a['network']})',
-                                style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-                            trailing: _selectedAsset == a['code']
-                                ? const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18)
-                                : null,
-                          ))
+                      .map((a) {
+                        final label = a['label']!;
+                        final network = a['network']!;
+                        final isSelected = _selectedAsset == a['code'];
+                        return ListTile(
+                          dense: true,
+                          leading: CoinIcon(symbol: label, size: 24, showBackground: true),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            setState(() {
+                              _selectedAsset = a['code']!;
+                              _address = null;
+                              _error = null;
+                            });
+                            _init();
+                          },
+                          title: Text('$label ($network)',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+                          trailing: isSelected
+                              ? const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18)
+                              : null,
+                        );
+                      })
                       .toList(),
                 ),
               ),
@@ -823,7 +840,8 @@ class _CryptoDepositSheetState extends State<_CryptoDepositSheet> {
 // ── Method card ────────────────────────────────────────────────────────────
 
 class _DepositMethodCard extends StatelessWidget {
-  final Object? icon;
+  final dynamic icon;
+  final Widget? customIconWidget;
   final Color iconColor;
   final Color bgColor;
   final Color borderColor;
@@ -835,7 +853,8 @@ class _DepositMethodCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _DepositMethodCard({
-    required this.icon,
+    this.icon,
+    this.customIconWidget,
     required this.iconColor,
     required this.bgColor,
     required this.borderColor,
@@ -877,7 +896,7 @@ class _DepositMethodCard extends StatelessWidget {
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       ),
                     )
-                  : Center(child: UniversalIcon(icon, size: 20, color: iconColor)),
+                  : Center(child: customIconWidget ?? UniversalIcon(icon, size: 20, color: iconColor)),
             ),
             const SizedBox(width: 12),
             Expanded(
