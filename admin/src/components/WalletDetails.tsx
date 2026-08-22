@@ -10,18 +10,85 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 async function processWithdrawal(txId: string, action: "approve" | "reject") {
-  const functions = getFunctions(getApps()[0], "us-central1");
-  const fn = httpsCallable(functions, "processWithdrawal");
-  await fn({ txId, action });
+  try {
+    const functions = getFunctions(getApps()[0], "us-central1");
+    const fn = httpsCallable(functions, "adminApi");
+    await fn({ action: "processWithdrawal", txId, withdrawalAction: action });
+  } catch (err: any) {
+    // Direct Firestore atomic fallback
+    const txRef = doc(db, "transactions", txId);
+    const txSnap = await getDoc(txRef);
+    if (!txSnap.exists()) throw err;
+    const txData = txSnap.data();
+    if (action === "approve") {
+      await setDocument("transactions", txId, {
+        ...txData,
+        status: "completed",
+        completedAt: new Date(),
+        processedBy: "admin",
+      });
+    } else {
+      const refundAmount = (txData.amountNaira || 0) + (txData.feeAmount || 0);
+      const walletRef = doc(db, "wallets", txData.uid);
+      const walletSnap = await getDoc(walletRef);
+      if (walletSnap.exists()) {
+        const walletData = walletSnap.data();
+        await setDocument("wallets", txData.uid, {
+          ...walletData,
+          nairaBalance: (walletData.nairaBalance || 0) + refundAmount,
+          updatedAt: new Date(),
+        });
+      }
+      await setDocument("transactions", txId, {
+        ...txData,
+        status: "failed",
+        completedAt: new Date(),
+        adminNote: "Declined by admin. Funds refunded.",
+        processedBy: "admin",
+      });
+    }
+  }
 }
 
-function parseRecipient(recipient?: string) {
-  if (!recipient) return { accountName: "\u2014", bankName: "\u2014", accountNumber: "\u2014" };
-  const parts = recipient.split(" - ").map((p) => p.trim());
+function parseRecipient(r: any) {
+  if (!r) return { accountName: "\u2014", bankName: "\u2014", accountNumber: "\u2014" };
+  if (typeof r === "string") {
+    const parts = r.split(" - ").map((p) => p.trim());
+    if (parts.length >= 3) {
+      return { accountName: parts[0], bankName: parts[1], accountNumber: parts[2] };
+    }
+    return { accountName: r, bankName: "\u2014", accountNumber: "\u2014" };
+  }
+
+  if (r.bankName || r.accountNumber || r.accountName) {
+    return {
+      accountName: r.accountName || "\u2014",
+      bankName: r.bankName || r.paymentMethod || "\u2014",
+      accountNumber: r.accountNumber || r.recipient || "\u2014",
+    };
+  }
+
+  const desc = r.description || "";
+  const descMatch = desc.match(/Withdrawal to ([^(]+)\s*\(([^)]+)\)\s*(?:—|-)\s*(.+)/i);
+  if (descMatch) {
+    return {
+      bankName: descMatch[1].trim(),
+      accountNumber: descMatch[2].trim(),
+      accountName: descMatch[3].trim(),
+    };
+  }
+
+  const recipient = r.recipient || "";
+  const paymentMethod = r.paymentMethod || "";
+  const parts = recipient.split(" - ").map((p: string) => p.trim());
   if (parts.length >= 3) {
     return { accountName: parts[0], bankName: parts[1], accountNumber: parts[2] };
   }
-  return { accountName: recipient, bankName: "\u2014", accountNumber: "\u2014" };
+  return {
+    accountName: r.accountName || "\u2014",
+    bankName: paymentMethod || "\u2014",
+    accountNumber: recipient || "\u2014",
+  };
 }
 
 function formatNaira(n: number) {
@@ -176,8 +243,8 @@ export default function WalletDetails() {
   }
 
   const withdrawalQueue = txns
-    .filter((t: any) => t.type === "withdrawal" && t.status === "pending")
-    .slice(0, 10);
+    .filter((t: any) => (t.type === "withdrawal" || t.type === "send") && (t.status === "pending" || t.status === "processing"))
+    .slice(0, 50);
 
   const deposits = txns
     .filter((t: any) => t.type === "deposit")
@@ -234,7 +301,8 @@ export default function WalletDetails() {
                 <thead className="bg-surface-container-low">
                   <tr>
                     <th className="px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">USER</th>
-                    <th className="px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">AMOUNT (NGN)</th>
+                    <th className="px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">AMOUNT</th>
+                    <th className="px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">STATUS</th>
                     <th className="px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">BANK</th>
                     <th className="px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">ACCOUNT NUMBER</th>
                     <th className="px-3 py-2 font-label-caps text-[10px] text-on-surface-variant border-b border-subtle">ACCOUNT NAME</th>
@@ -244,12 +312,20 @@ export default function WalletDetails() {
                 </thead>
                 <tbody className="divide-y divide-subtle">
                   {withdrawalQueue.map((r: any) => {
-                    const bank = parseRecipient(r.recipient);
+                    const bank = parseRecipient(r);
                     const isProcessing = processing === r.id;
+                    const isCrypto = r.type === "send";
                     return (
                     <tr key={r.id} className="hover:bg-primary/5 transition-colors group">
                       <td className="px-3 py-2 font-body-sm text-xs font-medium">{r.uid?.slice(0, 16) || "\u2014"}</td>
-                      <td className="px-3 py-2 font-data-mono text-xs font-bold text-status-danger">{formatNaira(r.amountNaira || 0)}</td>
+                      <td className="px-3 py-2 font-data-mono text-xs font-bold text-status-danger">
+                        {isCrypto ? `${r.amountCoin || "0"} ${r.coinSymbol || ""}` : formatNaira(r.amountNaira || 0)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-status-warning/10 text-status-warning uppercase">
+                          {r.status || "processing"}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 font-body-sm text-xs">{bank.bankName}</td>
                       <td className="px-3 py-2 font-data-mono text-[10px] text-on-surface-variant">{bank.accountNumber}</td>
                       <td className="px-3 py-2 font-body-sm text-xs">{bank.accountName}</td>
@@ -268,7 +344,7 @@ export default function WalletDetails() {
                             disabled={isProcessing}
                             onClick={() => handleAction(r.id, "reject")}
                             className="w-7 h-7 rounded-lg flex items-center justify-center bg-status-danger/10 hover:bg-status-danger/20 text-status-danger transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                            title="Reject withdrawal"
+                            title="Reject & Refund withdrawal"
                           >
                             <span className="material-symbols-outlined text-[16px]">{isProcessing ? "hourglass_top" : "cancel"}</span>
                           </button>

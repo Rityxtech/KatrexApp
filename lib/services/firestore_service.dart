@@ -645,20 +645,26 @@ class FirestoreService {
 
       txn.set(
         txRef,
-        TransactionModel(
-          id: txRef.id,
-          uid: uid,
-          type: TransactionType.withdrawal,
-          status: TransactionStatus.processing,
-          amountNaira: amount,
-          description: 'Withdrawal to $bankName ($accountNumber) — $accountName',
-          reference: 'WD-${DateTime.now().millisecondsSinceEpoch}',
-          createdAt: DateTime.now(),
-          recipient: accountNumber,
-          paymentMethod: bankName,
-          feeAmount: fee,
-          feeSymbol: 'NGN',
-        ).toMap(),
+        {
+          ...TransactionModel(
+            id: txRef.id,
+            uid: uid,
+            type: TransactionType.withdrawal,
+            status: TransactionStatus.processing,
+            amountNaira: amount,
+            description: 'Withdrawal to $bankName ($accountNumber) — $accountName',
+            reference: 'WD-${DateTime.now().millisecondsSinceEpoch}',
+            createdAt: DateTime.now(),
+            recipient: accountNumber,
+            paymentMethod: bankName,
+            feeAmount: fee,
+            feeSymbol: 'NGN',
+          ).toMap(),
+          'bankName': bankName,
+          'accountNumber': accountNumber,
+          'accountName': accountName,
+          if (bankCode != null) 'bankCode': bankCode,
+        },
       );
     });
 

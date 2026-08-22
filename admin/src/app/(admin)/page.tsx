@@ -38,7 +38,7 @@ export default function DashboardPage() {
 
   const recentTxns = txns.slice(0, 8);
   const pendingWithdrawals = txns.filter(
-    (t: any) => t.type === "withdrawal" && t.status === "pending"
+    (t: any) => (t.type === "withdrawal" || t.type === "send") && (t.status === "pending" || t.status === "processing")
   ).length;
   const flaggedTxns = txns.filter((t: any) => t.status === "flagged").length;
 

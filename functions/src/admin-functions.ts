@@ -172,15 +172,17 @@ function finiteNumber(value: unknown, field: string, min = 0, max = Number.MAX_S
 // ===========================================================================
 
 async function handleProcessWithdrawal(adminUid: string, data: Record<string, unknown>) {
-  const {txId, withdrawalAction} = data as {txId: string; withdrawalAction: string};
+  const txId = (data.txId as string) || "";
+  const withdrawalAction = (data.withdrawalAction || data.action) as string;
 
   if (!txId || !withdrawalAction) {
     throw new HttpsError("invalid-argument", "txId and withdrawalAction are required.");
   }
-  if (withdrawalAction !== "approve" && withdrawalAction !== "reject") {
-    throw new HttpsError("invalid-argument", "withdrawalAction must be 'approve' or 'reject'.");
+  const validActions = ["approve", "reject", "cancel", "void"];
+  if (!validActions.includes(withdrawalAction)) {
+    throw new HttpsError("invalid-argument", "withdrawalAction must be 'approve', 'reject', 'cancel', or 'void'.");
   }
-  const action = withdrawalAction;
+  const isApproval = withdrawalAction === "approve";
 
   await requireAdmin(adminUid);
 
@@ -195,18 +197,19 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
   if (txData.type !== "withdrawal" && txData.type !== "send") {
     throw new HttpsError("failed-precondition", "Transaction is not a withdrawal.");
   }
-  if (txData.status !== "pending") {
-    throw new HttpsError("failed-precondition", "Transaction is not pending.");
+  if (txData.status !== "pending" && txData.status !== "processing") {
+    throw new HttpsError("failed-precondition", "Transaction is not in pending/processing status.");
   }
 
   const uid = txData.uid;
   const isCryptoSend = txData.type === "send";
-  const amount = txData.amountNaira ?? 0;
+  const amount = Number(txData.amountNaira ?? 0);
+  const feeAmount = Number(txData.feeAmount ?? 0);
   const coinSymbol = txData.coinSymbol as string | undefined;
   // amountCoin is stored as a string of up to 8 decimals.
   const coinAmount = parseFloat(String(txData.amountCoin ?? "0"));
 
-  if (action === "approve") {
+  if (isApproval) {
     await txRef.update({
       status: "completed",
       completedAt: new Date(),
@@ -216,10 +219,10 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
     await db.collection("notifications").add({
       uid,
       type: "withdrawal",
-      title: isCryptoSend ? "Withdrawal Approved" : "Withdrawal Approved",
+      title: isCryptoSend ? "Send Request Completed" : "Withdrawal Successful",
       body: isCryptoSend
-        ? `Your ${coinAmount} ${coinSymbol} withdrawal has been processed.`
-        : `Your withdrawal of \u20A6${amount} has been processed.`,
+        ? `Your ${coinAmount} ${coinSymbol} transfer has been completed.`
+        : `Your withdrawal of \u20A6${amount.toLocaleString()} has been sent to your bank.`,
       isRead: false,
       createdAt: new Date(),
     });
@@ -228,8 +231,9 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
     return {success: true};
   }
 
-  // action === "reject" — refund the user atomically
+  // Reject / Cancel / Void — refund user balance atomically (amount + fee)
   const walletRef = db.collection("wallets").doc(uid);
+  const totalRefundNaira = amount + feeAmount;
 
   await db.runTransaction(async (txn) => {
     const snap = await txn.get(walletRef);
@@ -246,7 +250,7 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
       } else {
         txn.set(walletRef, {
           ...wallet,
-          nairaBalance: (wallet.nairaBalance ?? 0) + amount,
+          nairaBalance: (wallet.nairaBalance ?? 0) + totalRefundNaira,
           updatedAt: new Date(),
         }, {merge: true});
       }
@@ -254,6 +258,8 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
 
     txn.update(txRef, {
       status: "failed",
+      adminNote: `Declined (${withdrawalAction}) by admin. Funds refunded.`,
+      completedAt: new Date(),
       processedBy: adminUid,
     });
   });
@@ -261,15 +267,15 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
   await db.collection("notifications").add({
     uid,
     type: "withdrawal",
-    title: "Withdrawal Rejected",
+    title: isCryptoSend ? "Send Request Declined" : "Withdrawal Declined",
     body: isCryptoSend
-      ? `Your ${coinAmount} ${coinSymbol} withdrawal was rejected. Funds refunded.`
-      : `Your withdrawal of \u20A6${amount} was rejected. Funds refunded.`,
+      ? `Your request to send ${coinAmount} ${coinSymbol} was declined. Funds have been refunded.`
+      : `Your withdrawal of \u20A6${amount.toLocaleString()} was declined. \u20A6${totalRefundNaira.toLocaleString()} has been refunded to your wallet.`,
     isRead: false,
     createdAt: new Date(),
   });
 
-  logger.info(`Withdrawal ${txId} rejected by admin ${adminUid}. Funds refunded.`);
+  logger.info(`Withdrawal ${txId} ${withdrawalAction}ed by admin ${adminUid}. Refunded ${totalRefundNaira} NGN.`);
   return {success: true};
 }
 

@@ -73,14 +73,41 @@ export default function TransactionDetailOverlay({ transaction: tx, onClose }: P
     }
   };
 
+  // Approve withdrawal/send
+  const handleApprove = async () => {
+    if (tx.type !== "withdrawal" && tx.type !== "send") {
+      flash("error", "Only withdrawal/send transactions can be approved");
+      return;
+    }
+    if (tx.status !== "pending" && tx.status !== "processing") {
+      flash("error", "Only pending or processing transactions can be approved");
+      return;
+    }
+    if (!confirm("Approve this withdrawal and mark as completed?")) return;
+    setActionLoading(true);
+    try {
+      const adminApi = httpsCallable(functions, "adminApi");
+      await adminApi({
+        action: "processWithdrawal",
+        txId: tx.id,
+        withdrawalAction: "approve",
+      });
+      flash("success", "Withdrawal approved and completed.");
+    } catch (e: any) {
+      flash("error", e.message || "Failed to approve withdrawal");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Reverse/refund — only for withdrawals and sends
   const handleReverse = async () => {
     if (tx.type !== "withdrawal" && tx.type !== "send") {
       flash("error", "Only withdrawal/send transactions can be reversed");
       return;
     }
-    if (tx.status !== "completed" && tx.status !== "pending") {
-      flash("error", "Only completed or pending transactions can be reversed");
+    if (tx.status !== "completed" && tx.status !== "pending" && tx.status !== "processing") {
+      flash("error", "Only completed, pending, or processing transactions can be reversed");
       return;
     }
     if (!confirm("Reverse this transaction and refund the user?")) return;
@@ -236,19 +263,30 @@ export default function TransactionDetailOverlay({ transaction: tx, onClose }: P
 
             {/* Actions */}
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleFlag}
-                disabled={actionLoading || tx.status === "flagged"}
-                className="flex-1 bg-status-danger text-white py-2 rounded font-label-caps text-label-caps hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {tx.status === "flagged" ? "ALREADY FLAGGED" : "FLAG SUSPICIOUS"}
-              </button>
+              {(tx.type === "withdrawal" || tx.type === "send") && (tx.status === "pending" || tx.status === "processing") && (
+                <button
+                  onClick={handleApprove}
+                  disabled={actionLoading}
+                  className="w-full bg-status-success text-white py-2.5 rounded font-label-caps text-label-caps hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 font-bold"
+                >
+                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                  APPROVE & COMPLETE WITHDRAWAL
+                </button>
+              )}
               <button
                 onClick={handleReverse}
                 disabled={actionLoading || (tx.type !== "withdrawal" && tx.type !== "send")}
+                className="flex-1 bg-status-danger/10 text-status-danger border border-status-danger/30 py-2 rounded font-label-caps text-label-caps hover:bg-status-danger/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[16px]">cancel</span>
+                REJECT & REFUND
+              </button>
+              <button
+                onClick={handleFlag}
+                disabled={actionLoading || tx.status === "flagged"}
                 className="flex-1 bg-surface-bright border border-subtle py-2 rounded font-label-caps text-label-caps hover:bg-surface-container-high transition-colors text-on-surface disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                REVERSE / REFUND
+                {tx.status === "flagged" ? "ALREADY FLAGGED" : "FLAG SUSPICIOUS"}
               </button>
             </div>
           </div>
