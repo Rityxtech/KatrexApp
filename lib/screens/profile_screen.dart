@@ -247,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   );
 
   Widget _sectionTitle(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
+    padding: const EdgeInsets.only(bottom: 8, top: 4),
     child: Text(
       text,
       style: GoogleFonts.plusJakartaSans(
@@ -370,9 +370,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildProfileBanner(),
-                        const SizedBox(height: 16),
-                  _sectionTitle('Account & Security'),
-                  _glassCard(
+                        const SizedBox(height: 24),
+                        _sectionTitle('Account & Security'),
+                        _glassCard(
                     child: Column(
                       children: [
                         _menuItem(
@@ -587,7 +587,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileBanner() {
     return SizedBox(
-      height: 200,
+      height: 235,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.topCenter,
