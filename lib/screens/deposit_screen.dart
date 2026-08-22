@@ -17,6 +17,8 @@ import '../services/hd_wallet_service.dart';
 import '../services/network_fee_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../widgets/app_background.dart';
+import '../widgets/coin_icon.dart';
+import '../utils/coin_meta.dart';
 import '../widgets/notification_icon.dart';
 import '../widgets/squad_checkout_sheet.dart';
 
@@ -823,12 +825,12 @@ class _DepositScreenState extends State<DepositScreen> {
         ),
         const SizedBox(height: 8),
         _buildMethodCard(
-          icon: FontAwesomeIcons.bitcoin,
-          iconColor: const Color(0xFFF7931A),
-          bgColor: const Color(0xFFF7931A).withOpacity(0.1),
-          borderColor: const Color(0xFFF7931A).withOpacity(0.2),
+          customIconWidget: const CoinIcon(symbol: 'USDT', size: 24),
+          iconColor: const Color(0xFF10B981),
+          bgColor: const Color(0xFF10B981).withOpacity(0.1),
+          borderColor: const Color(0xFF10B981).withOpacity(0.2),
           title: 'Cryptocurrency',
-          subtitle: 'BTC, ETH, USDT • Free',
+          subtitle: 'BTC, ETH, USDT, TRX • Free',
           onTap: () => _showCryptoSheet(),
         ),
       ],
@@ -836,7 +838,8 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   Widget _buildMethodCard({
-    required dynamic icon,
+    dynamic icon,
+    Widget? customIconWidget,
     required Color iconColor,
     required Color bgColor,
     required Color borderColor,
@@ -858,7 +861,12 @@ class _DepositScreenState extends State<DepositScreen> {
             Container(
               width: 48, height: 48,
               decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: borderColor)),
-              child: Center(child: icon is FaIconData ? FaIcon(icon, size: 18, color: iconColor) : Icon(icon as IconData, size: 18, color: iconColor)),
+              child: Center(
+                child: customIconWidget ??
+                    (icon is FaIconData
+                        ? FaIcon(icon, size: 18, color: iconColor)
+                        : Icon(icon as IconData?, size: 18, color: iconColor)),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1272,7 +1280,7 @@ class _DepositScreenState extends State<DepositScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.1))),
           child: Row(children: [
-            const FaIcon(FontAwesomeIcons.bitcoin, size: 14, color: Color(0xFFF7931A)),
+            CoinIcon(symbol: label, size: 18),
             const SizedBox(width: 8),
             Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
             const Spacer(),
@@ -1308,13 +1316,35 @@ class _DepositScreenState extends State<DepositScreen> {
         const SizedBox(height: 12),
         Container(width: 48, height: 6, decoration: const BoxDecoration(color: Color(0x33FFFFFF), borderRadius: BorderRadius.all(Radius.circular(3)))),
         const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          child: Row(
+            children: [
+              Text('Select Crypto Asset', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
         ...labels.map((label) {
           final asset = _cryptoAssets.firstWhere((a) => a['label'] == label);
-          return ListTile(leading: const FaIcon(FontAwesomeIcons.bitcoin, size: 16, color: Color(0xFFF7931A)),
-            title: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-            onTap: () { ss(() { _cryptoSelectedAsset = asset['code']!; _cryptoSelectedNetwork = asset['network']!; }); Navigator.pop(ctx); _loadSavedAddressForAsset(ss); });
+          final fullName = CoinMeta.forTicker(label)['name'] as String? ?? label;
+          final isSelected = _cryptoAssets.firstWhere((a) => a['code'] == _cryptoSelectedAsset)['label'] == label;
+          return ListTile(
+            leading: CoinIcon(symbol: label, size: 28, showBackground: true),
+            title: Text(fullName, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+            subtitle: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF))),
+            trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 20) : null,
+            onTap: () {
+              ss(() {
+                _cryptoSelectedAsset = asset['code']!;
+                _cryptoSelectedNetwork = asset['network']!;
+              });
+              Navigator.pop(ctx);
+              _loadSavedAddressForAsset(ss);
+            },
+          );
         }),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
       ])));
   }
 
@@ -1327,12 +1357,34 @@ class _DepositScreenState extends State<DepositScreen> {
         const SizedBox(height: 12),
         Container(width: 48, height: 6, decoration: const BoxDecoration(color: Color(0x33FFFFFF), borderRadius: BorderRadius.all(Radius.circular(3)))),
         const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          child: Row(
+            children: [
+              Text('Select Network', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
         ...nets.map((net) {
           final asset = _cryptoAssets.firstWhere((a) => a['network'] == net && a['label'] == curLabel);
-          return ListTile(title: Text(net, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-            onTap: () { ss(() { _cryptoSelectedAsset = asset['code']!; _cryptoSelectedNetwork = net; }); Navigator.pop(ctx); _loadSavedAddressForAsset(ss); });
+          final isSelected = _cryptoSelectedNetwork == net;
+          return ListTile(
+            leading: CoinIcon(symbol: curLabel, size: 24, showBackground: true),
+            title: Text(net, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+            subtitle: Text('$curLabel ($net Network)', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF))),
+            trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 20) : null,
+            onTap: () {
+              ss(() {
+                _cryptoSelectedAsset = asset['code']!;
+                _cryptoSelectedNetwork = net;
+              });
+              Navigator.pop(ctx);
+              _loadSavedAddressForAsset(ss);
+            },
+          );
         }),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
       ])));
   }
 
@@ -1378,13 +1430,20 @@ class _DepositScreenState extends State<DepositScreen> {
             decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.all(Radius.circular(12))),
             child: QrImageView(data: _cryptoPayAddress!, size: 110, backgroundColor: Colors.white))),
           const SizedBox(height: 12),
-          RichText(text: TextSpan(
-            style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const TextSpan(text: 'Send only '),
-              TextSpan(text: '$label ($_cryptoSelectedNetwork)', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
-              const TextSpan(text: ' to this address.'),
-            ])),
+              CoinIcon(symbol: label, size: 16),
+              const SizedBox(width: 6),
+              RichText(text: TextSpan(
+                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
+                children: [
+                  const TextSpan(text: 'Send only '),
+                  TextSpan(text: '$label ($_cryptoSelectedNetwork)', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                  const TextSpan(text: ' to this address.'),
+                ])),
+            ],
+          ),
         ])),
       const SizedBox(height: 16),
       Padding(padding: const EdgeInsets.only(left: 4, bottom: 6),
