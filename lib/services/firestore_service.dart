@@ -673,8 +673,7 @@ class FirestoreService {
     return txRef.id;
   }
 
-  /// Stream all transactions with status=processing across all users.
-  /// Only accessible by admin. The admin Firestore rules will enforce this.
+  /// Stream transactions for admin queue with optional status filtering.
   Stream<List<TransactionModel>> watchAdminProcessingQueue() {
     return _db
         .collection(FirestoreCollections.transactions)
@@ -687,6 +686,26 @@ class FirestoreService {
             .toList());
   }
 
+  /// Stream all transactions for admin with optional status filter.
+  Stream<List<TransactionModel>> watchAllAdminTransactions({String? statusFilter}) {
+    Query<Map<String, dynamic>> query = _db
+        .collection(FirestoreCollections.transactions)
+        .orderBy('createdAt', descending: true)
+        .limit(200);
+
+    if (statusFilter != null && statusFilter.isNotEmpty && statusFilter != 'all') {
+      query = _db
+          .collection(FirestoreCollections.transactions)
+          .where('status', isEqualTo: statusFilter)
+          .orderBy('createdAt', descending: true)
+          .limit(200);
+    }
+
+    return query.snapshots().map((snap) => snap.docs
+        .map((doc) => TransactionModel.fromMap(doc.data()))
+        .toList());
+  }
+
   /// Admin: mark a processing transaction as completed.
   Future<void> adminCompleteTransaction(String txId, {String? adminNote}) async {
     final data = <String, dynamic>{
@@ -695,10 +714,25 @@ class FirestoreService {
       if (adminNote != null) 'adminNote': adminNote,
     };
     await _db.collection(FirestoreCollections.transactions).doc(txId).update(data);
+
+    // Notify user of completion
+    final txSnap = await _db.collection(FirestoreCollections.transactions).doc(txId).get();
+    if (txSnap.exists) {
+      final tx = TransactionModel.fromMap(txSnap.data()!);
+      await createNotification(
+        uid: tx.uid,
+        type: tx.type == TransactionType.withdrawal ? NotificationType.withdrawal : NotificationType.general,
+        title: tx.type == TransactionType.withdrawal ? 'Withdrawal Completed' : 'Send Request Completed',
+        body: tx.type == TransactionType.withdrawal
+            ? 'Your withdrawal of ₦${tx.amountNaira.toStringAsFixed(2)} has been successfully processed and transferred to your bank.'
+            : 'Your send request for ${tx.amountCoin ?? ""} ${tx.coinSymbol ?? ""} has been completed.',
+        preview: 'Transaction completed successfully',
+      );
+    }
   }
 
-  /// Admin: mark a processing transaction as failed and refund the user.
-  Future<void> adminFailTransaction(String txId, String reason) async {
+  /// Admin: mark a processing transaction as failed/cancelled/voided and atomically refund the user.
+  Future<void> adminFailTransaction(String txId, String reason, {TransactionStatus status = TransactionStatus.cancelled}) async {
     final txSnap = await _db.collection(FirestoreCollections.transactions).doc(txId).get();
     if (!txSnap.exists) return;
     final tx = TransactionModel.fromMap(txSnap.data()!);
@@ -710,7 +744,7 @@ class FirestoreService {
       if (!walletSnap.exists) return;
       final wallet = WalletModel.fromMap(walletSnap.data()!);
 
-      // Refund: for withdrawal, add NGN back. For send, add crypto back.
+      // Refund: for withdrawal, add NGN amount + fee back. For send, add crypto + fee back.
       if (tx.type == TransactionType.withdrawal) {
         final refundAmount = tx.amountNaira + (tx.feeAmount ?? 0);
         txn.set(
@@ -740,20 +774,20 @@ class FirestoreService {
       txn.update(
         _db.collection(FirestoreCollections.transactions).doc(txId),
         {
-          'status': TransactionStatus.failed.value,
+          'status': status.value,
           'completedAt': Timestamp.fromDate(DateTime.now()),
           'adminNote': reason,
         },
       );
     });
 
-    // Notify user of failure
+    // Notify user of failure/refund
     await createNotification(
       uid: tx.uid,
       type: tx.type == TransactionType.withdrawal ? NotificationType.withdrawal : NotificationType.general,
-      title: tx.type == TransactionType.withdrawal ? 'Withdrawal Failed' : 'Send Failed',
-      body: 'Your ${tx.type == TransactionType.withdrawal ? 'withdrawal' : 'send'} request was declined. Reason: $reason. Your funds have been refunded.',
-      preview: 'Transaction failed: $reason',
+      title: tx.type == TransactionType.withdrawal ? 'Withdrawal Declined & Refunded' : 'Send Request Declined',
+      body: 'Your ${tx.type == TransactionType.withdrawal ? 'withdrawal of ₦${tx.amountNaira.toStringAsFixed(2)}' : 'send'} was declined ($reason). The funds have been refunded to your wallet.',
+      preview: 'Transaction declined: $reason (Refunded)',
     );
   }
 

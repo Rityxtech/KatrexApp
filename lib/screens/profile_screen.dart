@@ -20,6 +20,7 @@ import 'notifications_screen.dart';
 import 'profile_modals.dart';
 import 'help_center_screen.dart';
 import 'terms_screen.dart';
+import 'admin_dashboard_screen.dart';
 import '../widgets/profile_completion_modal.dart';
 import '../widgets/right_slide_panel.dart';
 import '../widgets/app_avatar.dart';
@@ -527,6 +528,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
+                  if (user?.isAdmin == true) ...[
+                    const SizedBox(height: 16),
+                    _sectionTitle('Administration'),
+                    _glassCard(
+                      child: Column(
+                        children: [
+                          _menuItem(
+                            icon: Icons.admin_panel_settings_rounded,
+                            iconColor: const Color(0xFFEF4444),
+                            bgColor: const Color(0xFFEF4444),
+                            title: 'Admin Management',
+                            subtitle: 'Approve, reject, or void withdrawals',
+                            showDivider: false,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+                            ),
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+                              ),
+                              child: Text(
+                                'ADMIN PORTAL',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: const Color(0xFFEF4444),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _sectionTitle('More'),
                   _glassCard(

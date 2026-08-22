@@ -1,10 +1,11 @@
-import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../services/firestore_service.dart';
@@ -13,6 +14,7 @@ import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 import '../widgets/pin_input_sheet.dart';
 import 'profile_modals.dart';
+import 'transactions_screen.dart';
 
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
@@ -30,13 +32,14 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   int _selectedBankIndex = 0;
 
   static const double _fee = 50.0;
+  static const List<double> _quickAmountPresets = [2000, 5000, 10000, 20000, 50000, 100000];
 
   @override
   void initState() {
     super.initState();
     _amountController.addListener(() => setState(() {}));
     _amountFocusNode.addListener(() {
-      if (_amountFocusNode.hasFocus) _scrollToField(200);
+      if (_amountFocusNode.hasFocus) _scrollToField(180);
     });
   }
 
@@ -72,16 +75,21 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   bool get _exceedsBalance => _amount + _fee > _maxBalance;
 
   String _formatCurrency(double val) {
-    return '₦' + val.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '₦${NumberFormat('#,##0.00').format(val)}';
   }
 
-  void _setMaxAmount() {
-    final max = _maxBalance - _fee;
-    if (max > 0) {
-      _amountController.text = max.toStringAsFixed(0);
-    } else {
+  void _setPercentageAmount(double fraction) {
+    final available = _maxBalance - _fee;
+    if (available <= 0) {
       _amountController.text = '0';
+      return;
     }
+    final target = (available * fraction).floorToDouble();
+    _amountController.text = target.toStringAsFixed(0);
+  }
+
+  void _setPresetAmount(double amount) {
+    _amountController.text = amount.toStringAsFixed(0);
   }
 
   List<Map<String, dynamic>> get _paymentMethods {
@@ -95,6 +103,149 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => const PaymentMethodsModal(),
     ).then((_) => setState(() {}));
+  }
+
+  void _showAccountPicker(List<Map<String, dynamic>> paymentMethods) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0F1423),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Select Destination Bank',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openAddBankModal();
+                    },
+                    child: Text(
+                      '+ Add New',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF60A5FA),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...List.generate(paymentMethods.length, (index) {
+                final bank = paymentMethods[index];
+                final isSelected = _selectedBankIndex == index;
+                final bankName = bank['bankName'] as String? ?? 'Bank';
+                final accountNumber = bank['accountNumber'] as String? ?? '';
+                final accountName = bank['accountName'] as String? ?? '';
+                final initial = bankName.isNotEmpty ? bankName[0].toUpperCase() : 'B';
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedBankIndex = index);
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFF2563EB).withOpacity(0.12)
+                          : Colors.white.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF2563EB).withOpacity(0.5)
+                            : Colors.white.withOpacity(0.08),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF1E3A8A).withOpacity(0.4),
+                            border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
+                          ),
+                          child: Center(
+                            child: Text(
+                              initial,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: const Color(0xFF60A5FA),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                bankName,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$accountNumber • $accountName',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF9CA3AF),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isSelected)
+                          const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 20),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _showConfirmationSheet(Map<String, dynamic> bank) async {
@@ -122,18 +273,18 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       return;
     }
     if (_exceedsBalance) {
-      _showError('Amount exceeds available balance');
+      _showError('Amount + fee exceeds available balance');
       return;
     }
 
-    // PIN gate
+    // PIN Gate
     final success = await PinInputSheet.ensurePinRequired(context);
     if (success != true) return;
 
     setState(() => _isProcessing = true);
     try {
       final uid = context.read<AuthProvider>().firebaseUser!.uid;
-      await FirestoreService().requestWithdrawal(
+      final txId = await FirestoreService().requestWithdrawal(
         uid: uid,
         amount: _amount,
         bankName: bank['bankName'] as String? ?? '',
@@ -141,19 +292,16 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         accountName: bank['accountName'] as String? ?? '',
         bankCode: bank['bankCode'] as String?,
       );
+
       if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Withdrawal of ${_formatCurrency(_amount)} submitted for processing. You will be notified when completed.',
-              style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 5),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+        _amountController.clear();
+        await _showProcessingResultSheet(
+          txId: txId,
+          amount: _amount,
+          receiveAmount: _receiveAmount,
+          bankName: bank['bankName'] as String? ?? '',
+          accountNumber: bank['accountNumber'] as String? ?? '',
+          accountName: bank['accountName'] as String? ?? '',
         );
       }
     } catch (e) {
@@ -161,6 +309,31 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
+  }
+
+  Future<void> _showProcessingResultSheet({
+    required String txId,
+    required double amount,
+    required double receiveAmount,
+    required String bankName,
+    required String accountNumber,
+    required String accountName,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (ctx) => _WithdrawalStatusModal(
+        txId: txId,
+        amount: amount,
+        receiveAmount: receiveAmount,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        accountName: accountName,
+      ),
+    );
   }
 
   void _showError(String msg) {
@@ -180,7 +353,6 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     final wallet = context.watch<WalletProvider>();
     final ngnBalance = wallet.nairaBalance;
 
-    // Clamp selected index if list shrinks
     if (_selectedBankIndex >= paymentMethods.length && paymentMethods.isNotEmpty) {
       _selectedBankIndex = 0;
     }
@@ -203,18 +375,20 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                         controller: _scrollController,
                         padding: EdgeInsets.fromLTRB(
                           16,
-                          24,
+                          12,
                           16,
                           120 + MediaQuery.viewInsetsOf(context).bottom,
                         ),
                         children: [
-                          _buildAmountSection(ngnBalance),
-                          const SizedBox(height: 24),
-                          _buildDestinationSection(paymentMethods),
-                          const SizedBox(height: 24),
-                          _buildBreakdownSection(),
-                          const SizedBox(height: 16),
-                          _buildInfoBanner(),
+                          _buildBalanceHero(ngnBalance),
+                          const SizedBox(height: 18),
+                          _buildAmountInputCard(ngnBalance),
+                          const SizedBox(height: 18),
+                          _buildDestinationCard(paymentMethods),
+                          const SizedBox(height: 18),
+                          _buildBreakdownCard(),
+                          const SizedBox(height: 14),
+                          _buildSecurityBadge(),
                         ],
                       ),
                       Positioned(
@@ -236,17 +410,17 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
@@ -255,68 +429,259 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                   child: const Center(
-                    child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 18),
+                    child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 22),
                   ),
                 ),
               ),
             ),
           ),
-          Text(
-            'Withdraw Funds',
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -0.5),
+          Row(
+            children: [
+              Text(
+                'Withdraw NGN',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.bolt_rounded, size: 10, color: Color(0xFF10B981)),
+                    const SizedBox(width: 2),
+                    Text(
+                      'INSTANT',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF10B981),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const NotificationIcon(),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+            ),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: const Center(
+                child: Icon(Icons.receipt_long_rounded, color: Colors.white70, size: 18),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAmountSection(double ngnBalance) {
+  Widget _buildBalanceHero(double ngnBalance) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        color: const Color(0xFF0F1423).withOpacity(0.7),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF1E293B).withOpacity(0.3),
+            const Color(0xFF0F172A).withOpacity(0.6),
+          ],
+        ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Available Balance',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-              Text('₦' + NumberFormat('#,##0.00').format(ngnBalance),
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+              Row(
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF10B981), size: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Available Balance',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                'Fee: ₦50.00',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF6B7280),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
+          Text(
+            _formatCurrency(ngnBalance),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Percentage shortcuts
+          Row(
+            children: [
+              _percentageChip('25%', () => _setPercentageAmount(0.25)),
+              const SizedBox(width: 8),
+              _percentageChip('50%', () => _setPercentageAmount(0.50)),
+              const SizedBox(width: 8),
+              _percentageChip('75%', () => _setPercentageAmount(0.75)),
+              const SizedBox(width: 8),
+              _percentageChip('Max (100%)', () => _setPercentageAmount(1.0), isPrimary: true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _percentageChip(String label, VoidCallback onTap, {bool isPrimary = false}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: isPrimary
+                ? const Color(0xFF2563EB).withOpacity(0.2)
+                : Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isPrimary
+                  ? const Color(0xFF2563EB).withOpacity(0.4)
+                  : Colors.white.withOpacity(0.08),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: isPrimary ? const Color(0xFF60A5FA) : Colors.white70,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAmountInputCard(double ngnBalance) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1423).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'AMOUNT TO WITHDRAW',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF6B7280),
+                  letterSpacing: 1.4,
+                ),
+              ),
+              if (_amount > 0)
+                GestureDetector(
+                  onTap: () => _amountController.clear(),
+                  child: Text(
+                    'Clear',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('₦',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white54)),
-              const SizedBox(width: 4),
+              Text(
+                '₦',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: _amount > 0 ? const Color(0xFF10B981) : Colors.white30,
+                ),
+              ),
+              const SizedBox(width: 6),
               Flexible(
                 child: TextField(
                   controller: _amountController,
                   focusNode: _amountFocusNode,
                   keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
+                  textAlign: TextAlign.left,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 42, fontWeight: FontWeight.w900, color: Colors.white),
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
                   decoration: InputDecoration(
                     hintText: '0',
                     hintStyle: GoogleFonts.plusJakartaSans(
-                        fontSize: 42, fontWeight: FontWeight.w900, color: Colors.white24),
+                      fontSize: 38,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white24,
+                    ),
                     border: InputBorder.none,
                     isDense: true,
                   ),
@@ -324,40 +689,92 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          // Inline status feedback
           if (_exceedsBalance)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Text('Exceeds available balance',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFEF4444))),
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, size: 14, color: Color(0xFFEF4444)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Exceeds available balance (need ${_formatCurrency(_amount + _fee)} incl. ₦50 fee)',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             )
           else if (_amount < AppConstants.minWithdrawal && _amount > 0)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Text('Minimum withdrawal: ₦' + NumberFormat('#,##0').format(AppConstants.minWithdrawal),
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFF59E0B))),
-            ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: _setMaxAmount,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                color: const Color(0xFFF59E0B).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.2)),
               ),
-              child: Text('Max',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white70)),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFF59E0B)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Minimum withdrawal is ${_formatCurrency(AppConstants.minWithdrawal)}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFF59E0B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 14),
+          // Quick amount chip presets
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _quickAmountPresets.map((preset) {
+                final isSelected = _amount == preset;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => _setPresetAmount(preset),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF10B981).withOpacity(0.15)
+                            : Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF10B981).withOpacity(0.4)
+                              : Colors.white.withOpacity(0.08),
+                        ),
+                      ),
+                      child: Text(
+                        '₦${NumberFormat('#,##0').format(preset)}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? const Color(0xFF34D399) : Colors.white70,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ],
@@ -365,110 +782,136 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     );
   }
 
-  Widget _buildDestinationSection(List<Map<String, dynamic>> paymentMethods) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Withdraw To',
-                style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-            GestureDetector(
-              onTap: _openAddBankModal,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text('+ Add Account',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF60A5FA))),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (paymentMethods.isEmpty)
-          _buildEmptyBankState()
-        else
-          ...List.generate(paymentMethods.length, (index) {
-            final bank = paymentMethods[index];
-            final isSelected = _selectedBankIndex == index;
-            final bankName = bank['bankName'] as String? ?? 'Bank';
-            final accountNumber = bank['accountNumber'] as String? ?? '';
-            final accountName = bank['accountName'] as String? ?? '';
-            final initial = bankName.isNotEmpty ? bankName[0].toUpperCase() : 'B';
+  Widget _buildDestinationCard(List<Map<String, dynamic>> paymentMethods) {
+    if (paymentMethods.isEmpty) {
+      return _buildEmptyBankState();
+    }
 
-            return GestureDetector(
-              onTap: () => setState(() => _selectedBankIndex = index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? const Color(0xFF2563EB).withOpacity(0.08)
-                      : Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFF2563EB).withOpacity(0.4)
-                        : Colors.white.withOpacity(0.08),
+    final selectedBank = paymentMethods[_selectedBankIndex];
+    final bankName = selectedBank['bankName'] as String? ?? 'Bank Account';
+    final accountNumber = selectedBank['accountNumber'] as String? ?? '';
+    final accountName = selectedBank['accountName'] as String? ?? '';
+    final initial = bankName.isNotEmpty ? bankName[0].toUpperCase() : 'B';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1423).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'DESTINATION ACCOUNT',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF6B7280),
+                  letterSpacing: 1.4,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _showAccountPicker(paymentMethods),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    paymentMethods.length > 1 ? 'Switch Account' : '+ Add Bank',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF60A5FA),
+                    ),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF1E3A8A).withOpacity(0.3),
-                        border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
-                      ),
-                      child: Center(
-                        child: Text(initial,
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16, fontWeight: FontWeight.w900, color: const Color(0xFF60A5FA))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF1E3A8A).withOpacity(0.3),
+                    border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initial,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF60A5FA),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Text(bankName,
+                          Flexible(
+                            child: Text(
+                              bankName,
                               style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-                          const SizedBox(height: 2),
-                          Text(accountNumber,
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF))),
-                          Text(accountName,
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF))),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.verified_rounded, size: 14, color: Color(0xFF10B981)),
                         ],
                       ),
-                    ),
-                    if (isSelected)
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF2563EB).withOpacity(0.2),
+                      const SizedBox(height: 2),
+                      Text(
+                        accountNumber,
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFE5E7EB),
+                          letterSpacing: 0.5,
                         ),
-                        child: const Icon(Icons.check_rounded, size: 12, color: Color(0xFF60A5FA)),
                       ),
-                  ],
+                      Text(
+                        accountName,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
-      ],
+                const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF6B7280)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -477,12 +920,11 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       onTap: _openAddBankModal,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 32),
+        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: Colors.white.withOpacity(0.08), style: BorderStyle.solid),
+          color: const Color(0xFF0F1423).withOpacity(0.5),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Column(
           children: [
@@ -491,29 +933,45 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF2563EB).withOpacity(0.1),
+                color: const Color(0xFF2563EB).withOpacity(0.12),
+                border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.2)),
               ),
-              child: const Icon(Icons.account_balance_rounded,
-                  color: Color(0xFF60A5FA), size: 22),
+              child: const Icon(Icons.account_balance_rounded, color: Color(0xFF60A5FA), size: 22),
             ),
             const SizedBox(height: 12),
-            Text('No bank accounts added',
-                style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text(
+              'No Bank Account Added',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text('Add a bank account to withdraw funds',
-                style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF))),
-            const SizedBox(height: 16),
+            Text(
+              'Add a bank account in your name to withdraw funds',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF9CA3AF),
+              ),
+            ),
+            const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
               decoration: BoxDecoration(
                 color: const Color(0xFF2563EB),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text('+ Add Bank Account',
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+              child: Text(
+                '+ Add Bank Account',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),
@@ -521,71 +979,87 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     );
   }
 
-  Widget _buildBreakdownSection() {
+  Widget _buildBreakdownCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0F1423).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         children: [
-          _infoRow('Amount', _amount > 0 ? '₦' + NumberFormat('#,##0.00').format(_amount) : '₦0.00'),
+          _infoRow('Withdrawal Amount', _amount > 0 ? _formatCurrency(_amount) : '₦0.00'),
           const SizedBox(height: 10),
-          _infoRow('Processing Fee', '₦' + NumberFormat('#,##0.00').format(_fee),
-              valueColor: const Color(0xFFEF4444)),
+          _infoRow('Processing Fee', _formatCurrency(_fee), valueColor: const Color(0xFFEF4444)),
+          const SizedBox(height: 10),
+          _infoRow('Estimated Settlement', '⚡ Instant - 15 Mins', valueColor: const Color(0xFF60A5FA)),
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
+            padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(color: Color(0x1AFFFFFF), height: 1),
           ),
           _infoRow(
             'You Receive',
-            _receiveAmount > 0 ? '₦' + NumberFormat('#,##0.00').format(_receiveAmount) : '₦0.00',
+            _receiveAmount > 0 ? _formatCurrency(_receiveAmount) : '₦0.00',
             valueColor: const Color(0xFF10B981),
             bold: true,
+            large: true,
           ),
         ],
       ),
     );
   }
 
-  Widget _infoRow(String label, String value,
-      {Color? valueColor, bool bold = false}) {
+  Widget _infoRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool bold = false,
+    bool large = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-                color: const Color(0xFF9CA3AF))),
-        Text(value,
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
-                color: valueColor ?? Colors.white)),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: large ? 14 : 12,
+            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+            color: const Color(0xFF9CA3AF),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: large ? 16 : 13,
+            fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+            color: valueColor ?? Colors.white,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildInfoBanner() {
+  Widget _buildSecurityBadge() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF59E0B).withOpacity(0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.2)),
+        color: const Color(0xFF10B981).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.15)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: Color(0xFFF59E0B), size: 16),
-          const SizedBox(width: 10),
+          const Icon(Icons.shield_outlined, color: Color(0xFF10B981), size: 16),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Withdrawals are processed within 24 hours. You will receive a notification once completed.',
+              'Bank-grade encrypted transfers. Withdrawals are processed to your verified account only.',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFFF59E0B)),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF10B981),
+              ),
             ),
           ),
         ],
@@ -594,20 +1068,32 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   Widget _buildActionButton(List<Map<String, dynamic>> paymentMethods) {
-    final canWithdraw = _amount >= AppConstants.minWithdrawal &&
-        !_exceedsBalance &&
-        paymentMethods.isNotEmpty &&
-        !_isProcessing;
+    final hasBank = paymentMethods.isNotEmpty;
+    final validAmount = _amount >= AppConstants.minWithdrawal && !_exceedsBalance;
+    final canWithdraw = hasBank && validAmount && !_isProcessing;
+
+    String buttonText = 'Withdraw Funds';
+    if (!hasBank) {
+      buttonText = 'Add Bank Account First';
+    } else if (_amount == 0) {
+      buttonText = 'Enter Amount';
+    } else if (_amount < AppConstants.minWithdrawal) {
+      buttonText = 'Min Withdrawal ${_formatCurrency(AppConstants.minWithdrawal)}';
+    } else if (_exceedsBalance) {
+      buttonText = 'Insufficient Balance';
+    } else {
+      buttonText = 'Withdraw ${_formatCurrency(_amount)}';
+    }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
             Colors.black.withOpacity(0),
-            Colors.black.withOpacity(0.9),
+            Colors.black.withOpacity(0.95),
           ],
         ),
       ),
@@ -617,15 +1103,23 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 final bank = paymentMethods[_selectedBankIndex];
                 _showConfirmationSheet(bank);
               }
-            : null,
+            : (!hasBank ? _openAddBankModal : null),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: canWithdraw ? const Color(0xFFEF4444) : const Color(0xFF1E293B),
+            color: canWithdraw
+                ? const Color(0xFF10B981)
+                : (hasBank ? const Color(0xFF1E293B) : const Color(0xFF2563EB)),
             borderRadius: BorderRadius.circular(16),
             boxShadow: canWithdraw
-                ? [BoxShadow(color: const Color(0xFFEF4444).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 6))]
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withOpacity(0.35),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
                 : [],
           ),
           child: Center(
@@ -636,11 +1130,12 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
                 : Text(
-                    paymentMethods.isEmpty ? 'Add Bank Account First' : 'Withdraw Funds',
+                    buttonText,
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: canWithdraw ? Colors.white : const Color(0xFF4B5563)),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: canWithdraw || !hasBank ? Colors.white : const Color(0xFF6B7280),
+                    ),
                   ),
           ),
         ),
@@ -694,49 +1189,59 @@ class _ConfirmWithdrawSheet extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFFEF4444).withOpacity(0.1),
-              border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+              color: const Color(0xFF10B981).withOpacity(0.12),
+              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
             ),
-            child: const Icon(Icons.send_rounded, color: Color(0xFFEF4444), size: 24),
+            child: const Icon(Icons.send_rounded, color: Color(0xFF10B981), size: 24),
           ),
           const SizedBox(height: 12),
-          Text('Confirm Withdrawal',
-              style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+          Text(
+            'Confirm Withdrawal',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('Please review before confirming',
-              style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF))),
-          const SizedBox(height: 24),
+          Text(
+            'Please review your transaction details before proceeding',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF9CA3AF),
+            ),
+          ),
+          const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Column(
               children: [
-                _row('Amount', '₦' + NumberFormat('#,##0.00').format(amount)),
+                _row('Amount', '₦${NumberFormat('#,##0.00').format(amount)}'),
                 const SizedBox(height: 10),
-                _row('Fee', '₦' + NumberFormat('#,##0.00').format(fee),
-                    valueColor: const Color(0xFFEF4444)),
+                _row('Fee', '₦${NumberFormat('#,##0.00').format(fee)}', valueColor: const Color(0xFFEF4444)),
                 const SizedBox(height: 10),
-                _row('You Receive', '₦' + NumberFormat('#,##0.00').format(receiveAmount),
+                _row('You Receive', '₦${NumberFormat('#,##0.00').format(receiveAmount)}',
                     valueColor: const Color(0xFF10B981), bold: true),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: Divider(color: Color(0x1AFFFFFF), height: 1),
                 ),
                 _row('Bank', bankName),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 _row('Account Number', accountNumber),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 _row('Account Name', accountName),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -750,17 +1255,18 @@ class _ConfirmWithdrawSheet extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Processing time: up to 24 hours',
+                    'Withdrawal will be queued and sent to your bank account securely.',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFFF59E0B)),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFF59E0B),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -773,11 +1279,15 @@ class _ConfirmWithdrawSheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Center(
-                        child: Text('Cancel',
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white70))),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -789,21 +1299,26 @@ class _ConfirmWithdrawSheet extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
+                      color: const Color(0xFF10B981),
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                            color: const Color(0xFFEF4444).withOpacity(0.3),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4)),
+                          color: const Color(0xFF10B981).withOpacity(0.35),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
                     child: Center(
-                        child: Text('Confirm Withdrawal',
-                            style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white))),
+                      child: Text(
+                        'Confirm & Authorize',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -814,22 +1329,245 @@ class _ConfirmWithdrawSheet extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, String value,
-      {Color? valueColor, bool bold = false}) {
+  Widget _row(String label, String value, {Color? valueColor, bool bold = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: GoogleFonts.plusJakartaSans(
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF9CA3AF),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+            color: valueColor ?? Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Withdrawal Processing Status Modal ──────────────────────────────────────
+
+class _WithdrawalStatusModal extends StatelessWidget {
+  final String txId;
+  final double amount;
+  final double receiveAmount;
+  final String bankName;
+  final String accountNumber;
+  final String accountName;
+
+  const _WithdrawalStatusModal({
+    required this.txId,
+    required this.amount,
+    required this.receiveAmount,
+    required this.bankName,
+    required this.accountNumber,
+    required this.accountName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F1423),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFF59E0B).withOpacity(0.12),
+                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+              ),
+              child: const Center(
+                child: Icon(Icons.hourglass_top_rounded, color: Color(0xFFF59E0B), size: 30),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Withdrawal Processing',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Your request of ₦${NumberFormat('#,##0.00').format(amount)} is in the processing queue.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF9CA3AF))),
-        Text(value,
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
-                color: valueColor ?? Colors.white)),
+                color: const Color(0xFF9CA3AF),
+              ),
+            ),
+            const SizedBox(height: 22),
+            // Timeline
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: Column(
+                children: [
+                  _timelineItem(
+                    title: 'Withdrawal Requested',
+                    subtitle: 'Funds securely deducted from your wallet',
+                    isDone: true,
+                    isActive: false,
+                  ),
+                  _timelineDivider(),
+                  _timelineItem(
+                    title: 'Admin Review & Transfer',
+                    subtitle: 'Payout queued to $bankName ($accountNumber)',
+                    isDone: false,
+                    isActive: true,
+                  ),
+                  _timelineDivider(),
+                  _timelineItem(
+                    title: 'Bank Credit',
+                    subtitle: 'Funds delivered to $accountName',
+                    isDone: false,
+                    isActive: false,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withOpacity(0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    'Done',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _timelineItem({
+    required String title,
+    required String subtitle,
+    required bool isDone,
+    required bool isActive,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isDone
+                ? const Color(0xFF10B981)
+                : (isActive ? const Color(0xFFF59E0B) : Colors.white12),
+          ),
+          child: Center(
+            child: isDone
+                ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+                : (isActive
+                    ? const SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 1.5,
+                        ),
+                      )
+                    : const Icon(Icons.circle, color: Colors.white24, size: 6)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: isDone || isActive ? Colors.white : const Color(0xFF6B7280),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF9CA3AF),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _timelineDivider() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 10, top: 4, bottom: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          width: 2,
+          height: 16,
+          color: Colors.white12,
+        ),
+      ),
     );
   }
 }

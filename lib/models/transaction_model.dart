@@ -109,6 +109,7 @@ class TransactionModel {
 
   final double? feeAmount;
   final String? feeSymbol;
+  final String? adminNote;
 
   TransactionModel({
     required this.id,
@@ -128,6 +129,7 @@ class TransactionModel {
     this.paymentMethod,
     this.feeAmount,
     this.feeSymbol,
+    this.adminNote,
   });
 
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
@@ -151,6 +153,7 @@ class TransactionModel {
       paymentMethod: map['paymentMethod'] as String?,
       feeAmount: (map['feeAmount'] as num?)?.toDouble(),
       feeSymbol: map['feeSymbol'] as String?,
+      adminNote: map['adminNote'] as String?,
     );
   }
 
@@ -175,6 +178,7 @@ class TransactionModel {
       'paymentMethod': paymentMethod,
       'feeAmount': feeAmount,
       'feeSymbol': feeSymbol,
+      'adminNote': adminNote,
     };
   }
 }
