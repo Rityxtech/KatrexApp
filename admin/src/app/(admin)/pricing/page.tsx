@@ -32,8 +32,8 @@ export default function PricingPage() {
   const coins = market.filter((m: any) => m.id !== "_ngn_rate" && m.symbol);
   const ngnRate = market.find((m: any) => m.id === "_ngn_rate")?.rate || 1450;
 
-  const feeConfig = pricing.find((p: any) => p.id === "fees") || {};
-  const limitsConfig = pricing.find((p: any) => p.id === "limits") || {};
+  const feeConfig = useMemo(() => pricing.find((p: any) => p.id === "fees") || {}, [pricing]);
+  const limitsConfig = useMemo(() => pricing.find((p: any) => p.id === "limits") || {}, [pricing]);
 
   // ─── Fee state ─────────────────────────────────────────────────
   const [withdrawalFee, setWithdrawalFee] = useState("");
@@ -60,19 +60,22 @@ export default function PricingPage() {
 
   // ─── Sync from Firestore ───────────────────────────────────────
   useEffect(() => {
-    setWithdrawalFee(feeConfig.withdrawalFee || "NGN 50");
-    setDepositFee(feeConfig.depositFee || "0%");
-    setSwapFee(feeConfig.swapFee || "0.5%");
-    setP2pCommission(feeConfig.p2pCommission || "1%");
-    setAirtimeDiscount(String(feeConfig.airtimeDiscount || "3.00"));
-    setDataMarkup(String(feeConfig.dataMarkup || "50.00"));
-    setP2pMin(limitsConfig.p2pMin || "\u20a65,000");
-    setP2pMax(limitsConfig.p2pMax || "\u20a65,000,000");
-    setCryptoMin(limitsConfig.cryptoMin || "$10.00");
-    setCryptoMax(limitsConfig.cryptoMax || "$50,000");
-    setBillMin(limitsConfig.billMin || "\u20a6100");
-    setBillMax(limitsConfig.billMax || "\u20a6100,000");
-  }, [feeConfig, limitsConfig]);
+    const fees = pricing.find((p: any) => p.id === "fees") || {};
+    const limits = pricing.find((p: any) => p.id === "limits") || {};
+
+    setWithdrawalFee(fees.withdrawalFee || "NGN 50");
+    setDepositFee(fees.depositFee || "0%");
+    setSwapFee(fees.swapFee || "0.5%");
+    setP2pCommission(fees.p2pCommission || "1%");
+    setAirtimeDiscount(String(fees.airtimeDiscount || "3.00"));
+    setDataMarkup(String(fees.dataMarkup || "50.00"));
+    setP2pMin(limits.p2pMin || "₦5,000");
+    setP2pMax(limits.p2pMax || "₦5,000,000");
+    setCryptoMin(limits.cryptoMin || "$10.00");
+    setCryptoMax(limits.cryptoMax || "$50,000");
+    setBillMin(limits.billMin || "₦100");
+    setBillMax(limits.billMax || "₦100,000");
+  }, [pricing]);
 
   function flash(type: "success" | "error", text: string) {
     setToast({ type, text });

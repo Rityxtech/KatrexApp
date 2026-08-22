@@ -18,12 +18,12 @@ const TAB_CONFIG: { id: SettingsTab; label: string; icon: string; badge?: string
 export default function SettingsPage() {
   const { data: settings, loading } = useAppSettings();
 
-  const systemConfig = settings.find((s: any) => s.id === "system") || {};
-  const modules = settings.find((s: any) => s.id === "modules") || {};
-  const banners = settings.filter((s: any) => s.type === "banner" || s.collection === "banners");
-  const onboarding = settings.filter((s: any) => s.type === "onboarding" || s.collection === "onboarding");
-  const faqs = settings.filter((s: any) => s.type === "faq" || s.collection === "faqs");
-  const advanced = settings.find((s: any) => s.id === "advanced") || {};
+  const systemConfig = useMemo(() => settings.find((s: any) => s.id === "system") || {}, [settings]);
+  const modules = useMemo(() => settings.find((s: any) => s.id === "modules") || {}, [settings]);
+  const banners = useMemo(() => settings.filter((s: any) => s.type === "banner" || s.collection === "banners"), [settings]);
+  const onboarding = useMemo(() => settings.filter((s: any) => s.type === "onboarding" || s.collection === "onboarding"), [settings]);
+  const faqs = useMemo(() => settings.filter((s: any) => s.type === "faq" || s.collection === "faqs"), [settings]);
+  const advanced = useMemo(() => settings.find((s: any) => s.id === "advanced") || {}, [settings]);
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
@@ -59,21 +59,24 @@ export default function SettingsPage() {
 
   // ─── Sync state from Firestore ─────────────────────────────────
   useEffect(() => {
-    if (systemConfig) {
-      setMaintenanceMode(systemConfig.maintenanceMode === true);
-      setAndroidVersion(systemConfig.androidVersion || "");
-      setIosVersion(systemConfig.iosVersion || "");
-      setDefaultCurrency(systemConfig.defaultCurrency || "NGN");
+    const sys = settings.find((s: any) => s.id === "system");
+    const mod = settings.find((s: any) => s.id === "modules");
+
+    if (sys) {
+      setMaintenanceMode(sys.maintenanceMode === true);
+      setAndroidVersion(sys.androidVersion || "");
+      setIosVersion(sys.iosVersion || "");
+      setDefaultCurrency(sys.defaultCurrency || "NGN");
     }
-    if (modules) {
+    if (mod) {
       setModuleState({
-        p2p: modules.p2p !== false,
-        crypto: modules.crypto !== false,
-        airtime: modules.airtime !== false,
-        giftcard: modules.giftcard !== false,
+        p2p: mod.p2p !== false,
+        crypto: mod.crypto !== false,
+        airtime: mod.airtime !== false,
+        giftcard: mod.giftcard !== false,
       });
     }
-  }, [systemConfig, modules]);
+  }, [settings]);
 
   function flash(type: "success" | "error", text: string) {
     setToast({ type, text });
