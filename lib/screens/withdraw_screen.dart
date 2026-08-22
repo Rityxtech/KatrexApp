@@ -14,7 +14,7 @@ import '../widgets/app_background.dart';
 import '../widgets/notification_icon.dart';
 import '../widgets/pin_input_sheet.dart';
 import 'profile_modals.dart';
-import 'transactions_screen.dart';
+import 'transaction_history_screen.dart';
 
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
@@ -476,7 +476,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+              MaterialPageRoute(builder: (_) => const TransactionHistoryScreen()),
             ),
             child: Container(
               width: 38,
