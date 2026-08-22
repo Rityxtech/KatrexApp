@@ -274,7 +274,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
       }
 
       if (mounted && numbers.isNotEmpty) {
-        setState(() => _recentNumbers = List.from(numbers));
+        setState(() => _recentNumbers = numbers.take(3).toList());
       }
 
       // Also check Firestore transactions to merge
@@ -292,9 +292,9 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
           ));
           await RecentNumbers.save(uid, tx.recipient!, _networkIndexFromName(tx.networkProvider));
         }
-        if (numbers.length >= 5) break;
+        if (numbers.length >= 3) break;
       }
-      if (mounted) setState(() => _recentNumbers = numbers.take(5).toList());
+      if (mounted) setState(() => _recentNumbers = numbers.take(3).toList());
     } catch (_) {}
   }
 

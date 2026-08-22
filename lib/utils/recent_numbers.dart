@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Each user gets their own key based on their uid.
 /// Numbers are stored as JSON: [{"phone":"0803...","network":0}, ...]
 class RecentNumbers {
-  static const _maxCount = 5;
+  static const _maxCount = 3;
 
   /// Load recent numbers for a user.
   static Future<List<RecentNumber>> load(String uid) async {

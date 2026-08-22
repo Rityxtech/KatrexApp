@@ -97,7 +97,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
       }
 
       if (mounted && numbers.isNotEmpty) {
-        setState(() => _recentNumbers = List.from(numbers));
+        setState(() => _recentNumbers = numbers.take(3).toList());
       }
 
       // Also check Firestore transactions to merge
@@ -115,9 +115,9 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
           ));
           await RecentNumbers.save(uid, tx.recipient!, _networkIndexFromName(tx.networkProvider));
         }
-        if (numbers.length >= 5) break;
+        if (numbers.length >= 3) break;
       }
-      if (mounted) setState(() => _recentNumbers = numbers.take(5).toList());
+      if (mounted) setState(() => _recentNumbers = numbers.take(3).toList());
     } catch (_) {}
   }
 
@@ -207,15 +207,64 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
     }
   }
 
+  String _formatValidity(String? days, {String? planName}) {
+    final d = (days ?? '').trim().toLowerCase();
+    final n = (planName ?? '').toLowerCase();
+
+    if (d.isNotEmpty) {
+      if (d == '1' || d == '1day' || d == '1 day' || d == '1days' || d == '1 days' || d == 'daily' || d == '24hrs' || d == '24 hours') {
+        return '1 Day (Daily)';
+      }
+      if (d == '2' || d == '2days' || d == '2 days') return '2 Days';
+      if (d == '3' || d == '3days' || d == '3 days') return '3 Days';
+      if (d == '7' || d == '7days' || d == '7 days' || d == 'weekly' || d == '1 week' || d == '1week') {
+        return '7 Days (Weekly)';
+      }
+      if (d == '14' || d == '14days' || d == '14 days' || d == '2weeks' || d == '2 weeks') {
+        return '14 Days (2 Weeks)';
+      }
+      if (d == '30' || d == '30days' || d == '30 days' || d == 'monthly' || d == '1 month' || d == '1month') {
+        return '30 Days (Monthly)';
+      }
+      if (d == '60' || d == '60days' || d == '60 days' || d == '2 months') return '60 Days (2 Months)';
+      if (d == '90' || d == '90days' || d == '90 days' || d == '3 months') return '90 Days (3 Months)';
+      if (d == '365' || d == '365days' || d == '365 days' || d == '1 year' || d == 'yearly') {
+        return '365 Days (1 Year)';
+      }
+      if (d.endsWith('day') || d.endsWith('days') || d.endsWith('month') || d.endsWith('months') || d.endsWith('hrs') || d.endsWith('hours')) {
+        return days!.trim();
+      }
+    }
+
+    if (n.contains('30 day') || n.contains('30day') || n.contains('monthly') || n.contains('1 month') || n.contains('1month')) {
+      return '30 Days (Monthly)';
+    }
+    if (n.contains('7 day') || n.contains('7day') || n.contains('weekly') || n.contains('1 week') || n.contains('1week')) {
+      return '7 Days (Weekly)';
+    }
+    if (n.contains('14 day') || n.contains('14day') || n.contains('2 week') || n.contains('2week')) {
+      return '14 Days (2 Weeks)';
+    }
+    if (n.contains('1 day') || n.contains('1day') || n.contains('daily') || n.contains('24 hrs') || n.contains('24hrs') || n.contains('24 hour')) {
+      return '1 Day (Daily)';
+    }
+    if (n.contains('2 day') || n.contains('2day')) return '2 Days';
+    if (n.contains('3 day') || n.contains('3day')) return '3 Days';
+    if (n.contains('60 day') || n.contains('2 month')) return '60 Days (2 Months)';
+    if (n.contains('90 day') || n.contains('3 month')) return '90 Days (3 Months)';
+    if (n.contains('365 day') || n.contains('1 year') || n.contains('yearly')) return '365 Days (1 Year)';
+
+    return '30 Days (Monthly)';
+  }
+
   List<VtuDataPlan> get _currentPlans {
     if (_planFilter == 'All Plans') return _fetchedPlans;
     final filter = _planFilter.toLowerCase();
     return _fetchedPlans.where((p) {
-      final name = p.name.toLowerCase();
-      final days = (p.days ?? '').toLowerCase();
-      if (filter == 'daily') return name.contains('daily') || name.contains('1 day') || days.contains('1day') || days.contains('2day') || days.contains('1days');
-      if (filter == 'weekly') return name.contains('week') || days.contains('7day') || days.contains('7days');
-      if (filter == 'monthly') return name.contains('month') || days.contains('30day') || days.contains('30days');
+      final validity = _formatValidity(p.days, planName: p.name).toLowerCase();
+      if (filter == 'daily') return validity.contains('day') && !validity.contains('7') && !validity.contains('14') && !validity.contains('30');
+      if (filter == 'weekly') return validity.contains('7') || validity.contains('14') || validity.contains('week');
+      if (filter == 'monthly') return validity.contains('30') || validity.contains('month') || validity.contains('60') || validity.contains('90') || validity.contains('365');
       return true;
     }).toList();
   }
@@ -790,10 +839,36 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
                             style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, height: 1.2),
                           ),
                           if (_selectedPlan != null) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              '\u20A6${NumberFormat('#,##0').format(_selectedPlan!['price'] as double)}',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF60A5FA)),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                if (_selectedPlan!['validity'] != null) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.schedule_rounded, size: 10, color: Color(0xFF9CA3AF)),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _selectedPlan!['validity'] as String,
+                                          style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFD1D5DB)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Text(
+                                  '₦${NumberFormat('#,##0').format(_selectedPlan!['price'] as double)}',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF60A5FA)),
+                                ),
+                              ],
                             ),
                           ],
                         ],
@@ -978,6 +1053,9 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
 
   Widget _planItem(VtuDataPlan plan, StateSetter setModalState) {
     final isSelected = _selectedPlan?['id'] == plan.id;
+    final validityStr = _formatValidity(plan.days, planName: plan.name);
+    final hasType = plan.type != null && plan.type!.trim().isNotEmpty;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -985,6 +1063,8 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
             'id': plan.id,
             'name': plan.name,
             'price': plan.price,
+            'validity': validityStr,
+            'type': plan.type,
           };
         });
         Navigator.pop(context);
@@ -992,9 +1072,9 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2563EB).withOpacity(0.1) : Colors.white.withOpacity(0.03),
+          color: isSelected ? const Color(0xFF2563EB).withOpacity(0.12) : Colors.white.withOpacity(0.03),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: isSelected ? const Color(0xFF2563EB).withOpacity(0.5) : Colors.white.withOpacity(0.08)),
+          border: Border.all(color: isSelected ? const Color(0xFF2563EB).withOpacity(0.6) : Colors.white.withOpacity(0.08)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1003,16 +1083,56 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(plan.name, style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          plan.name,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
+                        ),
+                      ),
+                      if (hasType) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            plan.type!.trim().toUpperCase(),
+                            style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF60A5FA)),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.schedule_rounded, size: 13, color: Color(0xFF9CA3AF)),
+                      const SizedBox(width: 5),
+                      Text(
+                        validityStr,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9CA3AF)),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Row(
               children: [
-                Text('\u20A6${NumberFormat('#,##0').format(plan.price)}', style: GoogleFonts.robotoMono(fontSize: 16, fontWeight: FontWeight.w900, color: const Color(0xFF34D399))),
+                Text(
+                  '₦${NumberFormat('#,##0').format(plan.price)}',
+                  style: GoogleFonts.robotoMono(fontSize: 16, fontWeight: FontWeight.w900, color: const Color(0xFF34D399)),
+                ),
                 const SizedBox(width: 12),
                 Container(
-                  width: 24, height: 24,
+                  width: 24,
+                  height: 24,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isSelected ? const Color(0xFF2563EB) : Colors.transparent,
