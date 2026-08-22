@@ -109,26 +109,33 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: false,
-    onPopInvokedWithResult: (didPop, result) {
-      if (!didPop) {
-        widget.onTabSwitch?.call(0);
-      }
-    },
-    child: Scaffold(
-    backgroundColor: const Color(0xFF000000),
-    body: Stack(
-      fit: StackFit.expand,
-      children: [
-        const AppBackground(child: SizedBox.expand()),
-        SafeArea(child: _main()),
-      ],
-    ),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final bool canPop = Navigator.canPop(context);
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          if (canPop) {
+            Navigator.maybePop(context);
+          } else {
+            widget.onTabSwitch?.call(0);
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF000000),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            const AppBackground(child: SizedBox.expand()),
+            SafeArea(child: _main(canPop)),
+          ],
+        ),
+      ),
+    );
+  }
 
-  Widget _main() => Padding(
+  Widget _main(bool canPop) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,8 +144,27 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             GestureDetector(
-              onTap: () => widget.onTabSwitch?.call(0),
-              child: const HeaderProfileAvatar(),
+              onTap: () {
+                if (canPop) {
+                  Navigator.pop(context);
+                } else {
+                  widget.onTabSwitch?.call(0);
+                }
+              },
+              child: canPop
+                  ? Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.chevron_left_rounded, color: Colors.white, size: 18),
+                      ),
+                    )
+                  : const HeaderProfileAvatar(),
             ),
             Text('Help Center', style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
             const NotificationIcon(),

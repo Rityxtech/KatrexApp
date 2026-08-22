@@ -656,10 +656,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icons.headset_mic_rounded,
               color: const Color(0xFF0EA5E9),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CustomerSupportScreen(onTabSwitch: widget.onTabSwitch)),
-                );
+                if (widget.onTabSwitch != null) {
+                  widget.onTabSwitch!(4);
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => CustomerSupportScreen(onTabSwitch: widget.onTabSwitch)),
+                  );
+                }
               },
             )),
           ],
