@@ -102,12 +102,26 @@ Future<void> _pumpAuthScreen(WidgetTester tester, Widget widget) async {
 
 void main() {
   group('Auth Screens Widget Tests', () {
-    testWidgets('LoginScreen renders fields, labels, buttons and biometric icon', (tester) async {
+    testWidgets('LoginScreen renders fields, labels, buttons and hides biometric when not saved', (tester) async {
+      SharedPreferences.setMockInitialValues({});
       await _pumpAuthScreen(tester, const LoginScreen());
 
       expect(find.text('Welcome Back'), findsOneWidget);
       expect(find.text('Log In'), findsOneWidget);
       expect(find.text('Sign in with Google'), findsOneWidget);
+      expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
+    });
+
+    testWidgets('LoginScreen shows biometric icon when credentials are saved', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'biometric_email': 'trader@katrex.io',
+        'biometric_password': 'SuperPassword123#',
+        'biometric_login_enabled': true,
+      });
+      await _pumpAuthScreen(tester, const LoginScreen());
+
+      expect(find.text('Welcome Back'), findsOneWidget);
+      expect(find.text('Log In'), findsOneWidget);
       expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
     });
 

@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
   bool _passwordVisible = false;
   bool _isLoading = false;
+  bool _hasSavedBiometrics = false;
 
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
@@ -68,8 +69,14 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _checkSavedBiometrics() async {
+    final hasCreds = await BiometricAuthService.hasSavedCredentials();
+    final isHardwareOk = await BiometricAuthService.isHardwareSupported();
     final savedEmail = await BiometricAuthService.getSavedEmail();
-    if (savedEmail != null && mounted && _emailController.text.isEmpty) {
+    if (!mounted) return;
+    setState(() {
+      _hasSavedBiometrics = hasCreds && isHardwareOk;
+    });
+    if (savedEmail != null && _emailController.text.isEmpty) {
       _emailController.text = savedEmail;
     }
   }
@@ -138,6 +145,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       if (!success) {
         await BiometricAuthService.clearCredentials();
+        setState(() => _hasSavedBiometrics = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(auth.errorMessage ?? 'Saved fingerprint credentials expired. Please enter your password to sign in.'),
@@ -813,22 +821,24 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        GestureDetector(
-          onTap: _handleBiometricLogin,
-          child: Container(
-            width: 52,
-            height: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: const Center(
-              child: Icon(Icons.fingerprint_rounded, color: Color(0xFF1E3A8A), size: 20),
+        if (_hasSavedBiometrics) ...[
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: _handleBiometricLogin,
+            child: Container(
+              width: 52,
+              height: 50,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Center(
+                child: Icon(Icons.fingerprint_rounded, color: Color(0xFF1E3A8A), size: 20),
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
