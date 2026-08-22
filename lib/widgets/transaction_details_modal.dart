@@ -91,6 +91,65 @@ class _TransactionDetailsSheet extends StatelessWidget {
 
               // Status badge
               _StatusBadge(status: tx.status),
+              if (tx.adminNote != null && tx.adminNote!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: (tx.status == TransactionStatus.failed || tx.status == TransactionStatus.cancelled)
+                        ? const Color(0xFFEF4444).withOpacity(0.12)
+                        : const Color(0xFF2563EB).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: (tx.status == TransactionStatus.failed || tx.status == TransactionStatus.cancelled)
+                          ? const Color(0xFFEF4444).withOpacity(0.3)
+                          : const Color(0xFF2563EB).withOpacity(0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            (tx.status == TransactionStatus.failed || tx.status == TransactionStatus.cancelled)
+                                ? Icons.error_outline_rounded
+                                : Icons.notes_rounded,
+                            size: 16,
+                            color: (tx.status == TransactionStatus.failed || tx.status == TransactionStatus.cancelled)
+                                ? const Color(0xFFEF4444)
+                                : const Color(0xFF60A5FA),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            (tx.status == TransactionStatus.failed || tx.status == TransactionStatus.cancelled)
+                                ? 'Decline Reason'
+                                : 'Admin Note',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: (tx.status == TransactionStatus.failed || tx.status == TransactionStatus.cancelled)
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF60A5FA),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        tx.adminNote!,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Details list
@@ -108,6 +167,18 @@ class _TransactionDetailsSheet extends StatelessWidget {
                     if (tx.description != null && tx.description!.isNotEmpty) ...[
                       _Divider(),
                       _DetailRow(label: 'Description', value: tx.description!),
+                    ],
+                    if (tx.adminNote != null && tx.adminNote!.isNotEmpty) ...[
+                      _Divider(),
+                      _DetailRow(
+                        label: (tx.status == TransactionStatus.failed || tx.status == TransactionStatus.cancelled)
+                            ? 'Reason'
+                            : 'Admin Note',
+                        value: tx.adminNote!,
+                        valueColor: (tx.status == TransactionStatus.failed || tx.status == TransactionStatus.cancelled)
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF60A5FA),
+                      ),
                     ],
                     if (tx.cardBrand != null && tx.cardBrand!.isNotEmpty) ...[
                       _Divider(),
@@ -221,7 +292,15 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
   final bool mono;
-  const _DetailRow({required this.label, required this.value, this.mono = false});
+  final Color? valueColor;
+  final int maxLines;
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.mono = false,
+    this.valueColor,
+    this.maxLines = 4,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -236,11 +315,11 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.right,
-              maxLines: 2,
+              maxLines: maxLines,
               overflow: TextOverflow.ellipsis,
               style: mono
-                  ? TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white, fontFamily: 'monospace')
-                  : GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                  ? TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: valueColor ?? Colors.white, fontFamily: 'monospace')
+                  : GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: valueColor ?? Colors.white),
             ),
           ),
         ],

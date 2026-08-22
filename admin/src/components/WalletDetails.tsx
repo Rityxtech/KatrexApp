@@ -9,11 +9,11 @@ import { setDocument } from "@/hooks/useFirestore";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-async function processWithdrawal(txId: string, action: "approve" | "reject") {
+async function processWithdrawal(txId: string, action: "approve" | "reject", reason?: string) {
   try {
     const functions = getFunctions(getApps()[0], "us-central1");
     const fn = httpsCallable(functions, "adminApi");
-    await fn({ action: "processWithdrawal", txId, withdrawalAction: action });
+    await fn({ action: "processWithdrawal", txId, withdrawalAction: action, adminNote: reason, reason });
   } catch (err: any) {
     // Direct Firestore atomic fallback
     const txRef = doc(db, "transactions", txId);
@@ -26,6 +26,7 @@ async function processWithdrawal(txId: string, action: "approve" | "reject") {
         status: "completed",
         completedAt: new Date(),
         processedBy: "admin",
+        ...(reason?.trim() ? { adminNote: reason.trim() } : {}),
       });
     } else {
       const refundAmount = (txData.amountNaira || 0) + (txData.feeAmount || 0);
@@ -39,15 +40,34 @@ async function processWithdrawal(txId: string, action: "approve" | "reject") {
           updatedAt: new Date(),
         });
       }
+      const finalNote = reason?.trim() || "Declined by admin. Funds refunded.";
       await setDocument("transactions", txId, {
         ...txData,
         status: "failed",
         completedAt: new Date(),
-        adminNote: "Declined by admin. Funds refunded.",
+        adminNote: finalNote,
+        rejectionReason: finalNote,
         processedBy: "admin",
+      });
+      // Direct notification to user
+      await setDocument("notifications", `notif_${Date.now()}`, {
+        uid: txData.uid,
+        type: "withdrawal",
+        title: "Withdrawal Declined",
+        body: `Your withdrawal of ₦${(txData.amountNaira || 0).toLocaleString()} was declined: "${finalNote}". ₦${refundAmount.toLocaleString()} has been refunded to your wallet.`,
+        isRead: false,
+        createdAt: new Date(),
       });
     }
   }
+}
+
+function getUserDisplayName(uid: string, users: any[]) {
+  if (!uid) return "\u2014";
+  const u = users.find((user: any) => user.id === uid || user.uid === uid);
+  if (!u) return uid.length > 12 ? `${uid.slice(0, 10)}...` : uid;
+  const fullName = (u.fullName || (u.firstName ? `${u.firstName} ${u.lastName || ""}` : "") || u.displayName || u.email?.split("@")[0] || uid).trim();
+  return fullName;
 }
 
 function parseRecipient(r: any) {
@@ -155,16 +175,37 @@ export default function WalletDetails() {
     return wallets.find((w: any) => w.uid === searchedUser.id) || null;
   }, [searchedUser, wallets]);
 
-  async function handleAction(txId: string, action: "approve" | "reject") {
-    const verb = action === "approve" ? "approve" : "reject";
-    if (!window.confirm(`Are you sure you want to ${verb} this withdrawal?`)) return;
-    setProcessing(txId);
+  interface ActionModalState {
+    tx: any;
+    action: "approve" | "reject";
+  }
+  const [actionModal, setActionModal] = useState<ActionModalState | null>(null);
+  const [actionReason, setActionReason] = useState("");
+  const [submittingAction, setSubmittingAction] = useState(false);
+
+  function openActionModal(tx: any, action: "approve" | "reject") {
+    setActionModal({ tx, action });
+    setActionReason("");
+  }
+
+  async function handleConfirmAction() {
+    if (!actionModal) return;
+    const { tx, action } = actionModal;
+    setSubmittingAction(true);
+    setProcessing(tx.id);
     try {
-      await processWithdrawal(txId, action);
-      showToast(`Withdrawal ${action}d successfully.`);
+      await processWithdrawal(tx.id, action, actionReason);
+      showToast(
+        action === "approve"
+          ? "Withdrawal approved successfully."
+          : "Withdrawal declined and funds refunded to user."
+      );
+      setActionModal(null);
+      setActionReason("");
     } catch (err: any) {
-      showToast(`Failed to ${verb} withdrawal: ${err?.message || "Unknown error"}`);
+      showToast(`Failed to ${action} withdrawal: ${err?.message || "Unknown error"}`);
     } finally {
+      setSubmittingAction(false);
       setProcessing(null);
     }
   }
@@ -315,9 +356,14 @@ export default function WalletDetails() {
                     const bank = parseRecipient(r);
                     const isProcessing = processing === r.id;
                     const isCrypto = r.type === "send";
+                    const userName = getUserDisplayName(r.uid, users);
                     return (
                     <tr key={r.id} className="hover:bg-primary/5 transition-colors group">
-                      <td className="px-3 py-2 font-body-sm text-xs font-medium">{r.uid?.slice(0, 16) || "\u2014"}</td>
+                      <td className="px-3 py-2 font-body-sm text-xs font-semibold text-on-surface">
+                        <span className="block truncate max-w-[140px]" title={`${userName} (${r.uid})`}>
+                          {userName}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 font-data-mono text-xs font-bold text-status-danger">
                         {isCrypto ? `${r.amountCoin || "0"} ${r.coinSymbol || ""}` : formatNaira(r.amountNaira || 0)}
                       </td>
@@ -334,7 +380,7 @@ export default function WalletDetails() {
                         <div className="flex justify-end gap-1">
                           <button
                             disabled={isProcessing}
-                            onClick={() => handleAction(r.id, "approve")}
+                            onClick={() => openActionModal(r, "approve")}
                             className="w-7 h-7 rounded-lg flex items-center justify-center bg-status-success/10 hover:bg-status-success/20 text-status-success transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Approve withdrawal"
                           >
@@ -342,7 +388,7 @@ export default function WalletDetails() {
                           </button>
                           <button
                             disabled={isProcessing}
-                            onClick={() => handleAction(r.id, "reject")}
+                            onClick={() => openActionModal(r, "reject")}
                             className="w-7 h-7 rounded-lg flex items-center justify-center bg-status-danger/10 hover:bg-status-danger/20 text-status-danger transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Reject & Refund withdrawal"
                           >
@@ -577,6 +623,162 @@ export default function WalletDetails() {
           </div>
         </div>
       </div>
+
+      {/* Custom Styled Confirmation & Reason Modal */}
+      {actionModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !submittingAction && setActionModal(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-[#0F1423] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className={`p-4 border-b border-white/10 flex items-center justify-between ${
+              actionModal.action === "approve" ? "bg-status-success/10" : "bg-status-danger/10"
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                  actionModal.action === "approve"
+                    ? "bg-status-success/20 text-status-success"
+                    : "bg-status-danger/20 text-status-danger"
+                }`}>
+                  <span className="material-symbols-outlined text-[20px]">
+                    {actionModal.action === "approve" ? "check_circle" : "cancel"}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="font-headline-sm text-sm font-bold text-white">
+                    {actionModal.action === "approve" ? "Approve Withdrawal" : "Decline & Refund Withdrawal"}
+                  </h3>
+                  <p className="text-[11px] text-gray-400">
+                    {actionModal.action === "approve"
+                      ? "Confirm payment and mark withdrawal as completed"
+                      : "User's balance and fee will be refunded automatically"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={submittingAction}
+                onClick={() => setActionModal(null)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 space-y-3.5">
+              {/* Summary Card */}
+              {(() => {
+                const tx = actionModal.tx;
+                const bank = parseRecipient(tx);
+                const userName = getUserDisplayName(tx.uid, users);
+                const isCrypto = tx.type === "send";
+                const amountStr = isCrypto
+                  ? `${tx.amountCoin || "0"} ${tx.coinSymbol || ""}`
+                  : formatNaira(tx.amountNaira || 0);
+                const refundStr = isCrypto
+                  ? `${tx.amountCoin || "0"} ${tx.coinSymbol || ""}`
+                  : formatNaira((tx.amountNaira || 0) + (tx.feeAmount || 50));
+
+                return (
+                  <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-3 space-y-2 text-xs">
+                    <div className="flex justify-between items-center pb-2 border-b border-white/[0.06]">
+                      <span className="text-gray-400">Recipient User</span>
+                      <span className="font-bold text-white max-w-[220px] truncate" title={`${userName} (${tx.uid})`}>
+                        {userName}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Amount</span>
+                      <span className="font-mono font-bold text-white">{amountStr}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Bank / Destination</span>
+                      <span className="text-white font-medium">{bank.bankName} ({bank.accountNumber})</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Account Name</span>
+                      <span className="text-gray-300">{bank.accountName}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Reference</span>
+                      <span className="font-mono text-gray-300">{tx.reference || tx.id}</span>
+                    </div>
+                    {actionModal.action === "reject" && !isCrypto && (
+                      <div className="flex justify-between items-center pt-2 border-t border-white/[0.06] text-status-success font-semibold">
+                        <span>Total Refund to Wallet (incl. fee)</span>
+                        <span className="font-mono font-bold">{refundStr}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Text Area for Reason */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+                  {actionModal.action === "reject"
+                    ? "Reason for Cancellation / Decline (Visible to User in App)"
+                    : "Admin Note (Optional)"}
+                </label>
+                <textarea
+                  rows={3}
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  placeholder={
+                    actionModal.action === "reject"
+                      ? "e.g. Bank details do not match account holder name, daily limit exceeded, or flagged by bank..."
+                      : "Add any internal or confirmation note..."
+                  }
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white placeholder:text-gray-500 focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all resize-none"
+                />
+                {actionModal.action === "reject" && (
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    This reason will appear directly on the user's transaction details screen and in their notification.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-white/[0.02] border-t border-white/10 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={submittingAction}
+                onClick={() => setActionModal(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-300 hover:text-white hover:bg-white/5 border border-white/10 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={submittingAction}
+                onClick={handleConfirmAction}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold text-white flex items-center gap-1.5 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                  actionModal.action === "approve"
+                    ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30"
+                    : "bg-red-600 hover:bg-red-500 shadow-red-900/30"
+                }`}
+              >
+                {submittingAction && (
+                  <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                )}
+                <span>
+                  {submittingAction
+                    ? "Processing..."
+                    : actionModal.action === "approve"
+                    ? "Confirm Approval"
+                    : "Confirm & Refund"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

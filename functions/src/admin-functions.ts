@@ -174,6 +174,7 @@ function finiteNumber(value: unknown, field: string, min = 0, max = Number.MAX_S
 async function handleProcessWithdrawal(adminUid: string, data: Record<string, unknown>) {
   const txId = (data.txId as string) || "";
   const withdrawalAction = (data.withdrawalAction || data.action) as string;
+  const adminNote = String(data.adminNote || data.reason || data.comment || "").trim();
 
   if (!txId || !withdrawalAction) {
     throw new HttpsError("invalid-argument", "txId and withdrawalAction are required.");
@@ -210,11 +211,15 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
   const coinAmount = parseFloat(String(txData.amountCoin ?? "0"));
 
   if (isApproval) {
-    await txRef.update({
+    const updateData: Record<string, any> = {
       status: "completed",
       completedAt: new Date(),
       processedBy: adminUid,
-    });
+    };
+    if (adminNote) {
+      updateData.adminNote = adminNote;
+    }
+    await txRef.update(updateData);
 
     await db.collection("notifications").add({
       uid,
@@ -234,6 +239,7 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
   // Reject / Cancel / Void — refund user balance atomically (amount + fee)
   const walletRef = db.collection("wallets").doc(uid);
   const totalRefundNaira = amount + feeAmount;
+  const reasonText = adminNote || `Declined (${withdrawalAction}) by admin. Funds refunded.`;
 
   await db.runTransaction(async (txn) => {
     const snap = await txn.get(walletRef);
@@ -258,7 +264,8 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
 
     txn.update(txRef, {
       status: "failed",
-      adminNote: `Declined (${withdrawalAction}) by admin. Funds refunded.`,
+      adminNote: reasonText,
+      rejectionReason: reasonText,
       completedAt: new Date(),
       processedBy: adminUid,
     });
@@ -269,13 +276,13 @@ async function handleProcessWithdrawal(adminUid: string, data: Record<string, un
     type: "withdrawal",
     title: isCryptoSend ? "Send Request Declined" : "Withdrawal Declined",
     body: isCryptoSend
-      ? `Your request to send ${coinAmount} ${coinSymbol} was declined. Funds have been refunded.`
-      : `Your withdrawal of \u20A6${amount.toLocaleString()} was declined. \u20A6${totalRefundNaira.toLocaleString()} has been refunded to your wallet.`,
+      ? `Your request to send ${coinAmount} ${coinSymbol} was declined. Reason: ${reasonText}`
+      : `Your withdrawal of \u20A6${amount.toLocaleString()} was declined: "${reasonText}". \u20A6${totalRefundNaira.toLocaleString()} has been refunded to your wallet.`,
     isRead: false,
     createdAt: new Date(),
   });
 
-  logger.info(`Withdrawal ${txId} ${withdrawalAction}ed by admin ${adminUid}. Refunded ${totalRefundNaira} NGN.`);
+  logger.info(`Withdrawal ${txId} ${withdrawalAction}ed by admin ${adminUid}. Reason: ${reasonText}. Refunded ${totalRefundNaira} NGN.`);
   return {success: true};
 }
 
