@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../services/cloud_functions_service.dart';
+import '../services/firestore_service.dart';
 import '../services/squad_service.dart';
 import '../utils/api_config.dart';
 
@@ -159,7 +161,25 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
 
   Future<void> _fetchDynamicAccount() async {
     try {
-      final email = widget.customerEmail ?? 'user@katrex.app';
+      // 1. Check if user already has an active virtual account in Firestore
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        final saved = await FirestoreService().getVirtualAccount(uid);
+        if (saved != null && saved['account_number'] != null && mounted) {
+          final acc = saved['account_number'].toString().trim();
+          if (acc.isNotEmpty) {
+            setState(() {
+              _accountNumber = acc;
+              if (saved['bank_name'] != null) _bankName = saved['bank_name'].toString();
+              if (saved['account_name'] != null) _accountName = saved['account_name'].toString();
+            });
+            return;
+          }
+        }
+      }
+
+      // 2. Query Cloud Functions for dynamic virtual account
+      final email = widget.customerEmail ?? FirebaseAuth.instance.currentUser?.email ?? 'user@katrex.app';
       final res = await CloudFunctionsService.createDynamicVirtualAccount(
         amount: _amount > 0 ? _amount : 100,
         email: email,
@@ -213,14 +233,14 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
 (function() {
   try {
     // 1. Look for and click 'Transfer' or 'Bank Transfer' tab if available on Squad checkout
-    const elements = Array.from(document.querySelectorAll('button, a, div, span, li, p'));
+    const elements = Array.from(document.querySelectorAll('button, a, div, span, li, p, input'));
     const transferBtn = elements.find(el => {
-      const t = (el.innerText || el.textContent || '').trim().toLowerCase();
-      return (t === 'transfer' || t === 'bank transfer' || t === 'pay with transfer') && el.offsetParent !== null;
+      const t = (el.innerText || el.textContent || el.value || '').trim().toLowerCase();
+      return (t === 'transfer' || t === 'bank transfer' || t === 'pay with transfer' || t === 'bank') && el.offsetParent !== null;
     });
     if (transferBtn && !transferBtn.dataset.clicked) {
       transferBtn.dataset.clicked = 'true';
-      transferBtn.click();
+      try { transferBtn.click(); } catch(e) {}
     }
 
     const text = document.body ? document.body.innerText : '';
@@ -533,93 +553,81 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
           ),
           centerTitle: true,
         ),
-        body: Stack(
+        body: IndexedStack(
+          index: _selectedTab,
           children: [
-            // Active WebView for card processing & background dynamic account extraction
-            if (_selectedTab == 1)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: _controller != null
-                    ? WebViewWidget(controller: _controller!)
-                    : const SizedBox.shrink(),
-              )
-            else
-              Positioned(
-                bottom: 0,
-                right: 0,
-                width: 1,
-                height: 1,
-                child: Opacity(
-                  opacity: 0.01,
+            // 0: Clean Native Payment View (Bank Transfer)
+            SafeArea(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                children: [
+                  // Method Switcher Pill (Transfer vs Card)
+                  _buildMethodSelector(),
+                  const SizedBox(height: 20),
+
+                  // Amount Display Card
+                  _buildAmountCard(),
+                  const SizedBox(height: 18),
+
+                  // Bank Account Details Box
+                  _buildBankTransferBox(),
+                  const SizedBox(height: 18),
+
+                  // Important Transfer Instructions Callout
+                  _buildInstructionsBanner(),
+                  const SizedBox(height: 24),
+
+                  // Primary Action Button ("I have made the transfer")
+                  _buildConfirmButton(),
+                  const SizedBox(height: 14),
+
+                  // Switch to Card Option
+                  _buildSwitchToCardButton(),
+                  const SizedBox(height: 20),
+
+                  // Security Badge Footer
+                  _buildSecurityFooter(),
+                ],
+              ),
+            ),
+
+            // 1: Card / Web Checkout View
+            Stack(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
                   child: _controller != null
                       ? WebViewWidget(controller: _controller!)
                       : const SizedBox.shrink(),
                 ),
-              ),
-
-            // Clean Native Payment View
-            if (_selectedTab == 0)
-              SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                  children: [
-                    // Method Switcher Pill (Transfer vs Card)
-                    _buildMethodSelector(),
-                    const SizedBox(height: 20),
-
-                    // Amount Display Card
-                    _buildAmountCard(),
-                    const SizedBox(height: 18),
-
-                    // Bank Account Details Box
-                    _buildBankTransferBox(),
-                    const SizedBox(height: 18),
-
-                    // Important Transfer Instructions Callout
-                    _buildInstructionsBanner(),
-                    const SizedBox(height: 24),
-
-                    // Primary Action Button ("I have made the transfer")
-                    _buildConfirmButton(),
-                    const SizedBox(height: 14),
-
-                    // Switch to Card Option
-                    _buildSwitchToCardButton(),
-                    const SizedBox(height: 20),
-
-                    // Security Badge Footer
-                    _buildSecurityFooter(),
-                  ],
-                ),
-              ),
-
-            // Shimmer loader if tab 1 is active and loading
-            if (_selectedTab == 1 && _isLoading)
-              Container(
-                color: Colors.white,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(color: Color(0xFF2563EB), strokeWidth: 3),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Loading secure payment gateway...',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF475569),
-                        ),
+                if (_isLoading)
+                  Container(
+                    color: Colors.white,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(color: Color(0xFF2563EB), strokeWidth: 3),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Loading secure payment gateway...',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF475569),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+              ],
+            ),
           ],
         ),
       ),
