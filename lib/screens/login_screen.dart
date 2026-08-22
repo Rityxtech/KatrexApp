@@ -77,14 +77,12 @@ class _LoginScreenState extends State<LoginScreen>
   void _handleBiometricLogin() async {
     if (_isLoading) return;
 
-    final localAuth = LocalAuthentication();
-    final canCheck = await localAuth.canCheckBiometrics;
-    final isSupported = await localAuth.isDeviceSupported();
-    if (!canCheck && !isSupported) {
+    final isHardwareOk = await BiometricAuthService.isHardwareSupported();
+    if (!isHardwareOk) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Biometric authentication is not supported on this device.'),
+          content: const Text('Biometric authentication is not supported or enrolled on this device.'),
           backgroundColor: const Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -98,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('No biometric credentials saved. Log in with your password first to enable fingerprint login.'),
+          content: const Text('No fingerprint credentials saved. Log in with your password and enable fingerprint in Profile Settings.'),
           backgroundColor: const Color(0xFF3B82F6),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -111,9 +109,24 @@ class _LoginScreenState extends State<LoginScreen>
     final savedPassword = await BiometricAuthService.getSavedPassword();
     if (savedEmail == null || savedPassword == null) return;
 
+    final typedEmail = _emailController.text.trim().toLowerCase();
+    if (typedEmail.isNotEmpty && typedEmail != savedEmail.toLowerCase()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Fingerprint is saved for $savedEmail. Log in with password for ${_emailController.text.trim()} to switch accounts.'),
+          backgroundColor: const Color(0xFFF59E0B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
     try {
+      final localAuth = LocalAuthentication();
       final authenticated = await localAuth.authenticate(
-        localizedReason: 'Scan fingerprint to log into Katrex',
+        localizedReason: 'Scan fingerprint to log in as $savedEmail',
         biometricOnly: true,
       );
       if (!authenticated) return;
@@ -124,9 +137,10 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (!mounted) return;
       if (!success) {
+        await BiometricAuthService.clearCredentials();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(auth.errorMessage ?? 'Biometric login failed. Please enter your password.'),
+            content: Text(auth.errorMessage ?? 'Saved fingerprint credentials expired. Please enter your password to sign in.'),
             backgroundColor: const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -204,10 +218,18 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       if (success) {
-        await BiometricAuthService.saveCredentials(
-          email: _emailController.text.trim(),
-          password: _passController.text,
-        );
+        final loggedInUser = auth.userModel;
+        if (loggedInUser?.biometricEnabled == true) {
+          await BiometricAuthService.saveCredentials(
+            email: _emailController.text.trim(),
+            password: _passController.text,
+          );
+        } else {
+          final savedEmail = await BiometricAuthService.getSavedEmail();
+          if (savedEmail != null && savedEmail.toLowerCase() != _emailController.text.trim().toLowerCase()) {
+            await BiometricAuthService.clearCredentials();
+          }
+        }
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -39,5 +39,20 @@ void main() {
       expect(await BiometricAuthService.getSavedEmail(), isNull);
       expect(await BiometricAuthService.getSavedPassword(), isNull);
     });
+
+    test('hasValidCredentialsFor checks matching email case-insensitively', () async {
+      await BiometricAuthService.saveCredentials(
+        email: 'Trader@Katrex.IO',
+        password: 'Password123#',
+      );
+
+      expect(await BiometricAuthService.hasValidCredentialsFor('trader@katrex.io'), true);
+      expect(await BiometricAuthService.hasValidCredentialsFor('TRADER@KATREX.IO'), true);
+      expect(await BiometricAuthService.hasValidCredentialsFor('otheruser@katrex.io'), false);
+    });
+
+    test('hasValidCredentialsFor returns false when no credentials saved', () async {
+      expect(await BiometricAuthService.hasValidCredentialsFor('trader@katrex.io'), false);
+    });
   });
 }

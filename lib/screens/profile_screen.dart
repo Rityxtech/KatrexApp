@@ -43,13 +43,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = context.read<AuthProvider>().userModel;
     if (user != null) {
       _pushNotifications = user.pushNotificationsEnabled;
-      _biometricLogin = user.biometricEnabled;
+      _checkBiometricsSync(user);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ProfileCompletionModal.maybeShow(context);
       }
     });
+  }
+
+  Future<void> _checkBiometricsSync(UserModel user) async {
+    final isActive = await BiometricAuthService.isBiometricActiveFor(user.email, auth: _localAuth);
+    if (!mounted) return;
+    if (isActive) {
+      setState(() => _biometricLogin = true);
+      if (!user.biometricEnabled) {
+        final auth = context.read<AuthProvider>();
+        await auth.updateUserProfileDirect(user.copyWith(biometricEnabled: true));
+      }
+    } else {
+      setState(() => _biometricLogin = false);
+      // Auto-detect when fingerprint credentials are not active on this device and auto-toggle off
+      if (user.biometricEnabled) {
+        final auth = context.read<AuthProvider>();
+        await auth.updateUserProfileDirect(user.copyWith(biometricEnabled: false));
+      }
+    }
   }
 
   Future<void> _pickAndUploadAvatar() async {
@@ -100,33 +119,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _toggleBiometrics(bool enable) async {
     if (enable) {
       try {
-        final canCheck = await _localAuth.canCheckBiometrics;
-        final isSupported = await _localAuth.isDeviceSupported();
-        if (!canCheck && !isSupported) {
+        final isSupported = await BiometricAuthService.isHardwareSupported(auth: _localAuth);
+        if (!isSupported) {
           _showError('Biometric authentication is not supported on this device.');
           return;
         }
 
+        final auth = context.read<AuthProvider>();
+        final u = auth.userModel;
+        if (u == null) return;
+
+        final hasCreds = await BiometricAuthService.hasValidCredentialsFor(u.email);
+        String? passToSave;
+        if (!hasCreds) {
+          passToSave = await _promptPasswordForBiometrics(context, u.email);
+          if (passToSave == null || passToSave.isEmpty) {
+            return; // Cancelled
+          }
+        }
+
         final authenticated = await _localAuth.authenticate(
-          localizedReason: 'Enable biometric login for your account',
+          localizedReason: 'Enable biometric login for ${u.email}',
           biometricOnly: true,
         );
 
         if (authenticated) {
-          final auth = context.read<AuthProvider>();
-          final u = auth.userModel;
-          if (u != null) {
-            final hasCreds = await BiometricAuthService.hasSavedCredentials();
-            if (!hasCreds) {
-              final pass = await _promptPasswordForBiometrics(context, u.email);
-              if (pass != null && pass.isNotEmpty) {
-                await BiometricAuthService.saveCredentials(email: u.email, password: pass);
-              }
-            }
-            setState(() => _biometricLogin = true);
-            await auth.updateUserProfileDirect(u.copyWith(biometricEnabled: true));
-            _showSuccess('Biometric login enabled');
+          if (passToSave != null) {
+            await BiometricAuthService.saveCredentials(email: u.email, password: passToSave);
           }
+          setState(() => _biometricLogin = true);
+          await auth.updateUserProfileDirect(u.copyWith(biometricEnabled: true));
+          _showSuccess('Biometric login enabled');
         } else {
           _showError('Biometric verification failed.');
         }
