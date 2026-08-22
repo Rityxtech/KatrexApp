@@ -103,6 +103,10 @@ Future<void> _pumpAuthScreen(WidgetTester tester, Widget widget) async {
 
 void main() {
   group('Auth Screens Widget Tests', () {
+    tearDown(() {
+      BiometricAuthService.debugHardwareSupportedOverride = null;
+    });
+
     testWidgets('LoginScreen renders fields, labels, buttons and hides biometric when not saved', (tester) async {
       SharedPreferences.setMockInitialValues({});
       await _pumpAuthScreen(tester, const LoginScreen());
@@ -114,6 +118,7 @@ void main() {
     });
 
     testWidgets('LoginScreen shows biometric icon when credentials are saved', (tester) async {
+      BiometricAuthService.debugHardwareSupportedOverride = true;
       SharedPreferences.setMockInitialValues({
         'biometric_email': 'trader@katrex.io',
         'biometric_password': 'SuperPassword123#',

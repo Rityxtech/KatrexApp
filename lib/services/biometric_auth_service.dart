@@ -48,8 +48,14 @@ class BiometricAuthService {
     return savedEmail.trim().toLowerCase() == email.trim().toLowerCase();
   }
 
+  /// For testing environments: allows mocking hardware availability.
+  static bool? debugHardwareSupportedOverride;
+
   /// Check if hardware supports and has enrolled biometrics.
   static Future<bool> isHardwareSupported({LocalAuthentication? auth}) async {
+    if (debugHardwareSupportedOverride != null) {
+      return debugHardwareSupportedOverride!;
+    }
     try {
       final localAuth = auth ?? LocalAuthentication();
       final canCheck = await localAuth.canCheckBiometrics;
