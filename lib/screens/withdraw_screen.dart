@@ -304,25 +304,127 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                               ),
                             ),
                             GestureDetector(
+                              behavior: HitTestBehavior.opaque,
                               onTap: () async {
-                                final uid = context.read<AuthProvider>().firebaseUser?.uid;
-                                if (uid != null) {
-                                  await FirestoreService().removeBankAccount(uid: uid, accountNumber: accountNumber);
-                                  try {
-                                    await CloudFunctionsService.removeBankAccount(accountNumber: accountNumber);
-                                  } catch (_) {}
-                                  if (mounted) {
-                                    setState(() {
-                                      if (_selectedBankIndex >= currentMethods.length - 1) {
+                                final confirmed = await showModalBottomSheet<bool>(
+                                  context: context,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (confirmCtx) => Container(
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF0F1423),
+                                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                                      border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+                                    ),
+                                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                                    child: SafeArea(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 40,
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white24,
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 18),
+                                          Container(
+                                            width: 50,
+                                            height: 50,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: const Color(0xFFEF4444).withOpacity(0.12),
+                                            ),
+                                            child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 24),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'Remove Bank Account?',
+                                            style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'Are you sure you want to remove $bankName ($accountNumber)?',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.plusJakartaSans(fontSize: 12.5, fontWeight: FontWeight.w600, color: const Color(0xFF9CA3AF)),
+                                          ),
+                                          const SizedBox(height: 20),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: GestureDetector(
+                                                  onTap: () => Navigator.pop(confirmCtx, false),
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white.withOpacity(0.06),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        'Cancel',
+                                                        style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w800, color: Colors.white70),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: GestureDetector(
+                                                  onTap: () => Navigator.pop(confirmCtx, true),
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFEF4444),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        'Remove',
+                                                        style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w900, color: Colors.white),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+
+                                if (confirmed == true) {
+                                  final auth = context.read<AuthProvider>();
+                                  final uid = auth.firebaseUser?.uid;
+                                  if (uid != null) {
+                                    await FirestoreService().removeBankAccount(uid: uid, accountNumber: accountNumber);
+                                    try {
+                                      await CloudFunctionsService.removeBankAccount(accountNumber: accountNumber);
+                                    } catch (_) {}
+                                    await auth.reloadUserProfile();
+                                    if (mounted) {
+                                      setState(() {
                                         _selectedBankIndex = 0;
-                                      }
-                                    });
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Bank account removed', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700)),
+                                          backgroundColor: const Color(0xFF10B981),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    }
                                   }
                                 }
                               },
                               child: Container(
-                                padding: const EdgeInsets.fromLTRB(8, 14, 14, 14),
-                                child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 18),
+                                padding: const EdgeInsets.all(12),
+                                child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
                               ),
                             ),
                           ],

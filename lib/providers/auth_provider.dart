@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/push_notification_service.dart';
+import '../utils/constants.dart';
 import '../utils/error_handler.dart';
 
 enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
@@ -19,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _isRegistering = false;
   bool _needsRegistration = false;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSubscription;
 
   AuthStatus get status => _status;
   UserModel? get userModel => _userModel;
@@ -34,6 +38,25 @@ class AuthProvider extends ChangeNotifier {
 
   void _init() {
     _authService.authStateChanges.listen(_onAuthStateChanged);
+  }
+
+  void _listenToUserProfile(String uid) {
+    _userDocSubscription?.cancel();
+    _userDocSubscription = FirebaseFirestore.instance
+        .collection(FirestoreCollections.users)
+        .doc(uid)
+        .snapshots()
+        .listen(
+      (snap) {
+        if (snap.exists && snap.data() != null) {
+          _userModel = UserModel.fromMap(snap.data()!);
+          notifyListeners();
+        }
+      },
+      onError: (e) {
+        debugPrint('[AuthProvider] User profile stream error: $e');
+      },
+    );
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
@@ -65,12 +88,14 @@ class AuthProvider extends ChangeNotifier {
       }
 
       _status = AuthStatus.authenticated;
+      _listenToUserProfile(user.uid);
     } catch (e) {
       // Profile doesn't exist — try to create a minimal one.
       try {
         debugPrint('User profile not found, creating one for ${user.uid}');
         _userModel = await _authService.createUserProfileForExistingAuthUser(user);
         _status = AuthStatus.authenticated;
+        _listenToUserProfile(user.uid);
       } catch (e2) {
         debugPrint('Error creating user profile: $e2');
         _userModel = null;
@@ -244,6 +269,8 @@ class AuthProvider extends ChangeNotifier {
 
   /// Sign out the current user.
   Future<void> signOut() async {
+    _userDocSubscription?.cancel();
+    _userDocSubscription = null;
     try {
       await PushNotificationService.instance.unregisterToken();
     } catch (e) {
@@ -257,6 +284,12 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _userDocSubscription?.cancel();
+    super.dispose();
   }
 
   /// Reload the user profile from Firestore.

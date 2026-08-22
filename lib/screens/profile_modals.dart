@@ -787,7 +787,8 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
   }
 
   Future<void> _executeRemove(String accountNumber) async {
-    final uid = context.read<app_auth.AuthProvider>().firebaseUser?.uid;
+    final auth = context.read<app_auth.AuthProvider>();
+    final uid = auth.firebaseUser?.uid;
     if (uid == null) return;
 
     setState(() => _isLoading = true);
@@ -796,6 +797,7 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
       try {
         await CloudFunctionsService.removeBankAccount(accountNumber: accountNumber);
       } catch (_) {}
+      await auth.reloadUserProfile();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -967,14 +969,15 @@ class _PaymentMethodsModalState extends State<PaymentMethodsModal> {
                       ),
                     ),
                     GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: _isLoading ? null : () => _confirmRemove(m),
                       child: Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444).withOpacity(0.1),
+                          color: const Color(0xFFEF4444).withOpacity(0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 18),
+                        child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 19),
                       ),
                     ),
                   ],

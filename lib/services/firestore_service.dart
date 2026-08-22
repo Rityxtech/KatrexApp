@@ -844,7 +844,11 @@ class FirestoreService {
       throw Exception('Maximum of 3 bank accounts reached. Please delete an existing account first.');
     }
 
-    final exists = methods.any((m) => m['accountNumber'] == accountNumber);
+    final targetClean = accountNumber.toString().trim().replaceAll(' ', '');
+    final exists = methods.any((m) {
+      final currentClean = (m['accountNumber'] ?? '').toString().trim().replaceAll(' ', '');
+      return currentClean == targetClean;
+    });
     if (exists) {
       throw Exception('This account number is already linked.');
     }
@@ -852,7 +856,7 @@ class FirestoreService {
     methods.add({
       'type': 'bank',
       'bankName': bankName.trim(),
-      'accountNumber': accountNumber.trim(),
+      'accountNumber': targetClean,
       'accountName': accountName.trim(),
       if (bankCode != null && bankCode.isNotEmpty) 'bankCode': bankCode.trim(),
       'addedAt': DateTime.now().toIso8601String(),
@@ -872,7 +876,11 @@ class FirestoreService {
     final user = UserModel.fromMap(snap.data()!);
     final methods = List<Map<String, dynamic>>.from(user.paymentMethods);
 
-    methods.removeWhere((m) => m['accountNumber'] == accountNumber);
+    final targetClean = accountNumber.toString().trim().replaceAll(' ', '');
+    methods.removeWhere((m) {
+      final currentClean = (m['accountNumber'] ?? '').toString().trim().replaceAll(' ', '');
+      return currentClean == targetClean;
+    });
     await userRef.update({'paymentMethods': methods});
   }
 }
