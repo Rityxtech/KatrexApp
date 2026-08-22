@@ -22,10 +22,7 @@ const FROM_EMAIL = "KatrexApp <noreply@katrexapp.com>";
 // are kept in their own modules and only re-exported here when they need
 // to be deployable via a targeted filter.
 export {adminApi} from "./admin-functions";
-
-// Re-export the user-facing support API (tickets + AI live chat) so we
-// can ship Gemini changes via a targeted filter without redeploying
-// every function in the codebase. Also re-export the scheduled cleanup.
+export {secureApi} from "./secure-functions";
 export {supportApi, cleanupOldAiChatMessages} from "./support-functions";
 
 // Re-export the referral pipeline so we can deploy the qualification
