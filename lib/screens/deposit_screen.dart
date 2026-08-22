@@ -365,7 +365,12 @@ class _DepositScreenState extends State<DepositScreen> {
           );
           final txId = await FirestoreService().createTransaction(pendingTx);
 
-          final returnedRef = await SquadCheckoutSheet.show(context, checkoutUrl: result.checkoutUrl!);
+          final returnedRef = await SquadCheckoutSheet.show(
+            context,
+            checkoutUrl: result.checkoutUrl!,
+            amount: amount,
+            reference: result.reference,
+          );
           if (returnedRef != null) {
             debugPrint('Checkout returned ref: $returnedRef, calling server to verify + credit...');
 

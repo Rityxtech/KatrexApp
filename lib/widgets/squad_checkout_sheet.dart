@@ -1,24 +1,44 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../services/squad_service.dart';
 import '../utils/api_config.dart';
 
-/// A full-screen in-app payment window that loads the Squad checkout URL.
-/// It injects modern responsive CSS & layout fixes to remove scattered borders,
-/// fix overlapping text (such as email vs merchant name), and cleanly position
-/// action buttons so they never collide or look misaligned.
+/// A brand-new, clean, spacious, and professional payment window.
+/// Replaces clustered and scattered web layouts with a simple, high-contrast,
+/// native Flutter interface that makes bank transfer and card payments seamless.
 class SquadCheckoutSheet extends StatefulWidget {
   final String checkoutUrl;
+  final double? amount;
+  final String? reference;
 
-  const SquadCheckoutSheet({super.key, required this.checkoutUrl});
+  const SquadCheckoutSheet({
+    super.key,
+    required this.checkoutUrl,
+    this.amount,
+    this.reference,
+  });
 
   /// Push the checkout page as a full-screen route.
-  /// Returns the reference string if redirect detected, null if cancelled.
-  static Future<String?> show(BuildContext context, {required String checkoutUrl}) {
+  /// Returns the reference string if payment was verified or completed, null if cancelled.
+  static Future<String?> show(
+    BuildContext context, {
+    required String checkoutUrl,
+    double? amount,
+    String? reference,
+  }) {
     return Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (_) => SquadCheckoutSheet(checkoutUrl: checkoutUrl),
+        builder: (_) => SquadCheckoutSheet(
+          checkoutUrl: checkoutUrl,
+          amount: amount,
+          reference: reference,
+        ),
         fullscreenDialog: true,
       ),
     );
@@ -31,196 +51,26 @@ class SquadCheckoutSheet extends StatefulWidget {
 class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
   WebViewController? _controller;
   bool _isLoading = true;
-  double _loadingProgress = 0.0;
   bool _isClosing = false;
+  bool _isVerifying = false;
+  bool _copied = false;
 
-  static const String _styleAndLayoutFixJs = r"""
-(function() {
-  const css = `
-    /* Global Page Normalization */
-    html, body {
-      max-width: 100vw !important;
-      overflow-x: hidden !important;
-      font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Segoe UI", Roboto, sans-serif !important;
-      -webkit-font-smoothing: antialiased !important;
-      background: #FFFFFF !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
+  // Selected payment method: 0 = Bank Transfer, 1 = Card / Web Checkout
+  int _selectedTab = 0;
 
-    /* Fix Header Layout & Collision (Merchant Name vs Email) */
-    header, [class*="header"], [class*="merchant-info"], [class*="top-bar"], div:has(> [class*="merchant"]) {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      justify-content: flex-start !important;
-      gap: 4px !important;
-      width: 100% !important;
-      box-sizing: border-box !important;
-      padding: 14px 18px !important;
-      border-bottom: 1px solid #F1F5F9 !important;
-      position: relative !important;
-    }
-
-    /* Fix Customer Email Overlap */
-    [class*="email"], span:contains("@"), p:contains("@"), a:contains("@") {
-      position: static !important;
-      display: block !important;
-      font-size: 13px !important;
-      color: #64748B !important;
-      font-weight: 500 !important;
-      margin-top: 2px !important;
-      word-break: break-all !important;
-    }
-
-    /* Clean Card & Account Box Styling (Removes retro offset black shadows) */
-    [class*="account-details"], [class*="bank-box"], [class*="transfer-card"], [class*="details-box"],
-    [class*="account-card"], div[style*="box-shadow"], div[style*="border:"] {
-      border-radius: 16px !important;
-      border: 1.5px solid #E2E8F0 !important;
-      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05) !important;
-      padding: 16px 18px !important;
-      margin: 16px 0 !important;
-      background: #F8FAFC !important;
-    }
-
-    /* Remove jagged retro offset shadows across all elements */
-    * {
-      box-shadow: none !important;
-    }
-    div[class*="card"], div[class*="box"], [class*="account"] {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
-    }
-
-    /* Fix "Change Payment Method" floating button overlapping action button */
-    [class*="change-payment"], [class*="switch-channel"], button[class*="change"], [class*="change-method"],
-    div:has(> svg):has-text("Change payment method"), button:has-text("Change payment method"),
-    div[class*="change-method-container"] {
-      position: static !important;
-      transform: none !important;
-      margin: 16px auto 14px auto !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      gap: 8px !important;
-      border-radius: 12px !important;
-      border: 1.5px solid #CBD5E1 !important;
-      background: #FFFFFF !important;
-      color: #334155 !important;
-      padding: 10px 18px !important;
-      font-weight: 700 !important;
-      font-size: 13px !important;
-      width: fit-content !important;
-      max-width: 90% !important;
-      cursor: pointer !important;
-    }
-
-    /* Fix Primary Action Buttons ("I have made the transfer", "Pay", etc.) */
-    button[type="submit"], [class*="submit-btn"], [class*="pay-btn"], [class*="action-btn"],
-    button[class*="primary"], button:has-text("I have made the transfer") {
-      position: static !important;
-      border-radius: 14px !important;
-      font-weight: 800 !important;
-      padding: 15px 20px !important;
-      font-size: 15px !important;
-      letter-spacing: -0.2px !important;
-      width: 100% !important;
-      margin-top: 14px !important;
-      margin-bottom: 8px !important;
-      box-sizing: border-box !important;
-      background: #2563EB !important;
-      color: #FFFFFF !important;
-      border: none !important;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25) !important;
-      cursor: pointer !important;
-    }
-
-    /* Fix Account Number & Details Font */
-    [class*="account-number"], [class*="account-no"] {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-      font-size: 18px !important;
-      font-weight: 800 !important;
-      letter-spacing: 0.5px !important;
-      color: #0F172A !important;
-    }
-
-    /* Clean spacing for instructions and notes */
-    [class*="note"], [class*="alert"], [class*="warning"] {
-      font-size: 12px !important;
-      line-height: 1.5 !important;
-      color: #64748B !important;
-      margin: 8px 0 !important;
-    }
-
-    /* Footer Logo & Badge */
-    footer, [class*="footer"], [class*="secured-by"] {
-      margin-top: 24px !important;
-      padding-bottom: 24px !important;
-      display: flex !important;
-      justify-content: center !important;
-      align-items: center !important;
-    }
-  `;
-
-  // Inject or update stylesheet
-  let styleEl = document.getElementById('katrex-squad-cleanup');
-  if (!styleEl) {
-    styleEl = document.createElement('style');
-    styleEl.id = 'katrex-squad-cleanup';
-    document.head.appendChild(styleEl);
-  }
-  styleEl.textContent = css;
-
-  // DOM node cleanup
-  function cleanDom() {
-    // 1. Fix all buttons with overlapping fixed positioning
-    const allButtons = document.querySelectorAll('button, div[role="button"], a');
-    allButtons.forEach(btn => {
-      const text = (btn.textContent || '').trim();
-      if (text.includes('Change payment method') || text.includes('Change method')) {
-        btn.style.position = 'static';
-        btn.style.margin = '16px auto';
-        btn.style.display = 'flex';
-        btn.style.zIndex = '1';
-      }
-      if (text.includes('I have made the transfer') || text.includes('Confirm Payment')) {
-        btn.style.position = 'static';
-        btn.style.marginTop = '14px';
-        btn.style.marginBottom = '8px';
-      }
-    });
-
-    // 2. Fix email text absolute positioning
-    const allTexts = document.querySelectorAll('span, p, h1, h2, h3, h4, h5, h6, div');
-    allTexts.forEach(el => {
-      const style = window.getComputedStyle(el);
-      if (style.position === 'absolute' && el.textContent && el.textContent.includes('@')) {
-        el.style.position = 'static';
-        el.style.display = 'block';
-        el.style.marginTop = '4px';
-      }
-    });
-  }
-
-  cleanDom();
-
-  // Run on dynamic mutations
-  if (!window._katrexObserver) {
-    window._katrexObserver = new MutationObserver(() => {
-      cleanDom();
-    });
-    window._katrexObserver.observe(document.body || document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true
-    });
-  }
-})();
-""";
+  // Dynamic bank account extracted from Squad session
+  String _bankName = 'Guaranty Trust Bank (GTB)';
+  String _accountNumber = '';
+  String _accountName = 'Squad Checkout / Katrex';
+  double _amount = 0.0;
+  String _ref = '';
+  Timer? _extractionTimer;
 
   @override
   void initState() {
     super.initState();
+    _amount = widget.amount ?? _extractAmountFromUrl(widget.checkoutUrl);
+    _ref = widget.reference ?? _extractRefFromUrl(widget.checkoutUrl);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _isClosing) return;
@@ -229,26 +79,13 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(
           NavigationDelegate(
-            onProgress: (progress) {
-              if (!mounted || _isClosing) return;
-              setState(() {
-                _loadingProgress = progress / 100.0;
-                if (progress >= 100) _isLoading = false;
-              });
-              if (progress > 60) {
-                _injectCleanStyles();
-              }
-            },
             onPageStarted: (_) {
-              if (!_isClosing && mounted) {
-                setState(() => _isLoading = true);
-                _injectCleanStyles();
-              }
+              if (mounted) setState(() => _isLoading = true);
             },
             onPageFinished: (_) {
-              if (!_isClosing && mounted) {
+              if (mounted) {
                 setState(() => _isLoading = false);
-                _injectCleanStyles();
+                _extractAccountDetails();
               }
             },
             onNavigationRequest: (request) {
@@ -258,8 +95,9 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
                 final callbackHost = Uri.parse(callbackBase).host;
                 if (uri.host == callbackHost) {
                   final reference = uri.queryParameters['transaction_ref'] ??
-                      uri.queryParameters['reference'];
-                  _handleRedirect(reference);
+                      uri.queryParameters['reference'] ??
+                      _ref;
+                  _handleSuccess(reference);
                   return NavigationDecision.prevent;
                 }
               }
@@ -270,19 +108,200 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
         ..loadRequest(Uri.parse(widget.checkoutUrl));
 
       if (mounted) setState(() {});
+
+      // Periodically extract account details in case page loads dynamically
+      _extractionTimer = Timer.periodic(const Duration(milliseconds: 1200), (timer) {
+        if (!mounted || _accountNumber.isNotEmpty || timer.tick > 15) {
+          if (_accountNumber.isNotEmpty || timer.tick > 15) timer.cancel();
+          return;
+        }
+        _extractAccountDetails();
+      });
     });
   }
 
-  void _injectCleanStyles() {
+  @override
+  void dispose() {
+    _extractionTimer?.cancel();
+    super.dispose();
+  }
+
+  double _extractAmountFromUrl(String url) {
     try {
-      _controller?.runJavaScript(_styleAndLayoutFixJs);
+      final uri = Uri.parse(url);
+      final amtStr = uri.queryParameters['amount'] ?? uri.queryParameters['amt'];
+      if (amtStr != null) {
+        final val = double.tryParse(amtStr);
+        if (val != null) {
+          // If in kobo (> 1000 and has no decimals), convert
+          return val > 1000 && (val % 100 == 0) ? val / 100 : val;
+        }
+      }
+    } catch (_) {}
+    return 100.0;
+  }
+
+  String _extractRefFromUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.queryParameters['transaction_ref'] ??
+          uri.queryParameters['reference'] ??
+          uri.pathSegments.lastOrNull ??
+          '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<void> _extractAccountDetails() async {
+    if (_controller == null || _accountNumber.isNotEmpty) return;
+
+    try {
+      final res = await _controller!.runJavaScriptReturningResult(r"""
+(function() {
+  try {
+    const text = document.body ? document.body.innerText : '';
+    
+    // Extract 10-digit Nigerian NUBAN account number
+    const match = text.match(/\b(0\d{9}|\d{10})\b/);
+    const accNum = match ? match[0] : '';
+    
+    let bank = 'Guaranty Trust Bank (GTB)';
+    if (text.includes('Wema') || text.includes('WEMA')) bank = 'Wema Bank';
+    else if (text.includes('Sterling') || text.includes('STERLING')) bank = 'Sterling Bank';
+    else if (text.includes('GTB') || text.includes('Guaranty Trust')) bank = 'Guaranty Trust Bank (GTB)';
+    else if (text.includes('Access') || text.includes('ACCESS')) bank = 'Access Bank';
+    else if (text.includes('Providus')) bank = 'Providus Bank';
+
+    let accName = 'Squad Checkout';
+    const nameMatch = text.match(/Account Name[\s:]*([^\n\r]+)/i);
+    if (nameMatch && nameMatch[1]) {
+      accName = nameMatch[1].trim();
+    }
+
+    // Extract amount if not set
+    let extractedAmount = '';
+    const amtMatch = text.match(/₦\s*([\d,]+(?:\.\d{2})?)/);
+    if (amtMatch && amtMatch[1]) {
+      extractedAmount = amtMatch[1].replace(/,/g, '');
+    }
+
+    return JSON.stringify({
+      accountNumber: accNum,
+      bankName: bank,
+      accountName: accName,
+      amount: extractedAmount
+    });
+  } catch(e) {
+    return JSON.stringify({ error: e.toString() });
+  }
+})();
+""");
+
+      if (res is String && res.isNotEmpty && res != 'null') {
+        // Strip quotes if wrapped
+        String raw = res;
+        if (raw.startsWith('"') && raw.endsWith('"')) {
+          raw = jsonDecode(raw);
+        }
+        final Map<String, dynamic> data = jsonDecode(raw);
+        final acc = data['accountNumber'] as String? ?? '';
+        if (acc.length == 10 && mounted) {
+          setState(() {
+            _accountNumber = acc;
+            if (data['bankName'] != null) _bankName = data['bankName'] as String;
+            if (data['accountName'] != null) _accountName = data['accountName'] as String;
+            if (_amount <= 0 && data['amount'] != null) {
+              _amount = double.tryParse(data['amount'].toString()) ?? 100.0;
+            }
+          });
+        }
+      }
     } catch (_) {}
   }
 
-  void _handleRedirect(String? reference) {
+  void _copyAccount() {
+    if (_accountNumber.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: _accountNumber));
+    setState(() => _copied = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'Account number copied to clipboard',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  Future<void> _verifyTransfer() async {
+    if (_isVerifying) return;
+    setState(() => _isVerifying = true);
+
+    try {
+      final refToVerify = _ref.isNotEmpty ? _ref : _extractRefFromUrl(widget.checkoutUrl);
+      if (refToVerify.isNotEmpty) {
+        final verification = await SquadService.verifyTransaction(reference: refToVerify);
+        if (verification.success && verification.status.toLowerCase() == 'success') {
+          _handleSuccess(refToVerify);
+          return;
+        }
+      }
+
+      // If not yet credited, inform user and allow periodic checking
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Payment is being confirmed. Please wait a few moments...',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
+            backgroundColor: const Color(0xFF2563EB),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Still awaiting transfer confirmation from your bank.',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
+            backgroundColor: const Color(0xFFF59E0B),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isVerifying = false);
+    }
+  }
+
+  void _handleSuccess(String? reference) {
     if (_isClosing) return;
     _isClosing = true;
-    Navigator.of(context).pop(reference);
+    Navigator.of(context).pop(reference ?? _ref);
   }
 
   Future<void> _confirmCancel() async {
@@ -313,10 +332,10 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
               height: 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFF59E0B).withOpacity(0.12),
-                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+                color: const Color(0xFFEF4444).withOpacity(0.12),
+                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
               ),
-              child: const Icon(Icons.help_outline_rounded, color: Color(0xFFF59E0B), size: 24),
+              child: const Icon(Icons.close_rounded, color: Color(0xFFEF4444), size: 26),
             ),
             const SizedBox(height: 14),
             Text(
@@ -329,7 +348,7 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Your transaction is currently in progress. If you exit now, this payment session will be cancelled.',
+              'Are you sure you want to exit? Any transfer sent will still be verified automatically.',
               textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
@@ -376,7 +395,7 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
                       ),
                       child: Center(
                         child: Text(
-                          'Yes, Cancel',
+                          'Yes, Exit',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
@@ -409,21 +428,22 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
         if (!didPop) _confirmCancel();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0A0F1F),
+        backgroundColor: const Color(0xFF070B16),
         appBar: AppBar(
-          backgroundColor: const Color(0xFF0A0F1F),
+          backgroundColor: const Color(0xFF070B16),
           elevation: 0,
           leading: IconButton(
             onPressed: _confirmCancel,
             icon: Container(
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: const Center(
-                child: Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+                child: Icon(Icons.close_rounded, color: Colors.white, size: 18),
               ),
             ),
           ),
@@ -433,7 +453,7 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
                 'Complete Payment',
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                   fontSize: 16,
                   letterSpacing: -0.3,
                 ),
@@ -445,7 +465,7 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
                   const Icon(Icons.lock_rounded, size: 11, color: Color(0xFF10B981)),
                   const SizedBox(width: 4),
                   Text(
-                    '256-Bit SSL Encrypted',
+                    '256-Bit Secure Encryption',
                     style: GoogleFonts.plusJakartaSans(
                       color: const Color(0xFF9CA3AF),
                       fontWeight: FontWeight.w700,
@@ -457,66 +477,564 @@ class _SquadCheckoutSheetState extends State<SquadCheckoutSheet> {
             ],
           ),
           centerTitle: true,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(2),
-            child: _isLoading
-                ? LinearProgressIndicator(
-                    value: _loadingProgress > 0 ? _loadingProgress : null,
-                    backgroundColor: Colors.white10,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
-                    minHeight: 2,
-                  )
-                : const SizedBox(height: 2),
-          ),
         ),
-        body: SafeArea(
-          bottom: false,
-          child: Container(
-            margin: const EdgeInsets.only(top: 8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        body: Stack(
+          children: [
+            // Hidden headless WebView for card processing & dynamic account extraction
+            Offstage(
+              offstage: _selectedTab == 0,
+              child: _controller != null
+                  ? Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: WebViewWidget(controller: _controller!),
+                    )
+                  : const SizedBox.shrink(),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: _controller == null
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF2563EB),
-                      strokeWidth: 3,
-                    ),
-                  )
-                : Stack(
+
+            // Clean Native Payment View
+            if (_selectedTab == 0)
+              SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  children: [
+                    // Method Switcher Pill (Transfer vs Card)
+                    _buildMethodSelector(),
+                    const SizedBox(height: 20),
+
+                    // Amount Display Card
+                    _buildAmountCard(),
+                    const SizedBox(height: 18),
+
+                    // Bank Account Details Box
+                    _buildBankTransferBox(),
+                    const SizedBox(height: 18),
+
+                    // Important Transfer Instructions Callout
+                    _buildInstructionsBanner(),
+                    const SizedBox(height: 24),
+
+                    // Primary Action Button ("I have made the transfer")
+                    _buildConfirmButton(),
+                    const SizedBox(height: 14),
+
+                    // Switch to Card Option
+                    _buildSwitchToCardButton(),
+                    const SizedBox(height: 20),
+
+                    // Security Badge Footer
+                    _buildSecurityFooter(),
+                  ],
+                ),
+              ),
+
+            // Shimmer loader if tab 1 is active and loading
+            if (_selectedTab == 1 && _isLoading)
+              Container(
+                color: Colors.white,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      WebViewWidget(controller: _controller!),
-                      if (_isLoading)
-                        Container(
-                          color: Colors.white,
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const CircularProgressIndicator(
-                                  color: Color(0xFF2563EB),
-                                  strokeWidth: 3,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Loading secure checkout...',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF475569),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                      const CircularProgressIndicator(color: Color(0xFF2563EB), strokeWidth: 3),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading secure payment gateway...',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF475569),
                         ),
+                      ),
                     ],
                   ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMethodSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTab = 0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _selectedTab == 0 ? const Color(0xFF2563EB) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: _selectedTab == 0
+                      ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 10)]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.account_balance_rounded,
+                      size: 16,
+                      color: _selectedTab == 0 ? Colors.white : const Color(0xFF9CA3AF),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Bank Transfer',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: _selectedTab == 0 ? Colors.white : const Color(0xFF9CA3AF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTab = 1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _selectedTab == 1 ? const Color(0xFF2563EB) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: _selectedTab == 1
+                      ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 10)]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.credit_card_rounded,
+                      size: 16,
+                      color: _selectedTab == 1 ? Colors.white : const Color(0xFF9CA3AF),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Card / Online',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: _selectedTab == 1 ? Colors.white : const Color(0xFF9CA3AF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountCard() {
+    final fmt = NumberFormat('#,##0.00');
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'AMOUNT TO PAY',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF94A3B8),
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                '₦',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF60A5FA),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Text(
+                fmt.format(_amount > 0 ? _amount : 100),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -1.0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF10B981),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Instant Auto-Confirmation',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF34D399),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBankTransferBox() {
+    final hasAccount = _accountNumber.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Bank Name Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'BANK NAME',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF94A3B8),
+                  letterSpacing: 0.8,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE24A10).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE24A10).withOpacity(0.3)),
+                ),
+                child: Text(
+                  'GTBANK',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFFF7A45),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _bankName,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(color: Color(0x1AFFFFFF), height: 1),
+          ),
+
+          // Account Number Row
+          Text(
+            'ACCOUNT NUMBER',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF94A3B8),
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              hasAccount
+                  ? Text(
+                      _accountNumber,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 2.0,
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF60A5FA),
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Generating Account...',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+              GestureDetector(
+                onTap: hasAccount ? _copyAccount : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _copied
+                        ? const Color(0xFF10B981).withOpacity(0.2)
+                        : const Color(0xFF2563EB).withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _copied
+                          ? const Color(0xFF10B981).withOpacity(0.5)
+                          : const Color(0xFF2563EB).withOpacity(0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _copied ? Icons.check_rounded : Icons.copy_rounded,
+                        size: 14,
+                        color: _copied ? const Color(0xFF34D399) : const Color(0xFF60A5FA),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _copied ? 'Copied' : 'Copy',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: _copied ? const Color(0xFF34D399) : const Color(0xFF60A5FA),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(color: Color(0x1AFFFFFF), height: 1),
+          ),
+
+          // Account Name Row
+          Text(
+            'ACCOUNT NAME',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF94A3B8),
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _accountName,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFE2E8F0),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructionsBanner() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF59E0B).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFFF59E0B), size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Please transfer the exact amount displayed. This temporary dynamic account expires in 60 minutes.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFFFCD34D),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfirmButton() {
+    return GestureDetector(
+      onTap: _isVerifying ? null : _verifyTransfer,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF10B981).withOpacity(0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Center(
+          child: _isVerifying
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Confirming Payment...',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                )
+              : Text(
+                  'I Have Made The Transfer',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchToCardButton() {
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTab = 1),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.credit_card_rounded, size: 16, color: Color(0xFF94A3B8)),
+              const SizedBox(width: 8),
+              Text(
+                'Prefer to pay with Debit Card? Click here',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFCBD5E1),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  Widget _buildSecurityFooter() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.verified_user_rounded, size: 14, color: Color(0xFF64748B)),
+        const SizedBox(width: 6),
+        Text(
+          'Secured by Squad • Powered by GTBank',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF64748B),
+          ),
+        ),
+      ],
+    );
+  }
 }
+

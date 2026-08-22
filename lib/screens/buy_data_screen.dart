@@ -348,6 +348,8 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
         final returnedRef = await SquadCheckoutSheet.show(
           context,
           checkoutUrl: squadResult.checkoutUrl!,
+          amount: amount,
+          reference: squadResult.reference,
         );
 
         if (returnedRef == null) {

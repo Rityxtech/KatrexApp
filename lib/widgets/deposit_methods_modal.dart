@@ -129,6 +129,8 @@ class _DepositMethodsSheetState extends State<_DepositMethodsSheet> {
       final returnedRef = await SquadCheckoutSheet.show(
         context,
         checkoutUrl: squadResult.checkoutUrl!,
+        amount: _amount,
+        reference: squadResult.reference,
       );
       if (returnedRef == null) {
         if (mounted) {
